@@ -4,10 +4,13 @@ import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
+import com.activegrid.model.ImageInfo
+import com.activegrid.services.CatalogService
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -78,8 +81,29 @@ object Main {
       }
     }
 
+    implicit val ImageFormat = jsonFormat3(ImageInfo)
 
-    val route = itemRoute ~ orderRoute
+    var catalogService = new CatalogService()
+
+    val catalogRoutes  = pathPrefix("catalog") {
+
+      path("images"/"view") {
+        get {
+
+         complete(catalogService.getImages())
+
+        }
+      } ~ path("images") {
+        put { entity(as[ImageInfo]) { image =>
+          complete(catalogService.buildImage(image))
+        }
+        }
+      }
+
+    }
+
+
+    val route = itemRoute ~ orderRoute ~ catalogRoutes
 
     val bindingFuture = Http().bindAndHandle(route, "localhost", 9000)
     logger.info(s"Server online at http://localhost:9000")
