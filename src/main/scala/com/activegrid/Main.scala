@@ -8,6 +8,8 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
+import com.activegrid.model.{ImageInfo, Software}
+import com.activegrid.services.CatalogService
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -40,6 +42,7 @@ object Main {
   final case class Item(name: String, id: Long)
 
   final case class Order(items: List[Item])
+
   // formats for unmarshalling and marshalling
 
   /*
@@ -48,6 +51,9 @@ object Main {
   implicit val itemFormat = jsonFormat2(Item)
 
   implicit val orderFormat = jsonFormat1(Order)
+
+  implicit val softwareFormat = jsonFormat7(Software)
+
   // (fake) async database query api
   def fetchItem(itemId: Long): Future[Option[Item]] = Future(Some(Item("item", itemId)))
 
@@ -62,7 +68,7 @@ object Main {
 
         onSuccess(maybeItem) {
           case Some(item) => complete(item)
-          case None       => complete(StatusCodes.NotFound)
+          case None => complete(StatusCodes.NotFound)
         }
       }
     }
@@ -78,8 +84,22 @@ object Main {
       }
     }
 
+    val catalogService = new CatalogService();
 
-    val route = itemRoute ~ orderRoute
+    def catalogRoutes: Route = pathPrefix("catalog") {
+      {
+        post {
+          entity(as[Software]) { softwareJson =>
+            catalogService.buildSoftware(softwareJson)
+            complete("success")
+          }
+
+        }
+      }
+
+    }
+
+    val route = itemRoute ~ orderRoute~catalogRoutes
 
     val bindingFuture = Http().bindAndHandle(route, "localhost", 9000)
     logger.info(s"Server online at http://localhost:9000")
