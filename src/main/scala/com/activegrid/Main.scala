@@ -8,7 +8,7 @@ import akka.stream.ActorMaterializer
 
 
 
-object Catalog extends App {
+object Main extends App {
 
   implicit val system  = ActorSystem();
   implicit val materializer = ActorMaterializer()
