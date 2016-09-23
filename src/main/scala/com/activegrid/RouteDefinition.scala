@@ -18,6 +18,7 @@ class RouteDefinition {
 
   implicit val software = jsonFormat3(Software)
 
+
   def catalogRoute: Route = pathPrefix("catalog") {
     pathEnd {
       post {
