@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.dao.ImageInfoDAO
 import com.imaginea.activegrid.core.resources.CatalogResource
 import com.imaginea.activegrid.core.services.CatalogService
 import com.typesafe.config.ConfigFactory

@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.services
 
-import com.imaginea.activegrid.core.dao.ImageInfoDAO
+import com.imaginea.activegrid.core.db.ImageInfoRepository
 import com.imaginea.activegrid.core.models.ImageInfo
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class CatalogService (implicit val executionContext: ExecutionContext) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  implicit val imageDao: ImageInfoDAO = new ImageInfoDAO
+  implicit val imageDao: ImageInfoRepository = new ImageInfoRepository
 
   def getImages = {
     imageDao.getImages()
