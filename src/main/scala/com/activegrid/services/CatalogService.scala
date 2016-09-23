@@ -1,7 +1,7 @@
 package com.activegrid.services
 
-import com.activegrid.graphdb.DBExecutor
-import com.activegrid.model.ImageInfo
+import com.activegrid.model.GraphDBExecutor
+import com.activegrid.model.{GraphDBExecutor, ImageInfo}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -10,19 +10,17 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 class CatalogService(implicit val executionContext: ExecutionContext){
 
-  val db = new DBExecutor()
+  val db = new GraphDBExecutor()
 
-  def getImages(): Future[Option[ImageInfo]] = Future {
+  def getImages(): Future[Option[List[ImageInfo]]] = Future {
 
+    db.getEntities
 
-
-    Some(ImageInfo("1","jpeg","naveed"))
   }
 
-  def buildImage(image:ImageInfo):Future[Option[ImageInfo]] =Future{
+  def buildImage(image:ImageInfo):Future[Option[ImageInfo]] = Future {
 
-  Some(db.persistEntity(image))
-    //Some(ImageInfo("1","jpeg","naveed"))
+  db.persistEntity(image)
 
   }
 
