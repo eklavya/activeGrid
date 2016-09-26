@@ -14,13 +14,21 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 
   def getImages(): Future[Option[List[ImageInfo]]] = Future {
 
-    db.getEntities
+    db.getEntities[ImageInfo]
 
   }
 
   def buildImage(image:ImageInfo):Future[Option[ImageInfo]] = Future {
 
-  db.persistEntity(image)
+  db.persistEntity[ImageInfo](image, "ImageInfo")
+
+  }
+
+  def deleteImage(imageId:Long): Future[Option[String]] = Future {
+
+    db.deleteEntity[ImageInfo](imageId)
+
+    Some("true")
 
   }
 
