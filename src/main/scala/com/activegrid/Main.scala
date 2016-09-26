@@ -100,7 +100,7 @@ object Main {
                val totalObjects = count
                complete(Page[ImageInfo](startIndex,count,totalObjects,lists))
              }
-             case None => complete("Not found")
+             case None => complete("List not found")
            }
         }
       } ~ path("images") {
@@ -108,7 +108,7 @@ object Main {
           complete(catalogService.buildImage(image))
         }
         }
-      } ~ path("images"/LongNumber){ imageId =>
+      } ~ path("images"/Segment){ imageId =>
         delete {
           complete(catalogService.deleteImage(imageId))
         }
