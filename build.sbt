@@ -5,6 +5,9 @@ version := "1.0"
 scalaVersion := "2.11.8"
 
 
+resolvers += "Neo4j Maven 2 repository" at "https://m2.neo4j.org/content/repositories/releases"
+
+
 libraryDependencies ++= Seq(
 
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
@@ -26,5 +29,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-spray-json-experimental" % "2.4.10",
   "com.typesafe.akka" %% "akka-http-xml-experimental" % "2.4.10",
   "ch.qos.logback" %  "logback-classic" % "1.1.7",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0"
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
+// Neo4j graph database
+   "org.neo4j" % "neo4j-kernel" % "3.0.0",
+   "org.neo4j" % "neo4j-lucene-index" % "3.0.0",
+   "org.neo4j" % "neo4j-shell" % "3.0.0",
+   "org.neo4j" % "neo4j-cypher" % "3.0.0"
 )
