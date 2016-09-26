@@ -17,7 +17,8 @@ class GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProv
       //val node = createNode(entity)(neo)
 
       val node = createNode(entity, label)(neo)
-
+      println(s" new node ${node.getLabels}, id ${node.getId}")
+      println(s" imageId ${node.getProperty("imageId")}")
     }
 
     return Some(entity)
@@ -36,10 +37,13 @@ class GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProv
 
 
 
-  def deleteEntity[T<:BaseEntity: Manifest]( id:Long): Unit = {
+  def deleteEntity[T<:BaseEntity: Manifest](label: String, paramName: String, paramValue:Any): Unit = {
 
     withTx{ neo =>
 
+    val nodes = findNodesByLabelAndProperty(label,paramName,paramValue)(neo)
+      nodes.foreach(println)
+      nodes.map(_.delete())
 
     }
   }
