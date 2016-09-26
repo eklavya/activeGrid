@@ -1,25 +1,24 @@
-package com.activegrid
+package com.activegrid.services
 
-
-
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.stream.scaladsl.Flow
 import spray.json.DefaultJsonProtocol._
+import com.activegrid.utils.Utils
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import com.activegrid.entities.Software
 
 import scala.concurrent.Future
 
 
 
-class RouteDefinition {
+class CatalogService {
 
   var utils: Utils = new Utils();
 
   implicit val software = jsonFormat3(Software)
 
 
-  def catalogRoute: Route = pathPrefix("catalog") {
+  def routes = pathPrefix("catalog") {
     pathEnd {
       post {
         entity(as[Software]) { software =>

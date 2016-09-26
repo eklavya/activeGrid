@@ -4,8 +4,14 @@ package com.activegrid
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
+import com.activegrid.services.{AppSettingsService, CatalogService}
+import akka.http.scaladsl.server.Directives._
 
-
+object EndpointsAggregator {
+  val appService = new AppSettingsService()
+  val catalogService = new CatalogService()
+  val endPoints = appService.routes ~ catalogService.routes
+}
 
 
 object Main extends App {
@@ -15,8 +21,8 @@ object Main extends App {
 
   implicit val executionContext = system.dispatcher;
 
-  var apiHandler = new RouteDefinition();
-
-  val binding = Http().bindAndHandle(handler = apiHandler.catalogRoute, interface = "localhost", port = 5000);
+  val binding = {
+    Http().bindAndHandle(handler = EndpointsAggregator.endPoints, interface = "localhost", port = 5000)
+  };
 
 }
