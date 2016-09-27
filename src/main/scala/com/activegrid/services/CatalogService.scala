@@ -1,24 +1,45 @@
 package com.activegrid.services
 
-import com.activegrid.db.DAO
-import com.activegrid.model.Software
+import com.activegrid.model.{GraphDBExecutor, Software, Test}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Created by sampathr on 22/9/16.
   */
-class CatalogService {
+class CatalogService(implicit val executionContext: ExecutionContext) {
 
-  var softwares = Vector.empty[Software]
-  val daoObject = DAO
+  val db = new GraphDBExecutor()
+  val softwareLabel: String = "Softwares"
+  val testLabel: String = "Test"
 
-  def buildSoftware(software: Software): Int = {
-    daoObject.persistEntity(software)
+  def buildSoftware(software: Software): Future[Option[Software]] = Future {
+
+    db.persistEntity[Software](software, softwareLabel)
 
   }
 
-/*
-  def getSoftware(id: String): Future[Option[Software]] = Future {
-    softwares.find(_.name == id)
-  }*/
 
+  def deleteSoftware(softwareId: String): Future[Option[String]] = Future {
+
+
+    val paramName: String = "softwareId"
+
+    db.deleteEntity[Software](softwareLabel, paramName, softwareId)
+
+    Some("true")
+
+  }
+
+  def getSoftwares(): Future[Option[List[Software]]] = Future {
+
+    db.getEntities[Software](softwareLabel)
+
+  }
+
+  def listTestPut(testObj: Test): Future[Option[Test]] = Future {
+
+    db.persistEntity[Test](testObj, testLabel)
+
+  }
 }
