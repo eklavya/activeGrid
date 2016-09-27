@@ -40,7 +40,7 @@ class AppSettingsService  {
            } ~
              put {
                entity(as[AuthSettings]) { authSettings =>
-                 val save: Future[AuthSettings] = persistanceMgr.updateAuthSettings(authSettings)
+                 val save: Future[AuthSettings] = persistanceMgr.persistAuthSettings(authSettings)
                  onComplete(save) { done =>
                    complete("Operation successfull!!")
                  }
