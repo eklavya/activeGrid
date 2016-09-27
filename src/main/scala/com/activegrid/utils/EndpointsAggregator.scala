@@ -1,6 +1,7 @@
 package com.activegrid.utils
 
 import com.activegrid.services.{AppSettingsService, CatalogService}
+import akka.http.scaladsl.server.Directives._
 
 /**
   * Created by sivag on 27/9/16.
