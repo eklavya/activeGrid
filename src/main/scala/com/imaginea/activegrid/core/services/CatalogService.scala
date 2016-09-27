@@ -1,7 +1,6 @@
 package com.imaginea.activegrid.core.services
 
-import com.imaginea.activegrid.core.db.ImageInfoRepository
-import com.imaginea.activegrid.core.models.ImageInfo
+import com.imaginea.activegrid.core.models.{ImageInfo, ImageInfoRepository}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 

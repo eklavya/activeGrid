@@ -1,8 +1,6 @@
-package com.imaginea.activegrid.core.db
+package com.imaginea.activegrid.core.models
 
-import com.imaginea.activegrid.core.models.ImageInfo
 import com.typesafe.scalalogging.Logger
-import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.slf4j.LoggerFactory
 
 
