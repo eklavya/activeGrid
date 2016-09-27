@@ -13,10 +13,15 @@ import org.slf4j.LoggerFactory
 class ImageInfoRepository extends AbstractRepository{
   override val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val label = "ImageInfo"
+  val idField = "imageId"
 
   def saveImage(image: ImageInfo): ImageInfo = saveEntity[ImageInfo](image, label)
 
-  def getImages(): List[ImageInfo] = getEntityList[ImageInfo](label)
+  def getImages(): List[ImageInfo] = {
+    val images = getEntityList[ImageInfo](label)
+    logger.debug(s"images found ${images.length}" )
+    images
+  }
 
 
   def updateImage(imageId: String, image: ImageInfo): ImageInfo = {
@@ -26,12 +31,14 @@ class ImageInfoRepository extends AbstractRepository{
 
   def getImageById(imageId: String) : ImageInfo = {
     logger.debug(s"finding image with id $imageId")
-
-    ImageInfo(imageId, "name", "name", "")
+    val image = getEntity[ImageInfo](label, idField, imageId)
+    logger.debug(s"found val $image")
+    image
   }
 
-  def deleteImage(imageId: String): ImageInfo = {
+  def deleteImage(imageId: String): Boolean = {
     logger.debug(s"deleting image with id $imageId")
-    ImageInfo(imageId, "name", "name", "")
+    deleteEntity[ImageInfo](label, idField, imageId)
+    true
   }
 }

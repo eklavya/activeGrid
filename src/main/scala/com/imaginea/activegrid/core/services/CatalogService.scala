@@ -15,8 +15,8 @@ class CatalogService (implicit val executionContext: ExecutionContext) {
 
   implicit val imageDao: ImageInfoRepository = new ImageInfoRepository
 
-  def getImages = {
-    imageDao.getImages()
+  def getImages: Future[Option[List[ImageInfo]]] = Future{
+    Some(imageDao.getImages())
   }
 
   def createImage(image: ImageInfo): Future[Option[ImageInfo]] = Future{
@@ -29,8 +29,9 @@ class CatalogService (implicit val executionContext: ExecutionContext) {
     Some(imageDao.updateImage(id, image))
   }
 
-  def deleteImage(id: String): Future[Option[ImageInfo]]  = Future{
+  def deleteImage(id: String): Future[Option[String]]  = Future{
     logger.debug(s"deleting images with id ${id}")
-    Some(imageDao.deleteImage(id))
+    imageDao.deleteImage(id)
+    Some("true")
   }
 }
