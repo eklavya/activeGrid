@@ -47,22 +47,12 @@ class AppSettingsService  {
                }
              }~
              get {
-               entity(as[List[AuthSettings]]) { result =>
-                  val settingsList: Future[List[AuthSettings]] =  persistanceMgr.getSettings()
-                 onComplete(settingsList) { done =>
-                  complete(settingsList)
-                 }
-               }
-             } ~
-             delete {
-               entity(as[String]) { result: String =>
-                 val save: Future[String] = Future {
-                   "Not implemented"
-                 }
-                 onComplete(save) { done =>
-                   complete("Delete app settings")
-                 }
-               }
+               complete(persistanceMgr.getSettings())
+             }~
+              delete {
+                val propName1 = parameter("key");
+                val propValue1 = parameter("value")
+                complete(persistanceMgr.deleteSetting(propName1,propValue1)
              }
        }
 
