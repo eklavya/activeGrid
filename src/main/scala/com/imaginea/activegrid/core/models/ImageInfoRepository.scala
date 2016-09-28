@@ -8,17 +8,17 @@ import org.slf4j.LoggerFactory
   * Created by babjik on 22/9/16.
   */
 
-class ImageInfoRepository extends AbstractRepository{
-  override val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+class ImageInfoRepository {
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val label = "ImageInfo"
   val idField = "imageId"
 
-  def saveImage(image: ImageInfo): ImageInfo = saveEntity[ImageInfo](image, label)
+  def saveImage(image: ImageInfo): ImageInfo = Neo4jRepository.saveEntity[ImageInfo](image, label)
 
-  def getImages(): List[ImageInfo] = {
-    val images = getEntityList[ImageInfo](label)
+  def getImages(): Page[ImageInfo] = {
+    val images = Neo4jRepository.getEntityList[ImageInfo](label)
     logger.debug(s"images found ${images.length}" )
-    images
+    new Page[ImageInfo](images)
   }
 
 
@@ -29,14 +29,14 @@ class ImageInfoRepository extends AbstractRepository{
 
   def getImageById(imageId: String) : ImageInfo = {
     logger.debug(s"finding image with id $imageId")
-    val image = getEntity[ImageInfo](label, idField, imageId)
+    val image = Neo4jRepository.getEntity[ImageInfo](label, idField, imageId)
     logger.debug(s"found val $image")
     image
   }
 
   def deleteImage(imageId: String): Boolean = {
     logger.debug(s"deleting image with id $imageId")
-    deleteEntity[ImageInfo](label, idField, imageId)
+    Neo4jRepository.deleteEntity[ImageInfo](label, idField, imageId)
     true
   }
 }

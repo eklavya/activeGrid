@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.services
 
-import com.imaginea.activegrid.core.models.{ImageInfo, ImageInfoRepository}
+import com.imaginea.activegrid.core.models.{ImageInfo, ImageInfoRepository, Page}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -12,25 +12,25 @@ import scala.concurrent.{ExecutionContext, Future}
 class CatalogService (implicit val executionContext: ExecutionContext) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  implicit val imageDao: ImageInfoRepository = new ImageInfoRepository
+  val imageRepository: ImageInfoRepository = new ImageInfoRepository
 
-  def getImages: Future[Option[List[ImageInfo]]] = Future{
-    Some(imageDao.getImages())
+  def getImages: Future[Option[Page[ImageInfo]]] = Future{
+    Some(imageRepository.getImages)
   }
 
   def createImage(image: ImageInfo): Future[Option[ImageInfo]] = Future{
     logger.debug(s"images ${image.toString}")
-    Some(imageDao.saveImage(image))
+    Some(imageRepository.saveImage(image))
   }
 
   def updateImage(id: String, image: ImageInfo): Future[Option[ImageInfo]] = Future{
     logger.debug(s"images ${image.toString}")
-    Some(imageDao.updateImage(id, image))
+    Some(imageRepository.updateImage(id, image))
   }
 
   def deleteImage(id: String): Future[Option[String]]  = Future{
     logger.debug(s"deleting images with id ${id}")
-    imageDao.deleteImage(id)
+    imageRepository.deleteImage(id)
     Some("true")
   }
 }

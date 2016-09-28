@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by babjik on 23/9/16.
   */
-trait AbstractRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider{
+object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider{
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   def neo4jStoreDir = "./graphdb/activegriddb"
 
