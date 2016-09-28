@@ -17,5 +17,4 @@ object  Main extends App {
   val binding = {
     Http().bindAndHandle(handler = EndpointsAggregator.endPoints, interface = "localhost", port = 5000)
   };
-
 }
