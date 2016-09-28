@@ -39,8 +39,25 @@ class AppSettingsManager extends PersistanceManager{
     withTx { neo =>
       val nodes: Iterable[Node] = getAllNodesWithLabel(label)(neo)
       nodes.map(_.toCC[AuthSettings].get).toList
-
     }
+  }
+
+  def deleteSetting(name:String,value:String): Future[String] = Future{
+    logger.info(s"Deleting AppSettings with ${name} and ${value}")
+      withTx{
+        neo =>
+         val snodes = getAllNodesWithLabel(label)(neo)
+          logger.info(s"Number of entries found ${snodes.toList.length}")
+          for (elem <- snodes) {
+            logger.info(elem.getAllProperties.toString())
+              if(elem.getProperty(name) == value){
+              logger.info(s"Element matched \n ${elem.getId()}")
+              elem.delete();
+          }
+          }
+          "Delete OK"
+      }
+
   }
 
 }
