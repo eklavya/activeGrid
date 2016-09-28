@@ -2,12 +2,11 @@ package com.activegrid.resources
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import com.activegrid.models.{Order, Item}
-import spray.json.DefaultJsonProtocol._
 import akka.http.scaladsl.server.Directives._
 import akka.Done
 
 import com.activegrid.services.OrderService
+import com.activegrid.models.{OrderJsonProtocol, Order}
 
 /**
  * Order rest service. <code>
@@ -19,10 +18,7 @@ class OrderResource(implicit executionContext: ExecutionContext){
 
   // Json Marshalling / Unmarshalling for response object
   import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-
-  // Here we are creating json codec automatically
-  implicit val itemFormat = jsonFormat2(Item)
-  implicit val orderFormat = jsonFormat1(Order)
+  import OrderJsonProtocol._
 
   val route = post {
     path("create-order") {

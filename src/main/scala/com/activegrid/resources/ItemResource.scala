@@ -4,10 +4,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
-import spray.json.DefaultJsonProtocol._
 
 import com.activegrid.services.ItemService
-import com.activegrid.models.Item
+import com.activegrid.models.{ItemJsonProtocol, Item}
 
 /**
  * Order rest service. <code>
@@ -16,13 +15,9 @@ import com.activegrid.models.Item
  */
 
 class ItemResource (implicit executionContext: ExecutionContext) {
-
   // Json Marshalling / Unmarshalling for response object
   import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-
-  // Here we are creating json codec automatically.
-
-  implicit val itemFormat = jsonFormat2(Item)
+  import ItemJsonProtocol._ // importing implicit object for Json parsing
 
   val route = get {
     pathPrefix("item" / LongNumber) { id =>
