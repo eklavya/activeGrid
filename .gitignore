@@ -11,5 +11,8 @@ tmp/
 test-result
 server.pid
 *.eml
+*.iml
+.idea/
 /dist/
 .cache
+activeGridDB/
