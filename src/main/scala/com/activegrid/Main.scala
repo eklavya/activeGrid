@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import com.activegrid.model.{ImageInfo, Page}
+import com.activegrid.model.{ImageInfo, InstanceFlavor, Page, Site}
 import com.activegrid.services.CatalogService
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -84,6 +84,9 @@ object Main {
 
     implicit val ImageFormat = jsonFormat13(ImageInfo)
     implicit val PageFormat = jsonFormat4(Page[ImageInfo])
+    implicit val InstanceFlavorFormat = jsonFormat4(InstanceFlavor)
+    implicit val SiteFormat = jsonFormat3(Site)
+//    implicit val listOfStrings = jsonFormat1(List[String])
 
     var catalogService = new CatalogService()
 
@@ -112,11 +115,26 @@ object Main {
         delete {
           complete(catalogService.deleteImage(imageId))
         }
+      } ~ path("instanceTypes"/IntNumber){ siteId =>
+       get  {
+          complete(catalogService.getInstanceFlavor(siteId))
         }
+      } ~ path("saveSite"){
+        put{ entity(as[Site]) { site =>
+
+          val saveSite = catalogService.saveSite(site)
+
+          onSuccess(saveSite) {
+
+            case Some(save) => complete(save)
+            case None => complete("failed")
+          }
+
+        }
+        }
+      }
 
     }
-
-
 
 
     val route = itemRoute ~ orderRoute ~ catalogRoutes
