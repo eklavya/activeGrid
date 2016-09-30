@@ -1,7 +1,9 @@
 package com.imaginea.activegrid.core.models
 
 import java.lang.Iterable
+import java.lang.reflect.Field
 
+import com.imaginea.activegrid.core.utils.{ClassFinderUtils, ReflectionUtils}
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb.Relationship
@@ -13,6 +15,11 @@ import org.slf4j.LoggerFactory
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider{
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   def neo4jStoreDir = "./graphdb/activegriddb"
+
+  // constants
+  val V_ID = "V_ID"
+  val BASE_CLASS = "@BaseClass"
+  val CLASS = "@Class"
 
 
   /**
@@ -94,4 +101,30 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     nodes.map(_.delete())
   }
 
+
+  /**
+    * Persist entity with collection type parameters
+    * @param entity
+    * @param label
+    * @tparam T
+    * @return
+    */
+  def persistEntity[T <: BaseEntity: Manifest] (entity: T, label: String): T = withTx { neo =>
+    val fields: Array[Field] = entity.getClass.getDeclaredFields
+
+    fields.foreach(field=> {
+      logger.debug(s" field name: ${field.getName}, type: ${field.getType} ")
+      logger.debug(s" ${field.getName} -  ${ReflectionUtils.getPropertyType(field.getType)}")
+    } )
+
+
+
+    val allClasses = ClassFinderUtils.getClassOfType(classOf[BaseEntity])
+
+    allClasses.foreach(clz => {
+      logger.debug(s"class name - ${clz.name}, ")
+      logger.debug(s"simple name - ${clz.name.split('.').last}")
+    })
+    entity
+  }
 }

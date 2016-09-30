@@ -10,5 +10,5 @@ class UserRepository {
 
   def getUsers: Page[User] = new Page[User](Neo4jRepository.getEntityList[User](label))
 
-  def saveUser(user: User): User = Neo4jRepository.saveEntity[User](user, label)
+  def saveUser(user: User): User = Neo4jRepository.persistEntity[User](user, label)
 }
