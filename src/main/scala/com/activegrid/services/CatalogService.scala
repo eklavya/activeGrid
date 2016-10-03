@@ -1,6 +1,6 @@
 package com.activegrid.services
 
-import com.activegrid.model.{GraphDBExecutor, Software, Test}
+import com.activegrid.model.{GraphDBExecutor, ImageInfo, Software}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -10,22 +10,20 @@ import scala.concurrent.{ExecutionContext, Future}
 class CatalogService(implicit val executionContext: ExecutionContext) {
 
   val db = new GraphDBExecutor()
-  val softwareLabel: String = "Softwares"
-  val testLabel: String = "Test"
 
   def buildSoftware(software: Software): Future[Option[Software]] = Future {
+
+    val softwareLabel: String = "Softwares"
 
     db.persistEntity[Software](software, softwareLabel)
 
   }
 
 
-  def deleteSoftware(softwareId: String): Future[Option[String]] = Future {
+  def deleteSoftware(softwareId: Long): Future[Option[String]] = Future {
 
 
-    val paramName: String = "softwareId"
-
-    db.deleteEntity[Software](softwareLabel, paramName, softwareId)
+    db.deleteEntity[Software](softwareId)
 
     Some("true")
 
@@ -33,13 +31,34 @@ class CatalogService(implicit val executionContext: ExecutionContext) {
 
   def getSoftwares(): Future[Option[List[Software]]] = Future {
 
+    val softwareLabel: String = "Softwares"
+
     db.getEntities[Software](softwareLabel)
 
   }
 
-  def listTestPut(testObj: Test): Future[Option[Test]] = Future {
+  def getImages(): Future[Option[List[ImageInfo]]] = Future {
 
-    db.persistEntity[Test](testObj, testLabel)
+    val label : String = "ImageInfo"
+
+    db.getEntities[ImageInfo](label)
+
+  }
+
+  def buildImage(image:ImageInfo):Future[Option[ImageInfo]] = Future {
+
+    val label : String = "ImageInfo"
+
+    db.persistEntity[ImageInfo](image, label)
+
+  }
+
+  def deleteImage(imageId:Long): Future[Option[String]] = Future {
+
+
+    db.deleteEntity[ImageInfo](imageId)
+
+    Some("true")
 
   }
 }
