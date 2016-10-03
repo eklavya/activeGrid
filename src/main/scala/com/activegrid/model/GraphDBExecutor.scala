@@ -1,15 +1,57 @@
 package com.activegrid.model
 
+import com.activegrid.model.Graph.Neo4jRep
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
+import org.neo4j.graphdb.Node
+
 import scala.collection.JavaConversions._
 
 
 /**
   * Created by shareefn on 23/9/16.
   */
-class GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider{
+object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider{
 
-  def neo4jStoreDir = "./graphdb/activegrid"
+  def neo4jStoreDir = "./graphdb/activegrid/test"
+
+  def createGraphNode[T <:BaseEntity: Manifest](entity: T, label:String): Node = {
+    withTx { neo =>
+
+
+      val node = createNode(entity, label)(neo)
+
+      println(s" new node ${node.getLabels}, id ${node.getId}")
+      println(s" imageId ${node.getProperty("imageId")}")
+
+      return node
+    }
+  }
+
+  def createEmptyGraphNode[T <:BaseEntity: Manifest](label:String, map: Map[String, Any]): Node = {
+    withTx { neo =>
+
+
+      val node = createNode(label)(neo)
+
+      map.foreach {case (k,v) => node.setProperty(k,v) }
+
+      println(s" new node ${node.getLabels}, id ${node.getId}")
+      println(s" Id ${node.getProperty("id")}")
+      println(s" Name ${node.getProperty("name")}")
+      return node
+    }
+  }
+
+  def setGraphProperties(node:Node, paramName: String, paramValue:Long)  {
+
+    withTx{ neo =>
+
+      node.setProperty(paramName,paramValue)
+
+    }
+
+  }
+
 
   def persistEntity[T <: BaseEntity: Manifest](entity: T, label: String): Option[T] = {
 
@@ -18,6 +60,8 @@ class GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProv
       //val node = createNode(entity)(neo)
 
       val node = createNode(entity, label)(neo)
+
+
       println(s" new node ${node.getLabels}, id ${node.getId}")
       println(s" imageId ${node.getProperty("imageId")}")
     }
@@ -25,11 +69,12 @@ class GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProv
     return Some(entity)
   }
 
-  def getEntities[T:Manifest]: Option[List[T]] = {
+  def getEntities[T:Manifest](label: String): Option[List[T]] = {
 
     withTx {  neo =>
 
-      val nodes = getAllNodes(neo)
+      println(getAllNodes(neo) )
+      val nodes = getAllNodesWithLabel(label)(neo)
 
       Some(nodes.map(_.toCC[T].get).toList)
 
@@ -38,13 +83,13 @@ class GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProv
 
 
 
-  def deleteEntity[T<:BaseEntity: Manifest](label: String, paramName: String, paramValue:Any): Unit = {
+  def deleteEntity[T<:BaseEntity: Manifest](imageId: Long): Unit = {
 
     withTx{ neo =>
 
-      val nodes = findNodesByLabelAndProperty(label,paramName,paramValue)(neo)
-      nodes.foreach(println)
-      nodes.map(_.delete())
+      val node = getNodeById(imageId)(neo)
+
+      node.delete()
 
     }
   }
@@ -136,5 +181,10 @@ class GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProv
     return Some(entity)
   }
 
+  def persistEntityTest[T](entity: List[T], label: String)(implicit x: Neo4jRep[T]): Option[List[T]] = {
 
+//entity.map(test=> x.toGraph(test))
+
+Some(entity)
+  }
 }
