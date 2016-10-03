@@ -3,6 +3,7 @@ package com.imaginea.activegrid.core.models
 import java.lang.Iterable
 import java.lang.reflect.Field
 
+import com.imaginea.activegrid.core.utils.ReflectionUtils.PropertyType
 import com.imaginea.activegrid.core.utils.{ClassFinderUtils, ReflectionUtils}
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
@@ -18,7 +19,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   // constants
   val V_ID = "V_ID"
-  val BASE_CLASS = "@BaseClass"
   val CLASS = "@Class"
 
 
@@ -112,19 +112,40 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def persistEntity[T <: BaseEntity: Manifest] (entity: T, label: String): T = withTx { neo =>
     val fields: Array[Field] = entity.getClass.getDeclaredFields
 
+    val node = createNode(label) (neo)
+
     fields.foreach(field=> {
       logger.debug(s" field name: ${field.getName}, type: ${field.getType} ")
       logger.debug(s" ${field.getName} -  ${ReflectionUtils.getPropertyType(field.getType)}")
+
+      ReflectionUtils.getPropertyType(field.getType) match {
+        case PropertyType.SIMPLE => {
+          node.setProperty(field.getName, ReflectionUtils.getValue[T](entity, field))
+        }
+        case PropertyType.ENTITY => {
+
+        }
+        case PropertyType.ENUM => {
+
+        }
+        case PropertyType.ARRAY => {
+
+        }
+        case PropertyType.COLLECTION => {
+
+        }
+        case _ => logger.warn(s" field type is not handled ${field.getType}")
+      }
     } )
 
 
 
-    val allClasses = ClassFinderUtils.getClassOfType(classOf[BaseEntity])
+/*    val allClasses = ClassFinderUtils.getClassOfType(classOf[BaseEntity])
 
     allClasses.foreach(clz => {
       logger.debug(s"class name - ${clz.name}, ")
       logger.debug(s"simple name - ${clz.name.split('.').last}")
-    })
+    })*/
     entity
   }
 }

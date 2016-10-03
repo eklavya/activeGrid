@@ -31,7 +31,8 @@ object ReflectionUtils {
     * @tparam T
     * @return
     */
-  def getValue[T <: BaseEntity: Manifest] (entity: T, field: Field): Any  = {
+  def getValue[T <: BaseEntity] (entity: T, field: Field): Any  = {
+    field.setAccessible(true)
     field.get(entity)
   }
 
@@ -44,9 +45,15 @@ object ReflectionUtils {
     * @return
     */
   def setValue[T <: BaseEntity: Manifest] (entity: T, field: Field, value: Any) : Unit = {
+    field.setAccessible(true)
     field.set(entity, value)
   }
 
+  /**
+    * Checks for the field type, if the filed is a primitive returns true, else returns false
+    * @param fieldType
+    * @return
+    */
   def isSimpleType(fieldType: Class[_]) : Boolean = {
     if (fieldType.isPrimitive || fieldType.isAssignableFrom(classOf[String]) ||
         fieldType.isAssignableFrom(classOf[Long]) || fieldType.isAssignableFrom(classOf[Double]) ||
@@ -60,29 +67,66 @@ object ReflectionUtils {
     false
   }
 
+  /**
+    * Checks whether the field is extend from the BaseEntity  or not
+    * @param fieldType
+    * @return
+    */
   def isEntityType(fieldType: Class[_]): Boolean = {
     classOf[BaseEntity].isAssignableFrom(fieldType)
   }
 
+  /**
+    * Checks whether the field is a map type
+    * @param fieldType
+    * @return
+    */
   def isMapType(fieldType: Class[_]): Boolean = {
     classOf[Map[_,_]].isAssignableFrom(fieldType)
   }
 
+  /**
+    * Checks whether the field is of type array or not
+    * @param fieldType
+    * @return
+    */
   def isArrayType(fieldType: Class[_]): Boolean = {
     fieldType.isArray
   }
 
+  /**
+    * Checks for the field, whether it is a type of List or Set
+    * @param fieldType
+    * @return
+    */
   def isCollectionType(fieldType: Class[_]): Boolean = {
     classOf[List[_]].isAssignableFrom(fieldType) || classOf[Set[_]].isAssignableFrom(fieldType)
   }
 
+  /**
+    * Checks whether the field is Enumeration type or not
+    * @param fieldType
+    * @return
+    */
   def isEnum(fieldType: Class[_]): Boolean = {
     classOf[Enumeration].isAssignableFrom(fieldType)
   }
 
+  /**
+    * Checks whether the field is date type
+    * @param fieldType
+    * @return
+    */
   def isDateType(fieldType: Class[_]): Boolean = {
     classOf[Date].isAssignableFrom(fieldType)
   }
+
+
+  /**
+    * Returns the Type of filed,
+    * @param fieldType
+    * @return  returns the Property type enumeration
+    */
   def getPropertyType(fieldType: Class[_]): PropertyType = {
     if (isSimpleType(fieldType)) {
       return PropertyType.SIMPLE
@@ -103,6 +147,9 @@ object ReflectionUtils {
     PropertyType.COMPLEX
   }
 
+  /**
+    * Defines the different types of fields need to handled
+    */
   object PropertyType extends Enumeration {
     type PropertyType = Value
     val SIMPLE, ARRAY, COLLECTION, MAP, ENTITY, COMPLEX, ENUM, DATE = Value
