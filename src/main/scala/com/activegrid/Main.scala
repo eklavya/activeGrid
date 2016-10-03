@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import com.activegrid.model.{ImageInfo, InstanceFlavor, Page, Site}
+import com.activegrid.model._
 import com.activegrid.services.CatalogService
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -82,11 +82,14 @@ object Main {
       }
     }
 
-    implicit val ImageFormat = jsonFormat13(ImageInfo)
+    //implicit val ImageFormat = jsonFormat13(ImageInfo)
+
+    implicit val ImageFormat = jsonFormat(ImageInfo, "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
     implicit val PageFormat = jsonFormat4(Page[ImageInfo])
     implicit val InstanceFlavorFormat = jsonFormat4(InstanceFlavor)
     implicit val SiteFormat = jsonFormat3(Site)
-//    implicit val listOfStrings = jsonFormat1(List[String])
+    implicit val listOfTestFormat = jsonFormat2(Test)
+    implicit val listOfTestImplicitFormat = jsonFormat(TestImplicit,"id","name","image")
 
     var catalogService = new CatalogService()
 
@@ -108,10 +111,14 @@ object Main {
         }
       } ~ path("images") {
         put { entity(as[ImageInfo]) { image =>
-          complete(catalogService.buildImage(image))
+
+        //complete(catalogService.buildImage(image))
+          //val cmpl =  image.toGraphOfImageInfo.toGraph(image)
+complete("success")
+
         }
         }
-      } ~ path("images"/Segment){ imageId =>
+      } ~ path("images"/LongNumber){ imageId =>
         delete {
           complete(catalogService.deleteImage(imageId))
         }
@@ -119,18 +126,36 @@ object Main {
        get  {
           complete(catalogService.getInstanceFlavor(siteId))
         }
-      } ~ path("saveSite"){
-        put{ entity(as[Site]) { site =>
+      } ~ path("saveSites"){
+        put{ entity(as[List[Test]]) { test =>
 
-          val saveSite = catalogService.saveSite(site)
+          val saveTest = catalogService.saveTest(test)
 
-          onSuccess(saveSite) {
+          onSuccess(saveTest) {
 
             case Some(save) => complete(save)
             case None => complete("failed")
           }
 
         }
+        }
+      } ~ path("getSites"){
+        get{
+          complete(catalogService.getTest)
+        }
+      } ~path("saveImplicitTest"){
+        put{ entity(as[TestImplicit]){ test =>
+         //val cmpl = test.toGraphOfTestImplicit.toGraph(test)
+          val cmpl = catalogService.saveImplicitTest(test)
+              complete(cmpl)
+         /* onSuccess(cmpl) {
+
+            case Some(done) => complete(done)
+            case None => complete("failed")
+          }*/
+        }
+
+
         }
       }
 
