@@ -1,6 +1,6 @@
 package com.activegrid.services
 
-import com.activegrid.model.{GraphDBExecutor, ImageInfo, InstanceFlavor, Site}
+import com.activegrid.model._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -9,12 +9,14 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 class CatalogService(implicit val executionContext: ExecutionContext){
 
-  val db = new GraphDBExecutor()
+
 
 
   def getImages(): Future[Option[List[ImageInfo]]] = Future {
 
-    db.getEntities[ImageInfo]
+    val label: String = "ImageInfo"
+
+    GraphDBExecutor.getEntities[ImageInfo](label)
 
   }
 
@@ -22,18 +24,14 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 
     val label : String = "ImageInfo"
 
-  db.persistEntity[ImageInfo](image, label)
+  GraphDBExecutor.persistEntity[ImageInfo](image, label)
 
   }
 
-  def deleteImage(imageId:String): Future[Option[String]] = Future {
+  def deleteImage(imageId:Long): Future[Option[String]] = Future {
 
 
-    val paramName : String = "imageId"
-
-    val label : String = "ImageInfo"
-
-    db.deleteEntity[ImageInfo](label,paramName,imageId)
+    GraphDBExecutor.deleteEntity[ImageInfo](imageId)
 
     Some("true")
 
@@ -42,7 +40,7 @@ class CatalogService(implicit val executionContext: ExecutionContext){
   def getInstanceFlavor(siteId: Long): Future[Option[List[InstanceFlavor]]] = Future {
 
 
-    val site: Option[Site]  = db.getEntity[Site](siteId)
+    val site: Option[Site]  = GraphDBExecutor.getEntity[Site](siteId)
 
     site match {
 
@@ -53,12 +51,28 @@ class CatalogService(implicit val executionContext: ExecutionContext){
     }
   }
 
-  def saveSite(site:Site):Future[Option[Site]] = Future {
+  def saveTest(site:List[Test]):Future[Option[List[Test]]] = Future {
 
-    val label : String = "Site"
+    val label : String = "Test"
 
-    db.persistEntityTest(site, label)
+    //GraphDBExecutor.persistEntityTest(site, label)
+Some(site)
+  }
 
+  def getTest(): Future[Option[List[Test]]] = Future {
+    val label: String = "Test"
+
+    GraphDBExecutor.getEntities[Test](label)
+
+  }
+
+  def saveImplicitTest(entity: TestImplicit): Future[Option[String]] = Future{
+
+    import Implicits._
+
+    entity.toGraph(entity)
+
+    Some("success")
   }
 
 }
