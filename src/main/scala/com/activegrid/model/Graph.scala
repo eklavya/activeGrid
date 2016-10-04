@@ -15,7 +15,7 @@ object Graph  {
   trait Neo4jRep[T] {
     def toGraph(entity: T): Option[Node] = ???
 
-    def fromGraph(node: Node): T = ???
+    def fromGraph(nodeId: Long): Option[T] = ???
   }
 
 
