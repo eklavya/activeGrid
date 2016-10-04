@@ -112,9 +112,9 @@ object Main {
       } ~ path("images") {
         put { entity(as[ImageInfo]) { image =>
 
-        //complete(catalogService.buildImage(image))
+        complete(catalogService.buildImage(image))
           //val cmpl =  image.toGraphOfImageInfo.toGraph(image)
-complete("success")
+          //complete("success")
 
         }
         }
@@ -139,7 +139,7 @@ complete("success")
 
         }
         }
-      } ~ path("getSites"){
+      } ~ path("getImplicitTest"){
         get{
           complete(catalogService.getTest)
         }
@@ -148,14 +148,7 @@ complete("success")
          //val cmpl = test.toGraphOfTestImplicit.toGraph(test)
           val cmpl = catalogService.saveImplicitTest(test)
               complete(cmpl)
-         /* onSuccess(cmpl) {
-
-            case Some(done) => complete(done)
-            case None => complete("failed")
-          }*/
         }
-
-
         }
       }
 
