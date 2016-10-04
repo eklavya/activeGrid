@@ -3,11 +3,11 @@ package com.imaginea.activegrid.core.models
 import java.lang.Iterable
 import java.lang.reflect.Field
 
+import com.imaginea.activegrid.core.utils.ReflectionUtils
 import com.imaginea.activegrid.core.utils.ReflectionUtils.PropertyType
-import com.imaginea.activegrid.core.utils.{ClassFinderUtils, ReflectionUtils}
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
-import org.neo4j.graphdb.Relationship
+import org.neo4j.graphdb.{Direction, DynamicRelationshipType, Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
@@ -22,6 +22,23 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   val CLASS = "@Class"
 
 
+  def findNodeById(id: Long): Node = withTx { neo =>
+      getNodeById(id)(neo)
+  }
+
+  def saveEntity[T <: BaseEntity](label: String, map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
+    var node = createNode(label)
+    map.foreach{ case(k, v) => {
+      logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v" )
+      node.setProperty(k, v)
+    }}
+
+    // setting Id and class Name as attributes
+    node.setProperty(V_ID, node.getId)
+    node.setProperty(CLASS, label)
+
+    Some(node)
+  }
   /**
     * Saves entity of type T and returns the same entity
     * @param entity
@@ -44,22 +61,24 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getEntityList[T: Manifest](label: String): List[T]= withTx { neo =>
     logger.debug(s"picking the list for $label")
     val nodesList = getAllNodesWithLabel(label) (neo)
-    logger.debug(s"picking done ${nodesList.size}")
-    val entities = nodesList.map(_.toCC[T].get).toList
-    logger.debug(s"conversion is done to type $entities")
-    entities
+    nodesList.foreach(node => logger.debug(s"${node.getId} -> ${node.getLabels} -- properties ${node.getAllProperties}"))
+    nodesList.map(_.toCC[T].get).toList
   }
 
-  /**
-    * Returnts the Entity By Graph Node Id
-    * @param id
-    * @tparam T
-    * @return
-    */
-  def getEntityByNodeId[T: Manifest] (id: Long) : Option[T] = withTx { neo =>
-   val node =  getNodeById(id)(neo)
-    Some(node.toCC[T].get)
+
+  def getNodesByLabel(label: String): List[Node] = withTx {neo =>
+    getAllNodesWithLabel(label)(neo).toList
   }
+
+  def getProperties(node: Node, keys: String*): Map[String, Any] = withTx {neo =>
+    val map: scala.collection.mutable.Map[String, AnyRef] = scala.collection.mutable.Map()
+    keys.foreach(key => {
+      logger.debug(s" (${key}) --> (${node.getProperty(key)}) ")
+      map += ((key, node.getProperty(key)))
+    })
+    map.toMap
+  }
+
 
   /**
     * Finds the node with given node and property information
@@ -102,50 +121,27 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
 
-  /**
-    * Persist entity with collection type parameters
-    * @param entity
-    * @param label
-    * @tparam T
-    * @return
-    */
-  def persistEntity[T <: BaseEntity: Manifest] (entity: T, label: String): T = withTx { neo =>
-    val fields: Array[Field] = entity.getClass.getDeclaredFields
-
-    val node = createNode(label) (neo)
-
-    fields.foreach(field=> {
-      logger.debug(s" field name: ${field.getName}, type: ${field.getType} ")
-      logger.debug(s" ${field.getName} -  ${ReflectionUtils.getPropertyType(field.getType)}")
-
-      ReflectionUtils.getPropertyType(field.getType) match {
-        case PropertyType.SIMPLE => {
-          node.setProperty(field.getName, ReflectionUtils.getValue[T](entity, field))
-        }
-        case PropertyType.ENTITY => {
-
-        }
-        case PropertyType.ENUM => {
-
-        }
-        case PropertyType.ARRAY => {
-
-        }
-        case PropertyType.COLLECTION => {
-
-        }
-        case _ => logger.warn(s" field type is not handled ${field.getType}")
-      }
-    } )
-
-
-
-/*    val allClasses = ClassFinderUtils.getClassOfType(classOf[BaseEntity])
-
-    allClasses.foreach(clz => {
-      logger.debug(s"class name - ${clz.name}, ")
-      logger.debug(s"simple name - ${clz.name.split('.').last}")
-    })*/
-    entity
+  // with out properties
+  def createRelation(label: String, fromNode: Node, toNode: Node) : Relationship = withTx {neo =>
+    logger.debug(s"Relation:  (${fromNode}) --> ${label} --> (${toNode}) <")
+    val relType = DynamicRelationshipType.withName(label)
+    val relation: Relationship = fromNode.createRelationshipTo(toNode, relType)
+    logger.debug(s"New Relation is ${relation.getType} [${relation.getId}]")
+    relation
   }
+
+
+  def getNodesWithRelation(fromNode: Node, relation: String): List[Node] = withTx {neo =>
+    val relType = DynamicRelationshipType.withName(relation)
+    val relations = fromNode.getRelationships(relType, Direction.OUTGOING).iterator()
+    val childNodes: scala.collection.mutable.ListBuffer[Node] = scala.collection.mutable.ListBuffer()
+
+    while (relations.hasNext) {
+      val relation = relations.next()
+      childNodes += (relation.getEndNode)
+    }
+
+    childNodes.toList
+  }
+
 }

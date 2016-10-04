@@ -6,12 +6,11 @@ import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 /**
   * Created by babjik on 26/9/16.
   */
-case class KeyPairInfo(@JsonInclude(JsonInclude.Include.NON_NULL) keyName: String
-                      , @JsonInclude(JsonInclude.Include.NON_NULL) keyFingerprint: String
-                      , @JsonInclude(JsonInclude.Include.NON_NULL) keyMaterial: String
-                      , @JsonInclude(JsonInclude.Include.NON_NULL) filePath: String
-                      , @JsonInclude(JsonInclude.Include.NON_NULL) status: KeyPairStatus
-                      , @JsonInclude(JsonInclude.Include.NON_NULL) defaultUser: String
-                      , @JsonInclude(JsonInclude.Include.NON_NULL) passPhrase: String
-
+case class KeyPairInfo(keyName: String
+                      , keyFingerprint: String
+                      , keyMaterial: String
+                      , filePath: String
+                      , status: KeyPairStatus
+                      , defaultUser: String
+                      , passPhrase: String
                       ) extends BaseEntity

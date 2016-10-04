@@ -42,7 +42,7 @@ object Main extends App {
 
   implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
 //  implicit val keyPairInfoListFormat = jsonFormat1(List[KeyPairInfo])
-  implicit val userFormat = jsonFormat(User, "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+  implicit val userFormat = jsonFormat(User, "userName", "password", "email", "uniqueId",  "publicKeys",  "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
   implicit val pageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
   implicit val pageImageInfoFomat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
 

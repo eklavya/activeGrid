@@ -1,7 +1,8 @@
 package com.imaginea.activegrid.core.services
 
-import com.imaginea.activegrid.core.models.{Page, User, UserRepository}
+import com.imaginea.activegrid.core.models.{Neo4jRepository, Page, User}
 import com.typesafe.scalalogging.Logger
+import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -12,9 +13,20 @@ import scala.concurrent.{ExecutionContext, Future}
 class UserService (implicit val executionContext: ExecutionContext){
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  val userRepository: UserRepository = new UserRepository
+  val label = "User"
 
-  def getUsers: Future[Option[Page[User]]] = Future {Some(userRepository.getUsers)}
+  def getUsers: Future[Option[Page[User]]] = Future {
+    import com.imaginea.activegrid.core.models.Implicits.RichUser
+    val nodeList = Neo4jRepository.getNodesByLabel(label)
+    val user: User = null
+    val listOfUsers = nodeList.map(node => user.fromGraph(node.getId))
 
-  def saveUser(user: User): Future[Option[User]] = Future {Some(userRepository.saveUser(user))}
+    Some(Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers))
+  }
+
+  def saveUser(user: User): Future[Option[String]] = Future {
+    import com.imaginea.activegrid.core.models.Implicits._
+    user.toGraph(user)
+    Some("Successfull")
+  }
 }
