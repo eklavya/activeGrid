@@ -5,7 +5,6 @@ import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
 import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat}
 
-import scala.util.Try
 
 /**
   * Created by nagulmeeras on 28/09/16.
@@ -23,5 +22,5 @@ trait JsonSupport extends DefaultJsonProtocol with SprayJsonSupport {
     }
   }
 
-  implicit val appSettingsFormat = jsonFormat5(AppSettings.apply)
+  implicit val appSettingsFormat = jsonFormat(AppSettings , "id","createdAt","createdBy","lastUpdatedAt","lastUpdatedBy","list")
 }

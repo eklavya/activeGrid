@@ -9,6 +9,8 @@ import com.activegrid.models.{AppSettingRepository, AppSettings, JsonSupport, Se
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.Future
+
 
 object AppSettingService extends App with JsonSupport {
 
@@ -38,7 +40,7 @@ object AppSettingService extends App with JsonSupport {
   }
   val addSetting = post {
     path("settings") {
-      entity(as[List[Setting]]) {
+      entity(as[Setting]) {
         setting => complete {
           appSettingRepository.saveSetting(setting)
         }
@@ -46,22 +48,22 @@ object AppSettingService extends App with JsonSupport {
     }
   }
 
-  val getSettings = path("settings") {
-    get {
-      complete(appSettingRepository.getSettings())
-    }
-  }
+//  val getSettings = path("settings") {
+//    get {
+//      complete(appSettingRepository.getSettings())
+//    }
+//  }
 
-  val deleteSettings = path("settings") {
-    delete {
-      entity(as[List[Setting]]) { list =>
-        appSettingRepository.deleteSettings(list)
-        complete("Done")
-      }
-    }
-  }
+//  val deleteSettings = path("settings") {
+//    delete {
+//      entity(as[List[Setting]]) { list =>
+//        appSettingRepository.deleteSettings(list)
+//        complete("Done")
+//      }
+//    }
+//  }
 
-  val routes = addAppSetting ~ getAppSettings ~ addSetting ~ getAppSettings ~ deleteSettings
+  val routes = addAppSetting  ~ addSetting ~ getAppSettings
 
   Http().bindAndHandle(routes, config.getString("http.host"), config.getInt("http.port"))
 
