@@ -22,9 +22,15 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 
   def buildImage(image:ImageInfo):Future[Option[ImageInfo]] = Future {
 
-    val label : String = "ImageInfo"
+    /*val label : String = "ImageInfo"
 
-  GraphDBExecutor.persistEntity[ImageInfo](image, label)
+  GraphDBExecutor.persistEntity[ImageInfo](image, label)*/
+
+    import Implicits._
+
+    image.toGraph(image)
+
+    Some(image)
 
   }
 
@@ -59,12 +65,6 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 Some(site)
   }
 
-  def getTest(): Future[Option[List[Test]]] = Future {
-    val label: String = "Test"
-
-    GraphDBExecutor.getEntities[Test](label)
-
-  }
 
   def saveImplicitTest(entity: TestImplicit): Future[Option[String]] = Future{
 
@@ -74,5 +74,17 @@ Some(site)
 
     Some("success")
   }
+
+  def getTest(): Future[Option[TestImplicit]] = Future {
+    val label: String = "TestImplicit"
+
+  //  val success = GraphDBExecutor.getTest(label)
+    import Implicits._
+    val testImplicit: TestImplicit = null
+
+    testImplicit.fromGraph(14)
+
+  }
+
 
 }
