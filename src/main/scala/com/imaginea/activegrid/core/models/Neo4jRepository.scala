@@ -2,9 +2,7 @@ package com.imaginea.activegrid.core.models
 
 import java.lang.Iterable
 import java.lang.reflect.Field
-
-import com.imaginea.activegrid.core.utils.ReflectionUtils
-import com.imaginea.activegrid.core.utils.ReflectionUtils.PropertyType
+import .PropertyType
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb.{Direction, DynamicRelationshipType, Node, Relationship}

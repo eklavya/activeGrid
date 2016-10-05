@@ -46,25 +46,7 @@ object Main extends App {
   implicit val pageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
   implicit val pageImageInfoFomat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
 
-  val catalogService: CatalogService = new CatalogService
   val userService: UserService = new UserService
-
-  def catalogRoute: Route = pathPrefix("catalog") {
-    path("images") {
-      get {
-        complete(catalogService.getImages)
-      } ~ put {
-        entity(as[ImageInfo]) { image =>
-          complete(catalogService.createImage(image))
-        }
-      }
-    } ~ path("images"/Segment) {id =>
-      delete {
-        complete(catalogService.deleteImage(id))
-      }
-    }
-  }
-
 
 
   def userRoute: Route = pathPrefix("users") {
@@ -79,7 +61,7 @@ object Main extends App {
 
 
 
-  val route: Route = catalogRoute ~ userRoute
+  val route: Route = userRoute
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
