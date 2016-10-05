@@ -4,7 +4,7 @@ import java.lang.Iterable
 
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
-import org.neo4j.graphdb.{Direction, DynamicRelationshipType, Node, Relationship}
+import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
 /**
@@ -15,27 +15,47 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def neo4jStoreDir = "./graphdb/activegriddb"
 
   // constants
-  val V_ID = "V_ID"
+  val V_ID = "id"
   val CLASS = "@Class"
 
 
-  def findNodeById(id: Long): Node = withTx { neo =>
-      getNodeById(id)(neo)
+  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
+    try {
+      Some(getNodeById(id))
+    } catch {
+      case e: NotFoundException => {
+        logger.warn(s"node with Id ${id} is not found", e)
+        throw e
+      }
+    }
   }
 
-  def saveEntity[T <: BaseEntity](label: String, map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
-    val node = createNode(label)
+  def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
+    val node = getOrSaveEntity(label, id)
     map.foreach{ case(k, v) => {
       logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v" )
       node.setProperty(k, v)
     }}
-
     // setting Id and class Name as attributes
     node.setProperty(V_ID, node.getId)
     node.setProperty(CLASS, label)
 
     Some(node)
   }
+
+  def getOrSaveEntity(label: String, id: Option[Long]) : Node = withTx { implicit neo =>
+    id match {
+      case Some(nodeId) => {
+        logger.info(s"fetching node with Id ${nodeId}")
+        getNodeById(nodeId)
+      }
+      case None => {
+        logger.info(s"creating node with label ${label}")
+        createNode(label)
+      }
+    }
+  }
+
   /**
     * Saves entity of type T and returns the same entity
     * @param entity
@@ -93,34 +113,27 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   /**
     * deletes the node with the given label and propery details
-    * @param label
-    * @param propertyName
-    * @param propertyValue
-    * @tparam T
+    * @param nodeId
     */
-  def deleteEntity[T: Manifest](label: String, propertyName: String, propertyValue: Any): Unit = withTx { neo =>
-    val nodes = findNodesByLabelAndProperty(label, propertyName, propertyValue) (neo)
-    nodes.foreach(node=> {
-      logger.debug(s"Deleting node of type $label, id ${node.getId}")
-      logger.debug(s"checking with property $propertyName and value $propertyValue")
-
-      node.hasRelationship() match {
-        case true => {
-          val relations: Iterable[Relationship] = node.getRelationships()
-          logger.debug(s"relations found are $relations")
-
-        }
-        case false => logger.debug(s"no relations found for this entity $label, id ${node.getId}")
-      }
-    })
-
-    nodes.map(_.delete())
+  def deleteEntity(nodeId: Long): Unit = withTx { neo =>
+    val node = findNodeById(nodeId).get
+    //TODO: need to delete relations before deleting node
+    val relations = node.getRelationships(Direction.OUTGOING)
+    logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
+    val relationsIterator = relations.iterator()
+    while (relationsIterator.hasNext) {
+      val relation = relationsIterator.next()
+      logger.debug(s"deleting relation")
+      relation.delete()
+    }
+    logger.debug(s"finally deleting node ${node}")
+    node.delete
   }
 
 
   // with out properties
   def createRelation(label: String, fromNode: Node, toNode: Node) : Relationship = withTx {neo =>
-    logger.debug(s"Relation:  (${fromNode}) --> ${label} --> (${toNode}) <")
+    logger.info(s"Relation:  (${fromNode}) --> ${label} --> (${toNode}) <")
     val relType = DynamicRelationshipType.withName(label)
     val relation: Relationship = fromNode.createRelationshipTo(toNode, relType)
     logger.debug(s"New Relation is ${relation.getType} [${relation.getId}]")

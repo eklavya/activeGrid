@@ -13,6 +13,7 @@ import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.services.{CatalogService, UserService}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
+import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
@@ -29,8 +30,6 @@ object Main extends App {
 
   implicit val neo4jRepository = Neo4jRepository
 
-  implicit val ImageFormat = jsonFormat(ImageInfo, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
     override def write (obj: KeyPairStatus): JsValue = JsString(obj.toString)
 
@@ -40,21 +39,70 @@ object Main extends App {
     }
   }
 
+  implicit val ImageFormat = jsonFormat(ImageInfo, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val pageImageInfoFomat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
+
   implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
-//  implicit val keyPairInfoListFormat = jsonFormat1(List[KeyPairInfo])
+  implicit val pageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
+
   implicit val userFormat = jsonFormat(User, "id", "userName", "password", "email", "uniqueId",  "publicKeys",  "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
   implicit val pageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
-  implicit val pageImageInfoFomat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
+
+  implicit val ResourceACLFormat = jsonFormat(ResourceACL, "id")
+  implicit val UserGroupFormat = jsonFormat(UserGroup, "id", "name", "users", "accesses")
+
+  implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
 
   val userService: UserService = new UserService
 
 
-  def userRoute: Route = pathPrefix("users") {
+  def userRoute: Route = pathPrefix("users" / LongNumber){ userId =>
+      get{
+        pathPrefix("groups") {
+          complete("found groups")
+        }
+      } ~ pathPrefix("keys") {
+        get {
+          try {
+            complete(userService.getKeys(userId))
+          } catch {
+            case _: Throwable => {
+              complete(s"failed to get keys of User ${userId}")
+            }
+          }
+        } ~ post {
+          entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
+            complete(sshKeyInfo)
+          }
+        }
+      }~ get{
+        try {
+          complete(userService.getUser(userId))
+        } catch {
+          case e: NotFoundException => {
+            logger.warn(e.getMessage, e)
+            complete(e.getMessage)
+          }
+          case _ : Throwable => {
+            complete("Unhandled exception")
+          }
+        }
+
+      } ~ delete {
+        complete(userService.deleteUser(userId))
+      }
+    } ~pathPrefix("users") {
     get {
       complete(userService.getUsers)
     } ~ post {
       entity(as[User]) {user =>
           complete(userService.saveUser(user))
+      }
+    } ~ pathPrefix("groups") {
+      post {
+        entity(as[UserGroup]) { userGroup =>
+          complete(userService.saveUserGroup(userGroup))
+        }
       }
     }
   }
