@@ -54,7 +54,12 @@ object Main extends App {
   val userService: UserService = new UserService
 
   def userRoute: Route = pathPrefix("users") {
-      pathPrefix("groups"){
+      path("groups" / LongNumber){ id =>
+        get{
+          complete(userService.getUserGroup(id))
+        }
+      } ~
+      path("groups"){
         get {
           complete(userService.getUserGroups)
           //complete("Done")

@@ -44,4 +44,12 @@ class UserService (implicit val executionContext: ExecutionContext){
 
     Some(Page[UserGroup](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups.map(_.get)))
   }
+  def getUserGroup(id: Long): Future[Option[UserGroup]] = Future {
+    import com.imaginea.activegrid.core.models.Implicits.RichUserGroup
+
+    val userGroup : UserGroup = null;
+    val user = userGroup.fromGraph(id)
+
+    user
+  }
 }
