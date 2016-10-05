@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory
   * Created by babjik on 23/9/16.
   */
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider{
+
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   def neo4jStoreDir = "./graphdb/activegriddb"
 
@@ -43,10 +44,11 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     * @tparam T
     * @return
     */
-  def saveEntity[T <: BaseEntity: Manifest] (entity: T, label: String): T = withTx { neo =>
+
+  def saveEntity[T <: BaseEntity: Manifest] (entity: T, label: String): Option[Node] = withTx { neo =>
     val node = createNode(entity, label) (neo)
     logger.debug(s"created entity of label ${node.getLabels}, new node Id is ${node.getId} ")
-    entity
+    Some(node)
   }
 
   /**
@@ -90,6 +92,16 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     nodes.map(_.toCC[T].get).toList.head
   }
 
+  /**
+   * Finds the node with given id and result Option of Entity
+   * @param id
+   * @tparam T
+   * @return
+   */
+  def getEntity[T <: BaseEntity: Manifest] (id: Long): Option[T] =  withTx { neo =>
+    val node =  getNodeById(id)(neo)
+    node.toCC[T]
+  }
 
   /**
     * deletes the node with the given label and propery details

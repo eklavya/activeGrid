@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.{JsonIgnore, JsonIgnoreProperties, JsonI
   */
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-case class ImageInfo ( override val id: Option[Long]
+case class ImageInfo (id: Option[Long]
                       , imageId: String
                       ,  state: String
                       ,  ownerId: String

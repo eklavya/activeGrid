@@ -17,8 +17,8 @@ import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
 /**
-  * Created by babjik on 22/9/16.
-  */
+ * Created by babjik on 22/9/16.
+ */
 object Main extends App {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
@@ -41,25 +41,38 @@ object Main extends App {
   }
 
   implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
-//  implicit val keyPairInfoListFormat = jsonFormat1(List[KeyPairInfo])
+  //  implicit val keyPairInfoListFormat = jsonFormat1(List[KeyPairInfo])
   implicit val userFormat = jsonFormat(User, "id", "userName", "password", "email", "uniqueId",  "publicKeys",  "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
-  implicit val pageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
-  implicit val pageImageInfoFomat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
+  implicit val pageUsersFormat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
+  implicit val pageImageInfoFormat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
+
+  // Json format implicit object import for UserGroup
+  implicit val userGroupResourceFormat = jsonFormat3(ResourceACL)
+  implicit val userGroupFormat = jsonFormat4(UserGroup)
+  implicit val pageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
 
   val userService: UserService = new UserService
 
-
   def userRoute: Route = pathPrefix("users") {
-    get {
-      complete(userService.getUsers)
-    } ~ post {
-      entity(as[User]) {user =>
-          complete(userService.saveUser(user))
-      }
-    }
+      pathPrefix("groups"){
+        get {
+          complete(userService.getUserGroups)
+          //complete("Done")
+        } ~
+          post{
+            entity(as[UserGroup]) { userGroup =>
+              complete(userService.saveUserGroup(userGroup))
+            }
+          }
+      } ~
+       get {
+         complete(userService.getUsers)
+       } ~ post {
+       entity(as[User]) {user =>
+         complete(userService.saveUser(user))
+       }
+     }
   }
-
-
 
   val route: Route = userRoute
 
