@@ -141,13 +141,15 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
 
-  def getNodesWithRelation(fromNode: Node, relation: String): List[Node] = withTx {neo =>
-    val relType = DynamicRelationshipType.withName(relation)
+  def getNodesWithRelation(fromNode: Node, relationLabel: String): List[Node] = withTx { neo =>
+    logger.debug(s"Checking for the child's of ${fromNode}  with relation ${relationLabel}")
+    val relType = DynamicRelationshipType.withName(relationLabel)
     val relations = fromNode.getRelationships(relType, Direction.OUTGOING).iterator()
     val childNodes: scala.collection.mutable.ListBuffer[Node] = scala.collection.mutable.ListBuffer()
 
     while (relations.hasNext) {
       val relation = relations.next()
+      logger.debug(s"found relation ${relation}")
       childNodes += (relation.getEndNode)
     }
 

@@ -11,6 +11,7 @@ import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models.KeyPairStatus.{KeyPairStatus, _}
 import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.services.{CatalogService, UserService}
+import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
@@ -59,10 +60,21 @@ object Main extends App {
   def userRoute: Route = pathPrefix("users" / LongNumber){ userId =>
       get{
         pathPrefix("groups") {
+          // TODO: need add code related to groups
           complete("found groups")
         }
       } ~ pathPrefix("keys") {
-        get {
+        pathPrefix(LongNumber) { keyId =>
+            get {
+              try {
+                complete(userService.getKey(userId, keyId))
+              } catch {
+                case _: Throwable => {
+                    complete(s"failed to get key")
+                }
+              }
+            }
+        } ~ get {
           try {
             complete(userService.getKeys(userId))
           } catch {
@@ -72,7 +84,7 @@ object Main extends App {
           }
         } ~ post {
           entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
-            complete(sshKeyInfo)
+            complete(userService.addKeyPair(userId, sshKeyInfo))
           }
         }
       }~ get{
