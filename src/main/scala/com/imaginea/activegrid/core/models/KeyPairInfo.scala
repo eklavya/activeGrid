@@ -6,7 +6,8 @@ import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 /**
   * Created by babjik on 26/9/16.
   */
-case class KeyPairInfo(keyName: String
+case class KeyPairInfo(override val id: Option[Long]
+                      , keyName: String
                       , keyFingerprint: String
                       , keyMaterial: String
                       , filePath: String

@@ -1,8 +1,7 @@
 package com.imaginea.activegrid.core.models
 
 import java.lang.Iterable
-import java.lang.reflect.Field
-import .PropertyType
+
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb.{Direction, DynamicRelationshipType, Node, Relationship}
@@ -25,7 +24,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def saveEntity[T <: BaseEntity](label: String, map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
-    var node = createNode(label)
+    val node = createNode(label)
     map.foreach{ case(k, v) => {
       logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v" )
       node.setProperty(k, v)

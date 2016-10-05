@@ -5,7 +5,8 @@ import com.fasterxml.jackson.annotation.JsonInclude
 /**
   * Created by babjik on 26/9/16.
   */
-case class User ( username: String
+case class User ( override val id: Option[Long]
+                , username: String
                 , password: String
                 , email: String
                 , uniqueId: String

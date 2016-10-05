@@ -25,7 +25,7 @@ object Implicits {
     }
 
     override def fromGraph(nodeId: Long): ImageInfo = {
-      ImageInfo("", "", "", false, "", "", "", "", "", "", "", "", "")
+      ImageInfo(Some(0L),"", "", "", false, "", "", "", "", "", "", "", "", "")
     }
   }
 
@@ -57,6 +57,7 @@ object Implicits {
       val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
 
       val keyPairInfo = KeyPairInfo (
+        Some(node.getId),
         map.get("keyName").get.asInstanceOf[String],
         map.get("keyFingerprint").get.asInstanceOf[String],
         map.get("keyMaterial").get.asInstanceOf[String],
@@ -115,7 +116,8 @@ object Implicits {
         keyPairInfos += keyPairInfo.fromGraph(child.getId)
       })
 
-      val user = User(map.get("username").get.asInstanceOf[String],
+      val user = User(Some(node.getId),
+        map.get("username").get.asInstanceOf[String],
         map.get("password").get.asInstanceOf[String],
         map.get("email").get.asInstanceOf[String],
         map.get("uniqueId").get.asInstanceOf[String],
