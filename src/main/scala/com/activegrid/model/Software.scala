@@ -1,8 +1,17 @@
 package com.activegrid.model
 
+
+import com.fasterxml.jackson.annotation.{JsonIgnoreProperties, JsonInclude}
+
 /**
   * Created by sampathr on 22/9/16.
   */
-case class Software(softwareId: Long, createdAt: String, createdBy: String, lastUpdatedAt: String, lastUpdatedBy: String, version: String, name: String, provider: String, downloadURL: String, port: String, processName: String, discoverApplications: String) extends BaseEntity
-
-
+@JsonIgnoreProperties(ignoreUnknown = true)
+case class Software(override val id: Option[Long],
+                     @JsonInclude(JsonInclude.Include.NON_NULL) version: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) name: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) provider: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) downloadURL: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) port: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) processNames: Array[String],
+                     @JsonInclude(JsonInclude.Include.NON_NULL) discoverApplications: Boolean) extends BaseEntity

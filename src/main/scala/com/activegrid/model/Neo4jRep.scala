@@ -9,9 +9,9 @@ trait Neo4jRep[T] {
 
   //need to write implicit class for list maps and all collection things
   //
-  def toGraph = ???
+  def toGraph(entity: T) : Option[Node]= ???
 
-  def fromGraph(node: Node) : T = ???
+  def fromGraph(nodeId: Long) : Option[T] = ???
 
 
 
