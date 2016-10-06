@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import com.activegrid.models.{AppSettingRepository, AppSettings, JsonSupport, Setting}
 import com.typesafe.config.ConfigFactory
+import jdk.net.SocketFlow.Status
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -40,30 +41,30 @@ object AppSettingService extends App with JsonSupport {
   }
   val addSetting = post {
     path("settings") {
-      entity(as[Setting]) {
-        setting => complete {
+      entity(as[Map[String,String]]) {
+        setting =>
           appSettingRepository.saveSetting(setting)
-        }
+          complete("Done")
       }
     }
   }
 
-//  val getSettings = path("settings") {
-//    get {
-//      complete(appSettingRepository.getSettings())
-//    }
-//  }
+  val getSettings = path("settings") {
+    get {
+      complete(appSettingRepository.getSettings())
+    }
+  }
 
-//  val deleteSettings = path("settings") {
-//    delete {
-//      entity(as[List[Setting]]) { list =>
-//        appSettingRepository.deleteSettings(list)
-//        complete("Done")
-//      }
-//    }
-//  }
+  val deleteSettings = path("settings") {
+    delete {
+      entity(as[List[String]]) { list =>
+        appSettingRepository.deleteSettings(list)
+        complete("Done")
+      }
+    }
+  }
 
-  val routes = addAppSetting  ~ addSetting ~ getAppSettings
+  val routes = addAppSetting  ~ addSetting ~ getAppSettings~deleteSettings~getSettings
 
   Http().bindAndHandle(routes, config.getString("http.host"), config.getInt("http.port"))
 
