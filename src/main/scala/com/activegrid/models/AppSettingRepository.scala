@@ -22,44 +22,36 @@ class AppSettingRepository(implicit executionContext: ExecutionContext)  {
     logger.info("AppSettings : " + appSettings)
     val appSettingImpl = new AppSettingsImpl(appSettings)
     appSettingImpl.toGraph()
-    //val id: Long = persistEntity(appSettings, appSettingsLabelName)
-    //logger.info(s" saved the app Settings with ID:$id ")
     appSettings
   }
 
   def getAppSettings(): Future[AppSettings] = Future {
     logger.info(s"Executing $getClass getAppSettings")
     val appSettingsImpl = new AppSettingsImpl(null)
-    val appSettings1 : AppSettings =  appSettingsImpl.fromGraph()
-    appSettings1
+    val appSettings : AppSettings =  appSettingsImpl.fromGraph()
+    appSettings
   }
 
 
-  def saveSetting(setting :Setting): Future[Setting] = Future {
+  def saveSetting(setting :Map[String,String]): Unit ={
     logger.info(s"Executing $getClass ::saveSetting")
     val appSettingsImpl = new AppSettingsImpl(null)
-    val settingsImpl = new SettingsImpl(setting)
-    val settingNode = settingsImpl.toGraph()
-    val appSettingsNode = appSettingsImpl.getAppSettingNode()
-    Implicits.createRelationShip(appSettingsNode,settingNode,"Has")
-    setting
+    val appSettings = appSettingsImpl.updateAppSettings(setting,"Has_Settings")
+
   }
 
-//  def getSettings(): Future[List[Setting]] = Future {
-//    logger.info(s"Executing $getClass ::getSettings")
-//    val settings = getEntitiesByLabel[Setting](settingsLabelName)
-//    settings
-//  }
+  def getSettings(): Future[AppSettings] ={
+    logger.info(s"Executing $getClass ::getSettings")
+    val settings = getAppSettings()
+    settings
+  }
 
-//  def deleteSettings(settingNames: List[Setting]): Unit = {
-//    logger.info("Executing deleteSettings")
-//    settingNames.foreach(setting => {
-//      logger.info(s"  $setting " + setting.key)
-//      deleteEntity(settingsLabelName, "key", setting.key)
-//    }
-//    )
-//    logger.info("Deleted settings")
-//  }
+  def deleteSettings(settingNames: List[String]): Unit = {
+    logger.info("Executing deleteSettings")
+    val appSettingsImpl = new AppSettingsImpl(null)
+    appSettingsImpl.deleteSettings(settingNames, "Has_Settings")
+    logger.info("Deleted settings")
+  }
 
 
 }
