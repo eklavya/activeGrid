@@ -10,7 +10,7 @@ import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat}
   * Created by nagulmeeras on 28/09/16.
   */
 trait JsonSupport extends DefaultJsonProtocol with SprayJsonSupport {
-  implicit val settingFormat = jsonFormat2(Setting.apply)
+  implicit val settingFormat = jsonFormat3(Setting.apply)
 
   implicit object DateFormate extends JsonFormat[DateTime] {
     val parser = ISODateTimeFormat.dateOptionalTimeParser()
@@ -22,5 +22,5 @@ trait JsonSupport extends DefaultJsonProtocol with SprayJsonSupport {
     }
   }
 
-  implicit val appSettingsFormat = jsonFormat(AppSettings , "id","createdAt","createdBy","lastUpdatedAt","lastUpdatedBy","list")
+  implicit val appSettingsFormat = jsonFormat(AppSettings ,"id","settings","authSettings")
 }
