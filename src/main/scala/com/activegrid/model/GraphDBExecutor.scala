@@ -105,7 +105,16 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
   }
 
+  def getChildNodeIds(parentNode: Long, relation: String): List[Long] = {
 
+    withTx{ neo=>
+
+      val node = getNodeById(parentNode)(neo)
+
+      node.getRelationships("HAS_image",Direction.OUTGOING).map(rel=> rel.getEndNode.getId).toList
+
+    }
+  }
 
 
 
