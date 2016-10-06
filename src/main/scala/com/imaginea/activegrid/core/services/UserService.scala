@@ -17,7 +17,6 @@ class UserService (implicit val executionContext: ExecutionContext){
   val user: User = null
 
   def getUsers: Future[Option[Page[User]]] = Future {
-    import com.imaginea.activegrid.core.models.Implicits.RichUser
     val nodeList = Neo4jRepository.getNodesByLabel(label)
     val listOfUsers = nodeList.map(node => user.fromGraph(node.getId))
 
@@ -25,18 +24,15 @@ class UserService (implicit val executionContext: ExecutionContext){
   }
 
   def saveUser(user: User): Future[Option[String]] = Future {
-    import com.imaginea.activegrid.core.models.Implicits._
     user.toGraph(user)
     Some("Successfull")
   }
 
   def getUser(userId: Long): Future[Option[User]] = Future {
-    import com.imaginea.activegrid.core.models.Implicits._
     Some(user.fromGraph(userId))
   }
 
   def getKeys(userId: Long): Future[Option[Page[KeyPairInfo]]] = Future {
-    import com.imaginea.activegrid.core.models.Implicits._
     val keysList = user.fromGraph(userId).publicKeys
     Some(Page(0, keysList.size, keysList.size, keysList))
   }
@@ -44,7 +40,6 @@ class UserService (implicit val executionContext: ExecutionContext){
 
   def getKeys(userName: String): Future[Option[Page[KeyPairInfo]]] = Future {
     logger.debug(s"Searching Users with name ${userName}")
-    import com.imaginea.activegrid.core.models.Implicits._
     val maybeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(label, "username", userName)
 
     logger.debug(s" May be node ${maybeNode}")
@@ -62,7 +57,6 @@ class UserService (implicit val executionContext: ExecutionContext){
   }
 
   def getKeyById (userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    import com.imaginea.activegrid.core.models.Implicits._
     val keysList: List[KeyPairInfo] = user.fromGraph(userId).publicKeys
 
     keysList match {
@@ -85,7 +79,6 @@ class UserService (implicit val executionContext: ExecutionContext){
 
 
   def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Option[Page[KeyPairInfo]]] = Future {
-    import com.imaginea.activegrid.core.models.Implicits._
 
     val keyMaterial = sSHKeyContentInfo.keyMaterials
 
@@ -114,7 +107,6 @@ class UserService (implicit val executionContext: ExecutionContext){
   }
 
   def saveUserGroup(userGroup: UserGroup): Future[Option[String]] = Future{
-    import com.imaginea.activegrid.core.models.Implicits._
     userGroup.toGraph(userGroup)
     Some("Successfull")
   }

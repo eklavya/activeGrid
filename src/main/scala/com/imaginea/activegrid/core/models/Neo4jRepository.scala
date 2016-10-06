@@ -1,13 +1,11 @@
 package com.imaginea.activegrid.core.models
 
-import java.lang.Iterable
-
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.Future
+import scala.collection.JavaConversions._
 
 /**
   * Created by babjik on 23/9/16.
@@ -157,7 +155,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     // get realtion with parent  (incoming relations)
     // delete incoming
     // delete node
-    
+
 
     Some(true)
   }
@@ -177,14 +175,15 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     val relType = DynamicRelationshipType.withName(relationLabel)
     val relations = fromNode.getRelationships(relType, Direction.OUTGOING).iterator()
     val childNodes: scala.collection.mutable.ListBuffer[Node] = scala.collection.mutable.ListBuffer()
+    fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
+  }
 
-    while (relations.hasNext) {
-      val relation = relations.next()
-      logger.debug(s"found relation ${relation}")
-      childNodes += (relation.getEndNode)
-    }
 
-    childNodes.toList
+  def getRelationships(node: Node, direction: Direction): List[Node] = withTx {implicit neo =>
+    logger.debug(s"fetching realtions of ${node} in the direction ${direction}")
+    val relationsIterator = node.getRelationships(direction)
+    //TODO:
+    List()
   }
 
 }

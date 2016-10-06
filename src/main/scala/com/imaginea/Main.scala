@@ -40,17 +40,17 @@ object Main extends App {
     }
   }
 
-  implicit val ImageFormat = jsonFormat(ImageInfo, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-  implicit val pageImageInfoFomat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val PageImageInfoFormat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
 
-  implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
-  implicit val pageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
+  implicit val KeyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
+  implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
 
-  implicit val userFormat = jsonFormat(User, "id", "userName", "password", "email", "uniqueId",  "publicKeys",  "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
-  implicit val pageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
+  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId",  "publicKeys",  "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+  implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
 
-  implicit val ResourceACLFormat = jsonFormat(ResourceACL, "id")
-  implicit val UserGroupFormat = jsonFormat(UserGroup, "id", "name", "users", "accesses")
+  implicit val ResourceACLFormat = jsonFormat1(ResourceACL.apply)
+  implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
 
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
 
