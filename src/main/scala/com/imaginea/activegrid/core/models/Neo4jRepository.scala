@@ -4,7 +4,7 @@ import java.lang.Iterable
 
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
-import org.neo4j.graphdb.{Direction, DynamicRelationshipType, Node, Relationship}
+import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
 /**
@@ -22,6 +22,14 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def findNodeById(id: Long): Node = withTx { neo =>
       getNodeById(id)(neo)
+  }
+  def fetchNodeById(id: Long): Either[NotFoundException,Node] = withTx { neo =>
+    try {
+      val node = getNodeById(id)(neo)
+      Right(node)
+    }catch {
+      case ex:NotFoundException => Left(ex)
+    }
   }
 
   def saveEntity[T <: BaseEntity](label: String, map: Map[String, Any]): Option[Node] = withTx { implicit neo =>

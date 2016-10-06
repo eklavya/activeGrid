@@ -56,7 +56,10 @@ object Main extends App {
   def userRoute: Route = pathPrefix("users") {
       path("groups" / LongNumber){ id =>
         get{
-          complete(userService.getUserGroup(id))
+          onSuccess(userService.getUserGroup(id)){
+            case None => complete(StatusCodes.NoContent,None)
+            case Some(group) => complete(StatusCodes.OK,group)
+          }
         }
       } ~
       path("groups"){
