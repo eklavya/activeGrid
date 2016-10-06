@@ -1,7 +1,7 @@
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
@@ -13,11 +13,11 @@ object Implicits {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImageInfo"
 
-    override def toGraph(imageInfo: ImageInfo): Option[Node] = {
+    override def toGraph(entity: ImageInfo): Option[Node] = {
       logger.debug(s"toGraph for Image ${imageInfo}")
       // TODO: Image fields
       val map: Map[String, Any] = Map()
-      val node = Neo4jRepository.saveEntity[ImageInfo](label, map)
+      val node = Neo4jRepository.saveEntity[ImageInfo](label, entity.id, map)
 
       logger.debug(s"node - ${node.get}")
       node
@@ -27,7 +27,6 @@ object Implicits {
       ImageInfo(Some(0L),"", "", "", false, "", "", "", "", "", "", "", "", "")
     }
   }
-
 
   implicit class RichKeyPairInfo(keyPairInfo: KeyPairInfo) extends Neo4jRep[KeyPairInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -45,14 +44,14 @@ object Implicits {
         "passPhrase" -> entity.passPhrase
         )
 
-      val node = Neo4jRepository.saveEntity[KeyPairInfo](label, map)
+      val node = Neo4jRepository.saveEntity[KeyPairInfo](label, entity.id, map)
 
       logger.debug(s"node - ${node.get}")
       node
     }
 
     override def fromGraph(nodeId: Long): KeyPairInfo = {
-      val node = Neo4jRepository.findNodeById(nodeId)
+      val node = Neo4jRepository.findNodeById(nodeId).get
       val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
 
       val keyPairInfo = KeyPairInfo (
@@ -89,38 +88,36 @@ object Implicits {
         "enabled" -> entity.enabled,
         "displayName" -> entity.displayName)
 
-      val node = Neo4jRepository.saveEntity[User](label, map)
+      val node = Neo4jRepository.saveEntity[User](label, entity.id, map)
       logger.debug(s"node - ${node.get}")
 
       //publicKeys: List[KeyPairInfo]
       //Relation HAS_publicKeys
-      entity.publicKeys.foreach(publicKey => {
-        val publicKeyNode = publicKey.toGraph(publicKey)
-        Neo4jRepository.createRelation(has_publicKeys, node.get, publicKeyNode.get)
-      })
-
+      val relations = entity.publicKeys.map(publicKey => addKeyPair(node.get.getId, publicKey))
       node
     }
-    override def fromGraph(nodeId: Long): User = {
-      val node = Neo4jRepository.findNodeById(nodeId)
-      val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
-      // get public keys
-      val keyPairInfos: scala.collection.mutable.ListBuffer[KeyPairInfo] = scala.collection.mutable.ListBuffer()
+    def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Relationship = {
+      val userNode = Neo4jRepository.findNodeById(userId).get
+      val publicKeyNode = keyPairInfo.toGraph(keyPairInfo)
+      Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode.get)
+    }
+
+    override def fromGraph(nodeId: Long): User = {
+      val node = Neo4jRepository.findNodeById(nodeId).get
+      val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
       val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, has_publicKeys)
       val keyPairInfo: KeyPairInfo = null
-      keyPairInfoNodes.foreach(child => {
-        logger.debug(s" child node ${child}")
-        keyPairInfos += keyPairInfo.fromGraph(child.getId)
-      })
+
+      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {keyPairInfo.fromGraph(keyPairNode.getId)}).toList
 
       val user = User(Some(node.getId),
         map.get("username").get.asInstanceOf[String],
         map.get("password").get.asInstanceOf[String],
         map.get("email").get.asInstanceOf[String],
         map.get("uniqueId").get.asInstanceOf[String],
-        keyPairInfos.toList,
+        keyPairInfos,
         map.get("accountNonExpired").get.asInstanceOf[Boolean],
         map.get("accountNonLocked").get.asInstanceOf[Boolean],
         map.get("credentialsNonExpired").get.asInstanceOf[Boolean],
@@ -131,6 +128,7 @@ object Implicits {
       user
     }
   }
+
 
   implicit class RichUserGroup(userGroup: UserGroup) extends Neo4jRep2[UserGroup] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -147,14 +145,19 @@ object Implicits {
       val userGroupNode = Neo4jRepository.saveEntity[UserGroupProxy](userGroup,UserGroupProtocol.labelUserGroup)
       logger.debug(s"UserGroup Node - ${userGroupNode.get}")
 
-      userGroup.users.foreach(user => {
+      val map: Map[String, Any] = Map("name" -> userGroup.name)
+      val node = Neo4jRepository.saveEntity[KeyPairInfo](ResourceACLProtocol.label, userGroup.id, map)
+
+      userGroup.users.map(_.foreach(user => {
         val userNode = user.toGraph(user)
         Neo4jRepository.createRelation(has_users, userGroupNode.get, userNode.get)
-      })
-      userGroup.access.foreach(resource => {
+      }))
+
+      userGroup.accesses.map(_.foreach(resource => {
         val resourceNode : Option[Node] = resource.toGraph(resource)
         Neo4jRepository.createRelation(has_resourceAccess, userGroupNode.get, resourceNode.get)
-      })
+      }))
+
       userGroupNode
     }
     override def fromGraph(nodeId: Long): Option[UserGroup] = {
@@ -180,8 +183,8 @@ object Implicits {
         val user = UserGroup(
           id = Some(node.getId),
           name = map.get("name").get.asInstanceOf[String],
-          users = users,
-          access = resources
+          users = Some(users),
+          accesses = Some(resources)
         )
         logger.debug(s"UserGroup - ${user}")
         Some(user)
@@ -195,8 +198,32 @@ object Implicits {
     override def toGraph(resource: ResourceACL): Option[Node] =
       Neo4jRepository.saveEntity[ResourceACL](resource,label)
 
-    override def fromGraph(nodeId: Long): Option[ResourceACL] =  Neo4jRepository.getEntity[ResourceACL](nodeId)
+    override def fromGraph(nodeId: Long): Option[ResourceACL] = Neo4jRepository.getEntity[ResourceACL](nodeId)
   }
+ /* implicit class RichResourceACL(resourceACL: ResourceACL) extends Neo4jRep[ResourceACL] {
+    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+    val label = "ResourceACL"
+
+    override def toGraph(entity: ResourceACL): Option[Node] = super.toGraph(entity)
+
+    override def fromGraph(nodeId: Long): ResourceACL = super.fromGraph(nodeId)
+  }*/
+
+ /* implicit class RichUserGroup(userGroup: UserGroup) extends Neo4jRep[UserGroup] {
+    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+    val label = "UserGroup"
+
+    override def toGraph(entity: UserGroup): Option[Node] = {
+      val map: Map[String, Any] = Map("name" -> entity.name)
+
+      val node = Neo4jRepository.saveEntity[KeyPairInfo](label, entity.id, map)
+
+      logger.debug(s"user group - ${node.get}")
+      node
+    }
+
+    override def fromGraph(nodeId: Long): UserGroup = super.fromGraph(nodeId)
+  }*/
 }
 
 
