@@ -7,6 +7,8 @@ import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.Future
+
 /**
   * Created by babjik on 23/9/16.
   */
@@ -30,12 +32,31 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     }
   }
 
+  /**
+    * Finding the first Node with given label and property details
+    * @param label
+    * @param propertyKey
+    * @param propertyValue
+    * @return
+    */
+  def getSingleNodeByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any) : Option[Node] = withTx { implicit  neo =>
+    logger.debug(s"finding ${label}'s with property ${propertyKey} and value ${propertyValue}")
+    val nodesIterator = findNodesByLabelAndProperty(label, propertyKey, propertyValue)
+    logger.debug(s"result size ${nodesIterator}  - ${nodesIterator.size}")
+    nodesIterator.size match {
+      case x if x > 0 => Some(nodesIterator.toList.head)
+      case _ => None
+    }
+
+  }
+
   def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
     val node = getOrSaveEntity(label, id)
     map.foreach{ case(k, v) => {
       logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v" )
       node.setProperty(k, v)
     }}
+
     // setting Id and class Name as attributes
     node.setProperty(V_ID, node.getId)
     node.setProperty(CLASS, label)
@@ -115,7 +136,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     * deletes the node with the given label and propery details
     * @param nodeId
     */
-  def deleteEntity(nodeId: Long): Unit = withTx { neo =>
+  def deleteEntity(nodeId: Long): Unit = withTx {implicit neo =>
     val node = findNodeById(nodeId).get
     //TODO: need to delete relations before deleting node
     val relations = node.getRelationships(Direction.OUTGOING)
@@ -130,6 +151,16 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     node.delete
   }
 
+
+  def deleteChildNode(node: Node): Option[Boolean] = withTx { implicit neo =>
+
+    // get realtion with parent  (incoming relations)
+    // delete incoming
+    // delete node
+    
+
+    Some(true)
+  }
 
   // with out properties
   def createRelation(label: String, fromNode: Node, toNode: Node) : Relationship = withTx {neo =>

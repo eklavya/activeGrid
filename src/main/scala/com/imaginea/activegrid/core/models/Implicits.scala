@@ -108,22 +108,17 @@ object Implicits {
       val node = Neo4jRepository.findNodeById(nodeId).get
       val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
-      // get public keys
-      val keyPairInfos: scala.collection.mutable.ListBuffer[KeyPairInfo] = scala.collection.mutable.ListBuffer()
-
       val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, has_publicKeys)
       val keyPairInfo: KeyPairInfo = null
-      keyPairInfoNodes.foreach(child => {
-        logger.debug(s" child node ${child}")
-        keyPairInfos += keyPairInfo.fromGraph(child.getId)
-      })
+
+      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {keyPairInfo.fromGraph(keyPairNode.getId)}).toList
 
       val user = User(Some(node.getId),
         map.get("username").get.asInstanceOf[String],
         map.get("password").get.asInstanceOf[String],
         map.get("email").get.asInstanceOf[String],
         map.get("uniqueId").get.asInstanceOf[String],
-        keyPairInfos.toList,
+        keyPairInfos,
         map.get("accountNonExpired").get.asInstanceOf[Boolean],
         map.get("accountNonLocked").get.asInstanceOf[Boolean],
         map.get("credentialsNonExpired").get.asInstanceOf[Boolean],

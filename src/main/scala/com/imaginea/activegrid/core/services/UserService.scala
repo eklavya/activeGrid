@@ -2,7 +2,7 @@ package com.imaginea.activegrid.core.services
 
 import com.imaginea.activegrid.core.models._
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.{Node, NotFoundException}
+import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -41,22 +41,48 @@ class UserService (implicit val executionContext: ExecutionContext){
     Some(Page(0, keysList.size, keysList.size, keysList))
   }
 
-  def getKey (userId: Long, keyId: Long): Future[Option[KeyPairInfo]] = Future {
+
+  def getKeys(userName: String): Future[Option[Page[KeyPairInfo]]] = Future {
+    logger.debug(s"Searching Users with name ${userName}")
+    import com.imaginea.activegrid.core.models.Implicits._
+    val maybeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(label, "username", userName)
+
+    logger.debug(s" May be node ${maybeNode}")
+
+    maybeNode match {
+      case None => {
+        Some(Page(0,0,0, List()))
+      }
+      case Some(node) => {
+        val keysList = user.fromGraph(node.getId).publicKeys
+        Some(Page(0, keysList.size, keysList.size, keysList))
+      }
+    }
+
+  }
+
+  def getKeyById (userId: Long, keyId: Long): Option[KeyPairInfo] = {
     import com.imaginea.activegrid.core.models.Implicits._
     val keysList: List[KeyPairInfo] = user.fromGraph(userId).publicKeys
 
-/*    keysList.foreach(keyInfo => {
-      if (keyInfo.id.get.equals(keyId)) {
-        return Future(Some(keyInfo))
-      }
-    })*/
-
     keysList match {
-      case keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-      case _::keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-      case _ => None
-    }
+    case keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
+    case _::keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
+    case _ => None
   }
+  }
+  def getKey (userId: Long, keyId: Long): Future[Option[KeyPairInfo]] = Future {
+    getKeyById(userId, keyId)
+  }
+
+
+  def deleteKey(userId: Long, keyId: Long): Future[Option[String]] = Future {
+    logger.debug(s"Deleting Key[${keyId}] of User[${userId}] ")
+    val node = getKeyById(userId, keyId)
+    logger.debug(s"node to be deleted -- ${node}")
+    Some(s"Deleted key with id ${keyId}")
+  }
+
 
   def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Option[Page[KeyPairInfo]]] = Future {
     import com.imaginea.activegrid.core.models.Implicits._

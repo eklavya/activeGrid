@@ -73,6 +73,8 @@ object Main extends App {
                     complete(s"failed to get key")
                 }
               }
+            } ~ delete {
+              complete(userService.deleteKey(userId, keyId))
             }
         } ~ get {
           try {
@@ -87,7 +89,7 @@ object Main extends App {
             complete(userService.addKeyPair(userId, sshKeyInfo))
           }
         }
-      }~ get{
+      } ~ get{
         try {
           complete(userService.getUser(userId))
         } catch {
@@ -104,7 +106,11 @@ object Main extends App {
         complete(userService.deleteUser(userId))
       }
     } ~pathPrefix("users") {
-    get {
+      get {
+        pathPrefix(Segment / "keys") { userName =>
+          complete(userService.getKeys(userName))
+        }
+      } ~ get {
       complete(userService.getUsers)
     } ~ post {
       entity(as[User]) {user =>
