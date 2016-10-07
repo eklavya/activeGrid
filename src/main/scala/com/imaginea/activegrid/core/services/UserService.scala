@@ -73,9 +73,18 @@ class UserService (implicit val executionContext: ExecutionContext){
 
   def deleteKey(userId: Long, keyId: Long): Future[Option[String]] = Future {
     logger.debug(s"Deleting Key[${keyId}] of User[${userId}] ")
-    val node = getKeyById(userId, keyId)
-    logger.debug(s"node to be deleted -- ${node}")
-    Some(s"Deleted key with id ${keyId}")
+    val key = getKeyById(userId, keyId)
+
+    key match {
+      case Some(keyPairInfo) => {
+        val status = Neo4jRepository.deleteChildNode(keyId)
+        status match {
+          case Some(true) => Some("Deleted Successfully")
+          case _ => Some("Failed to delete node")
+        }
+      }
+      case None => Some(s"No key pair found with id ${keyId}")
+    }
   }
 
 

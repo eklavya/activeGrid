@@ -136,27 +136,32 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     */
   def deleteEntity(nodeId: Long): Unit = withTx {implicit neo =>
     val node = findNodeById(nodeId).get
-    //TODO: need to delete relations before deleting node
-    val relations = node.getRelationships(Direction.OUTGOING)
+    val relations = getRelationships(node, Direction.OUTGOING)
     logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
-    val relationsIterator = relations.iterator()
-    while (relationsIterator.hasNext) {
-      val relation = relationsIterator.next()
-      logger.debug(s"deleting relation")
-      relation.delete()
-    }
+
+    relations.foreach(outRelation => {
+      logger.debug(s"deleting out relation ${outRelation}  -- ${outRelation.getType}")
+      outRelation.delete()
+    })
+
     logger.debug(s"finally deleting node ${node}")
     node.delete
   }
 
 
-  def deleteChildNode(node: Node): Option[Boolean] = withTx { implicit neo =>
+  def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>
 
     // get realtion with parent  (incoming relations)
     // delete incoming
     // delete node
+    val node = getNodeById(nodeId)
+    val incomingRelations = getRelationships(node, Direction.INCOMING)
+    incomingRelations.foreach(incomingRelation => {
+      logger.debug(s"Deleting incoming relation ${incomingRelation}  -- ${incomingRelation.getType}")
+      incomingRelation.delete()
+    })
 
-
+    deleteEntity(nodeId)
     Some(true)
   }
 
@@ -179,11 +184,9 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
 
-  def getRelationships(node: Node, direction: Direction): List[Node] = withTx {implicit neo =>
+  def getRelationships(node: Node, direction: Direction): List[Relationship] = withTx {implicit neo =>
     logger.debug(s"fetching realtions of ${node} in the direction ${direction}")
-    val relationsIterator = node.getRelationships(direction)
-    //TODO:
-    List()
+    node.getRelationships(direction).toList
   }
 
 }
