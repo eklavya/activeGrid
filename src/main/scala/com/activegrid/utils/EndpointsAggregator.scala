@@ -1,6 +1,6 @@
 package com.activegrid.utils
 
-import com.activegrid.services.{AppSettingsService, CatalogService}
+import com.activegrid.services.{AppSettingsService, LogConfigUpdaterService}
 import akka.http.scaladsl.server.Directives._
 
 /**
@@ -8,6 +8,6 @@ import akka.http.scaladsl.server.Directives._
   */
 object EndpointsAggregator {
   val appService = new AppSettingsService()
-  val catalogService = new CatalogService()
-  val endPoints = appService.routes ~ catalogService.routes
+  val logService = new LogConfigUpdaterService()
+  val endPoints = appService.routes ~ logService.routes
 }
