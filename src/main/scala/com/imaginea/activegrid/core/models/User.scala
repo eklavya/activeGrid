@@ -47,8 +47,6 @@ object User {
       node
     }
 
-
-
     override def fromGraph(nodeId: Long): User = {
       val node = Neo4jRepository.findNodeById(nodeId).get
       val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")

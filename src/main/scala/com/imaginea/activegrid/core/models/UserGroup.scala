@@ -19,12 +19,13 @@ case class UserGroupProxy(name: String) extends BaseEntity
 object UserGroupProtocol {
   val labelUserGroup = "UserGroup"
 }
- /*implicit val userGroupResourceFormat = jsonFormat3(ResourceACL)
- implicit val userGroupFormat = jsonFormat4(UserGroup)
- implicit val pageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")*/
 
+sealed trait ResponseMessage
+case class SuccessResponse(id:String) extends ResponseMessage
+object FailureResponse extends ResponseMessage
 
 object UserGroup {
+
   implicit class RichUserGroup(userGroup: UserGroup) extends Neo4jRep2[UserGroup] {
     import Implicits._
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -39,32 +40,34 @@ object UserGroup {
       logger.debug(s"toGraph for UserGroup ${userGroup}")
 
       val userGroupNode = Neo4jRepository.saveEntity[UserGroupProxy](userGroup,UserGroupProtocol.labelUserGroup)
-      logger.debug(s"UserGroup Node - ${userGroupNode.get}")
+      logger.debug(s"UserGroup Node fetched from db - ${userGroupNode.get}")
 
-      val map: Map[String, Any] = Map("name" -> userGroup.name)
-      val node = Neo4jRepository.saveEntity[KeyPairInfo](ResourceACLProtocol.label, userGroup.id, map)
+      //val map: Map[String, Any] = Map("name" -> userGroup.name)
+      //val node = Neo4jRepository.saveEntity[KeyPairInfo](ResourceACLProtocol.label, userGroup.id, map)
 
-      userGroup.users.map(_.foreach(user => {
-        val userNode = user.toGraph(user)
-        Neo4jRepository.createRelation(has_users, userGroupNode.get, userNode.get)
-      }))
+      for(user <- userGroup.users){
+        user.foreach(user => {
+          val userNode = user.toGraph(user)
+          Neo4jRepository.createRelation(has_users, userGroupNode.get, userNode.get)
+        })
+      }
 
-      userGroup.accesses.map(_.foreach(resource => {
-        val resourceNode : Option[Node] = resource.toGraph(resource)
-        Neo4jRepository.createRelation(has_resourceAccess, userGroupNode.get, resourceNode.get)
-      }))
-
+      for( access <- userGroup.accesses){
+        access.foreach(resource => {
+          val resourceNode : Option[Node] = resource.toGraph(resource)
+          Neo4jRepository.createRelation(has_resourceAccess, userGroupNode.get, resourceNode.get)
+        })
+      }
       userGroupNode
     }
     override def fromGraph(nodeId: Long): Option[UserGroup] = {
       val node = Neo4jRepository.fetchNodeById(nodeId)
       node.fold(ex => None, node => {
-        //val userProxy :Option[UserGroupProxy] = Neo4jRepository.getEntity[UserGroupProxy](nodeId)
-        val map = Neo4jRepository.getProperties(node, "name")
+        val userProxy: Option[UserGroupProxy] = Neo4jRepository.getEntity[UserGroupProxy](nodeId)
         val userNodes = Neo4jRepository.getNodesWithRelation(node, has_users)
 
         val users = userNodes.map(child => {
-          logger.debug(s" UserGroup -> user node ${child}")
+          logger.debug(s" UserGroup -> User node ${child}")
           val user: User = null
           user.fromGraph(child.getId)
         }).toSet
@@ -76,14 +79,16 @@ object UserGroup {
           resource.fromGraph(child.getId).get
         }).toSet
 
-        val user = UserGroup(
-          id = Some(node.getId),
-          name = map.get("name").get.asInstanceOf[String],
-          users = Some(users),
-          accesses = Some(resources)
-        )
+        val user = userProxy.map( obj => {
+          UserGroup(
+            id = Some(node.getId),
+            name = obj.name,
+            users = Some(users),
+            accesses = Some(resources)
+          )
+        })
         logger.debug(s"UserGroup - ${user}")
-        Some(user)
+        user
       })
     }
   }

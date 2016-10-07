@@ -56,6 +56,7 @@ object Main extends App {
   implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
 
+  implicit val ResponseUserGroupFormat = jsonFormat(SuccessResponse, "id")
 
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
 
@@ -122,11 +123,13 @@ object Main extends App {
       path("groups") {
         get {
           complete(userService.getUserGroups)
-          //complete("Done")
         } ~
           post {
             entity(as[UserGroup]) { userGroup =>
-              complete(userService.saveUserGroup(userGroup))
+              onSuccess(userService.saveUserGroup(userGroup)) {
+                case FailureResponse => complete(StatusCodes.BadRequest, None)
+                case a : SuccessResponse => complete(StatusCodes.OK, a)
+              }
             }
           }
       } ~ get {

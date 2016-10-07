@@ -30,19 +30,21 @@ class UserService (implicit val executionContext: ExecutionContext){
     Some("Successfull")
   }
 
-  def saveUserGroup(userGroup: UserGroup): Future[Option[String]] = Future {
-    import com.imaginea.activegrid.core.models.Implicits._
-    userGroup.toGraph(userGroup)
-    Some("User group created !")
+  def saveUserGroup(userGroup: UserGroup): Future[ResponseMessage] = Future {
+    userGroup.toGraph(userGroup) match {
+      case None => FailureResponse
+      case Some(node) => new SuccessResponse(node.getId.toString())
+    }
   }
-  def getUserGroups: Future[Option[Page[UserGroup]]] = Future {
+
+  def getUserGroups: Future[Page[UserGroup]] = Future {
     import com.imaginea.activegrid.core.models.UserGroup.RichUserGroup
 
     val nodeList = Neo4jRepository.getNodesByLabel(UserGroupProtocol.labelUserGroup)
     val userGroup : UserGroup = null;
     val listOfUserGroups : List[Option[UserGroup]] = nodeList.map(node => userGroup.fromGraph(node.getId))
 
-    Some(Page[UserGroup](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups.map(_.get)))
+    Page[UserGroup](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups.map(_.get))
   }
   def getUserGroup(id: Long): Future[Option[UserGroup]] = Future {
     import com.imaginea.activegrid.core.models.UserGroup.RichUserGroup

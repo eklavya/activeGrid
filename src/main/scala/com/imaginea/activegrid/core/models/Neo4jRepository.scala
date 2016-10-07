@@ -19,7 +19,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   val V_ID = "id"
   val CLASS = "@Class"
 
-
   def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
     try {
       Some(getNodeById(id))
@@ -30,6 +29,12 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       }
     }
   }
+
+  /**
+   * fetchNode find the node by id and return Either type
+   * @param id
+   * @return
+   */
   def fetchNodeById(id: Long): Either[NotFoundException,Node] = withTx { neo =>
     try {
       val node = getNodeById(id)(neo)
@@ -54,7 +59,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       case x if x > 0 => Some(nodesIterator.toList.head)
       case _ => None
     }
-
   }
 
   def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
