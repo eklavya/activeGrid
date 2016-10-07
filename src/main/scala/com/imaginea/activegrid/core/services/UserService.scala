@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.services
 
 import com.imaginea.activegrid.core.models._
+import com.imaginea.activegrid.core.utils.FileUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
@@ -80,18 +81,24 @@ class UserService (implicit val executionContext: ExecutionContext){
 
   def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Option[Page[KeyPairInfo]]] = Future {
 
-    sSHKeyContentInfo.keyMaterials.foreach{case(keyName: String, keyMaterial: String) => {
+    FileUtils.createDirectories(UserUtils.getKeyDirPath(userId))
+
+    val resultKeys = sSHKeyContentInfo.keyMaterials.map{case(keyName: String, keyMaterial: String) => {
       logger.debug(s" (${keyName}  --> (${keyMaterial}))")
+      val filePath: String = UserUtils.getKeyFilePath(userId, keyName)
+      FileUtils.saveContentToFile(filePath, keyMaterial)
 
-
-
+      val keyPairInfo =  KeyPairInfo(keyName, keyMaterial, filePath, KeyPairStatus.UPLOADED)
+      logger.debug(s" new Key Pair Info ${keyPairInfo}")
+      UserUtils.addKeyPair(userId, keyPairInfo)
+      keyPairInfo
     }}
 
-
+    logger.debug(s"result from map ${resultKeys}")
 
     val userGraph = user.fromNeo4jGraph(userId)
 
-    val keysList = userGraph.publicKeys
+    val keysList = resultKeys.toList
     Some(Page(0, keysList.size, keysList.size, keysList))
   }
 
