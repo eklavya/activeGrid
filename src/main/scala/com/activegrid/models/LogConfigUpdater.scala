@@ -9,7 +9,7 @@ import org.apache.log4j._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class LogConfigUpdater(implicit  ex:ExecutionContext)  {
+class LogConfigUpdater(implicit ex: ExecutionContext) {
 
   val ROOT: String = "root"
 

@@ -7,10 +7,9 @@ import akka.stream.ActorMaterializer
 import com.activegrid.utils.EndpointsAggregator
 
 
+object Main extends App {
 
-object  Main extends App {
-
-  implicit val system  = ActorSystem();
+  implicit val system = ActorSystem();
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher;
 
