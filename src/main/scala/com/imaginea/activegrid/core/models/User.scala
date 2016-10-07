@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by babjik on 26/9/16.
   */
-case class User ( override val id: Option[Long]
+case class User(override val id: Option[Long]
                 , username: String
                 , password: String
                 , email: String
@@ -23,6 +23,7 @@ case class User ( override val id: Option[Long]
 
 
 object User {
+
   implicit class RichUser(user: User) extends Neo4jRep[User] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "User"
@@ -49,7 +50,6 @@ object User {
     }
 
 
-
     override def fromNeo4jGraph(nodeId: Long): User = {
       val node = Neo4jRepository.findNodeById(nodeId).get
       val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
@@ -57,7 +57,9 @@ object User {
       val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
       val keyPairInfo: KeyPairInfo = null
 
-      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {keyPairInfo.fromNeo4jGraph(keyPairNode.getId)})
+      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
+        keyPairInfo.fromNeo4jGraph(keyPairNode.getId)
+      })
 
       val user = User(Some(node.getId),
         map.get("username").get.asInstanceOf[String],
@@ -75,6 +77,7 @@ object User {
       user
     }
   }
+
 }
 
 object UserUtils {

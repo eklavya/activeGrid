@@ -11,7 +11,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Created by babjik on 27/9/16.
   */
-class UserService (implicit val executionContext: ExecutionContext){
+class UserService(implicit val executionContext: ExecutionContext) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   val label = "User"
@@ -47,7 +47,7 @@ class UserService (implicit val executionContext: ExecutionContext){
 
     maybeNode match {
       case None => {
-        Some(Page(0,0,0, List()))
+        Some(Page(0, 0, 0, List()))
       }
       case Some(node) => {
         val keysList = user.fromNeo4jGraph(node.getId).publicKeys
@@ -57,16 +57,17 @@ class UserService (implicit val executionContext: ExecutionContext){
 
   }
 
-  def getKeyById (userId: Long, keyId: Long): Option[KeyPairInfo] = {
+  def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
     val keysList: List[KeyPairInfo] = user.fromNeo4jGraph(userId).publicKeys
 
     keysList match {
-    case keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-    case _::keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-    case _ => None
+      case keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
+      case _ :: keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
+      case _ => None
+    }
   }
-  }
-  def getKey (userId: Long, keyId: Long): Future[Option[KeyPairInfo]] = Future {
+
+  def getKey(userId: Long, keyId: Long): Future[Option[KeyPairInfo]] = Future {
     getKeyById(userId, keyId)
   }
 
@@ -92,16 +93,17 @@ class UserService (implicit val executionContext: ExecutionContext){
 
     FileUtils.createDirectories(UserUtils.getKeyDirPath(userId))
 
-    val resultKeys = sSHKeyContentInfo.keyMaterials.map{case(keyName: String, keyMaterial: String) => {
+    val resultKeys = sSHKeyContentInfo.keyMaterials.map { case (keyName: String, keyMaterial: String) => {
       logger.debug(s" (${keyName}  --> (${keyMaterial}))")
       val filePath: String = UserUtils.getKeyFilePath(userId, keyName)
       FileUtils.saveContentToFile(filePath, keyMaterial)
 
-      val keyPairInfo =  KeyPairInfo(keyName, keyMaterial, filePath, KeyPairStatus.UPLOADED)
+      val keyPairInfo = KeyPairInfo(keyName, keyMaterial, filePath, KeyPairStatus.UPLOADED)
       logger.debug(s" new Key Pair Info ${keyPairInfo}")
       UserUtils.addKeyPair(userId, keyPairInfo)
       keyPairInfo
-    }}
+    }
+    }
 
     logger.debug(s"result from map ${resultKeys}")
 
@@ -123,7 +125,7 @@ class UserService (implicit val executionContext: ExecutionContext){
 
   }
 
-  def saveUserGroup(userGroup: UserGroup): Future[Option[String]] = Future{
+  def saveUserGroup(userGroup: UserGroup): Future[Option[String]] = Future {
     userGroup.toNeo4jGraph(userGroup)
     Some("Successfull")
   }

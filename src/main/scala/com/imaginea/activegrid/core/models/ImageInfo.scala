@@ -10,23 +10,24 @@ import org.slf4j.LoggerFactory
   */
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-case class ImageInfo ( override val id: Option[Long]
-                      , imageId: String
-                      ,  state: String
-                      ,  ownerId: String
-                      ,  publicValue: Boolean
-                      ,  architecture: String
-                      ,  imageType: String
-                      ,  platform: String
-                      ,  imageOwnerAlias: String
-                      ,  name: String
-                      ,  description: String
-                      ,  rootDeviceType: String
-                      ,  rootDeviceName: String
-                      ,  version: String) extends BaseEntity
+case class ImageInfo(override val id: Option[Long]
+                     , imageId: String
+                     , state: String
+                     , ownerId: String
+                     , publicValue: Boolean
+                     , architecture: String
+                     , imageType: String
+                     , platform: String
+                     , imageOwnerAlias: String
+                     , name: String
+                     , description: String
+                     , rootDeviceType: String
+                     , rootDeviceName: String
+                     , version: String) extends BaseEntity
 
 
 object ImageInfo {
+
   implicit class RichImageInfo(imageInfo: ImageInfo) extends Neo4jRep[ImageInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImageInfo"
@@ -42,7 +43,8 @@ object ImageInfo {
     }
 
     override def fromNeo4jGraph(nodeId: Long): ImageInfo = {
-      ImageInfo(Some(0L),"", "", "", false, "", "", "", "", "", "", "", "", "")
+      ImageInfo(Some(0L), "", "", "", false, "", "", "", "", "", "", "", "", "")
     }
   }
+
 }

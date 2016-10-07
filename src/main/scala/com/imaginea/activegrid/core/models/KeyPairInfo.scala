@@ -10,24 +10,23 @@ import org.slf4j.LoggerFactory
   * Created by babjik on 26/9/16.
   */
 case class KeyPairInfo(override val id: Option[Long]
-                      , keyName: String
-                      , keyFingerprint: Option[String]
-                      , keyMaterial: String
-                      , filePath: String
-                      , status: KeyPairStatus
-                      , defaultUser: Option[String]
-                      , passPhrase: Option[String]
+                       , keyName: String
+                       , keyFingerprint: Option[String]
+                       , keyMaterial: String
+                       , filePath: String
+                       , status: KeyPairStatus
+                       , defaultUser: Option[String]
+                       , passPhrase: Option[String]
                       ) extends BaseEntity {
   def this(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus)
-      = this (None, keyName, Some(""), keyMaterial, filePath, status, Some(""), Some(""))
+  = this(None, keyName, Some(""), keyMaterial, filePath, status, Some(""), Some(""))
 }
-
 
 
 object KeyPairInfo {
 
-  def apply( keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus): KeyPairInfo =
-    new KeyPairInfo( None, keyName, Some(""), keyMaterial, filePath, status, Some(""), Some(""))
+  def apply(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus): KeyPairInfo =
+    new KeyPairInfo(None, keyName, Some(""), keyMaterial, filePath, status, Some(""), Some(""))
 
   implicit class RichKeyPairInfo(keyPairInfo: KeyPairInfo) extends Neo4jRep[KeyPairInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -55,7 +54,7 @@ object KeyPairInfo {
       val node = Neo4jRepository.findNodeById(nodeId).get
       val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
 
-      val keyPairInfo = KeyPairInfo (
+      val keyPairInfo = KeyPairInfo(
         Some(node.getId),
         map.get("keyName").get.asInstanceOf[String],
         Some(map.get("keyFingerprint").get.asInstanceOf[String]),

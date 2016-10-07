@@ -18,6 +18,7 @@ import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
+
 /**
   * Created by babjik on 22/9/16.
   */
@@ -32,7 +33,7 @@ object Main extends App {
   implicit val neo4jRepository = Neo4jRepository
 
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
-    override def write (obj: KeyPairStatus): JsValue = JsString(obj.toString)
+    override def write(obj: KeyPairStatus): JsValue = JsString(obj.toString)
 
     override def read(json: JsValue): KeyPairStatus = json match {
       case JsString(str) => KeyPairStatus.withName(str)
@@ -46,7 +47,7 @@ object Main extends App {
   implicit val KeyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
   implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
 
-  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId",  "publicKeys",  "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
   implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
 
   implicit val ResourceACLFormat = jsonFormat1(ResourceACL.apply)
@@ -56,75 +57,75 @@ object Main extends App {
 
   val userService: UserService = new UserService
 
-
-  def userRoute: Route = pathPrefix("users" / LongNumber){ userId =>
-      get{
-        pathPrefix("groups") {
-          // TODO: need add code related to groups
-          complete("found groups")
-        }
-      } ~ pathPrefix("keys") {
-        pathPrefix(LongNumber) { keyId =>
-            get {
-              try {
-                complete(userService.getKey(userId, keyId))
-              } catch {
-                case _: Throwable => {
-                    complete(s"failed to get key")
-                }
-              }
-            } ~ delete {
-              complete(userService.deleteKey(userId, keyId))
-            }
-        } ~ get {
-          try {
-            complete(userService.getKeys(userId))
-          } catch {
-            case _: Throwable => {
-              complete(s"failed to get keys of User ${userId}")
-            }
+  def userRoute: Route = pathPrefix("users" / LongNumber) { userId =>
+    pathPrefix("keys") {
+      pathPrefix(LongNumber) { keyId =>
+        get {
+          onSuccess(userService.getKey(userId, keyId)) {
+            case Some(response) => complete(StatusCodes.OK, response)
+            case None => complete(StatusCodes.BadRequest, "Unable to get the key")
           }
-        } ~ post {
-          entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
-            complete(userService.addKeyPair(userId, sshKeyInfo))
+        } ~ delete {
+          onSuccess(userService.deleteKey(userId, keyId)) {
+            case Some(response) => complete(StatusCodes.OK, response)
+            case None => complete(StatusCodes.BadRequest, "Unable delete Key")
           }
-        }
-      } ~ get{
-        try {
-          complete(userService.getUser(userId))
-        } catch {
-          case e: NotFoundException => {
-            logger.warn(e.getMessage, e)
-            complete(e.getMessage)
-          }
-          case _ : Throwable => {
-            complete("Unhandled exception")
-          }
-        }
-
-      } ~ delete {
-        complete(userService.deleteUser(userId))
-      }
-    } ~pathPrefix("users") {
-      get {
-        pathPrefix(Segment / "keys") { userName =>
-          complete(userService.getKeys(userName))
         }
       } ~ get {
-      complete(userService.getUsers)
+        onSuccess(userService.getKeys(userId)) {
+          case Some(response) => complete(StatusCodes.OK, response)
+          case None => complete(StatusCodes.BadRequest, "Unable to get keys")
+        }
+      } ~ post {
+        entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
+          onSuccess(userService.addKeyPair(userId, sshKeyInfo)) {
+            case Some(response) => complete(StatusCodes.OK, response)
+            case None => complete(StatusCodes.BadRequest, "Unable to add keys")
+          }
+        }
+      }
+    } ~ get {
+      onSuccess(userService.getUser(userId)) {
+        case Some(response) => complete(StatusCodes.OK, response)
+        case None => complete(StatusCodes.BadRequest, "Unable to get User")
+      }
+    } ~ delete {
+      onSuccess(userService.deleteUser(userId)) {
+        case Some(response) => complete(StatusCodes.OK, response)
+        case None => complete(StatusCodes.BadRequest, "Unable delete Users")
+      }
+    }
+  } ~ pathPrefix("users") {
+    get {
+      pathPrefix(Segment / "keys") { userName =>
+        onSuccess(userService.getKeys(userName)) {
+          case Some(response) => complete(StatusCodes.OK, response)
+          case None => complete(StatusCodes.BadRequest, "Unable get keys by user name")
+        }
+      }
+    } ~ get {
+      onSuccess(userService.getUsers) {
+        case Some(response) => complete(StatusCodes.OK, response)
+        case None => complete(StatusCodes.BadRequest, "Unable get users list")
+      }
     } ~ post {
-      entity(as[User]) {user =>
-          complete(userService.saveUser(user))
+      entity(as[User]) { user =>
+        onSuccess(userService.saveUser(user)) {
+          case Some(response) => complete(StatusCodes.OK, response)
+          case None => complete(StatusCodes.BadRequest, "Unable save user")
+        }
       }
     } ~ pathPrefix("groups") {
       post {
         entity(as[UserGroup]) { userGroup =>
-          complete(userService.saveUserGroup(userGroup))
+          onSuccess(userService.saveUserGroup(userGroup)) {
+            case Some(response) => complete(StatusCodes.OK, response)
+            case None => complete(StatusCodes.BadRequest, "Unable save user group ")
+          }
         }
       }
     }
   }
-
 
 
   val route: Route = userRoute

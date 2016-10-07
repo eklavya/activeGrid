@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory
   * Created by babjik on 5/10/16.
   */
 case class UserGroup(override val id: Option[Long]
-                    , name: String
-                    , users: Option[Set[User]]
-                    , accesses: Option[Set[ResourceACL]]) extends BaseEntity
+                     , name: String
+                     , users: Option[Set[User]]
+                     , accesses: Option[Set[ResourceACL]]) extends BaseEntity
 
 
 object UserGroup {
@@ -30,4 +30,5 @@ object UserGroup {
 
     override def fromNeo4jGraph(nodeId: Long): UserGroup = super.fromNeo4jGraph(nodeId)
   }
+
 }
