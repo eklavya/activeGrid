@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
@@ -26,7 +27,7 @@ object User {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "User"
 
-    override def toGraph(entity: User): Option[Node] = {
+    override def toNeo4jGraph(entity: User): Option[Node] = {
       logger.debug(s"toGraph for Image ${entity}")
       val map: Map[String, Any] = Map("username" -> entity.username,
         "password" -> entity.username,
@@ -43,20 +44,20 @@ object User {
 
       //publicKeys: List[KeyPairInfo]
       //Relation HAS_publicKeys
-      entity.publicKeys.foreach(publicKey => UserOperations.addKeyPair(node.get.getId, publicKey))
+      entity.publicKeys.foreach(publicKey => UserUtils.addKeyPair(node.get.getId, publicKey))
       node
     }
 
 
 
-    override def fromGraph(nodeId: Long): User = {
+    override def fromNeo4jGraph(nodeId: Long): User = {
       val node = Neo4jRepository.findNodeById(nodeId).get
       val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
-      val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserOperations.has_publicKeys)
+      val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
       val keyPairInfo: KeyPairInfo = null
 
-      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {keyPairInfo.fromGraph(keyPairNode.getId)})
+      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {keyPairInfo.fromNeo4jGraph(keyPairNode.getId)})
 
       val user = User(Some(node.getId),
         map.get("username").get.asInstanceOf[String],
@@ -76,15 +77,22 @@ object User {
   }
 }
 
-object UserOperations {
+object UserUtils {
   val keyPairInfo: KeyPairInfo = null
   val has_publicKeys = "HAS_publicKeys"
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Relationship = {
     val userNode = Neo4jRepository.findNodeById(userId).get
-    val publicKeyNode = keyPairInfo.toGraph(keyPairInfo)
+    val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
     Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode.get)
   }
+
+  def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
+
+  def getKeyDirPath(userId: Long): String = s"${getUserKeysDir}${Constants.FILE_SEPARATOR}${userId.asInstanceOf[String]}${Constants.FILE_SEPARATOR}"
+
+
+
 }
 
 

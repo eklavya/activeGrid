@@ -19,7 +19,7 @@ object UserGroup {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "UserGroup"
 
-    override def toGraph(entity: UserGroup): Option[Node] = {
+    override def toNeo4jGraph(entity: UserGroup): Option[Node] = {
       val map: Map[String, Any] = Map("name" -> entity.name)
 
       val node = Neo4jRepository.saveEntity[KeyPairInfo](label, entity.id, map)
@@ -28,6 +28,6 @@ object UserGroup {
       node
     }
 
-    override def fromGraph(nodeId: Long): UserGroup = super.fromGraph(nodeId)
+    override def fromNeo4jGraph(nodeId: Long): UserGroup = super.fromNeo4jGraph(nodeId)
   }
 }

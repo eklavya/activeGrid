@@ -18,22 +18,22 @@ class UserService (implicit val executionContext: ExecutionContext){
 
   def getUsers: Future[Option[Page[User]]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
-    val listOfUsers = nodeList.map(node => user.fromGraph(node.getId))
+    val listOfUsers = nodeList.map(node => user.fromNeo4jGraph(node.getId))
 
     Some(Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers))
   }
 
   def saveUser(user: User): Future[Option[String]] = Future {
-    user.toGraph(user)
+    user.toNeo4jGraph(user)
     Some("Successfull")
   }
 
   def getUser(userId: Long): Future[Option[User]] = Future {
-    Some(user.fromGraph(userId))
+    Some(user.fromNeo4jGraph(userId))
   }
 
   def getKeys(userId: Long): Future[Option[Page[KeyPairInfo]]] = Future {
-    val keysList = user.fromGraph(userId).publicKeys
+    val keysList = user.fromNeo4jGraph(userId).publicKeys
     Some(Page(0, keysList.size, keysList.size, keysList))
   }
 
@@ -49,7 +49,7 @@ class UserService (implicit val executionContext: ExecutionContext){
         Some(Page(0,0,0, List()))
       }
       case Some(node) => {
-        val keysList = user.fromGraph(node.getId).publicKeys
+        val keysList = user.fromNeo4jGraph(node.getId).publicKeys
         Some(Page(0, keysList.size, keysList.size, keysList))
       }
     }
@@ -57,7 +57,7 @@ class UserService (implicit val executionContext: ExecutionContext){
   }
 
   def getKeyById (userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    val keysList: List[KeyPairInfo] = user.fromGraph(userId).publicKeys
+    val keysList: List[KeyPairInfo] = user.fromNeo4jGraph(userId).publicKeys
 
     keysList match {
     case keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
@@ -80,15 +80,16 @@ class UserService (implicit val executionContext: ExecutionContext){
 
   def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Option[Page[KeyPairInfo]]] = Future {
 
-    val keyMaterial = sSHKeyContentInfo.keyMaterials
+    sSHKeyContentInfo.keyMaterials.foreach{case(keyName: String, keyMaterial: String) => {
+      logger.debug(s" (${keyName}  --> (${keyMaterial}))")
 
-    keyMaterial.foreach{case(key: String, value: String) => {
-      logger.debug(s" (${key}  --> (${value}))")
+
+
     }}
 
-    //TODO: need to add code to write data to file
 
-    val userGraph = user.fromGraph(userId)
+
+    val userGraph = user.fromNeo4jGraph(userId)
 
     val keysList = userGraph.publicKeys
     Some(Page(0, keysList.size, keysList.size, keysList))
@@ -107,7 +108,7 @@ class UserService (implicit val executionContext: ExecutionContext){
   }
 
   def saveUserGroup(userGroup: UserGroup): Future[Option[String]] = Future{
-    userGroup.toGraph(userGroup)
+    userGroup.toNeo4jGraph(userGroup)
     Some("Successfull")
   }
 }

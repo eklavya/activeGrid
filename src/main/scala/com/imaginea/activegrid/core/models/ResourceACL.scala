@@ -20,11 +20,11 @@ object ResourceACL {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ResourceACL"
 
-    override def toGraph(entity: ResourceACL): Option[Node] = {
+    override def toNeo4jGraph(entity: ResourceACL): Option[Node] = {
       None
     }
 
-    override def fromGraph(nodeId: Long): ResourceACL = {
+    override def fromNeo4jGraph(nodeId: Long): ResourceACL = {
       ResourceACL(Some(0L))
     }
   }
