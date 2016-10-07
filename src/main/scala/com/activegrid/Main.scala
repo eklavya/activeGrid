@@ -7,14 +7,17 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.Date
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
+import com.activegrid.model.KeyPairStatus.KeyPairStatus
 import com.activegrid.model._
 import com.activegrid.services.CatalogService
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
+import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
 
 import scala.concurrent.Future
 import scala.util._
@@ -82,14 +85,40 @@ object Main {
       }
     }
 
-    //implicit val ImageFormat = jsonFormat13(ImageInfo)
 
-    implicit val ImageFormat = jsonFormat(ImageInfo, "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-    implicit val PageFormat = jsonFormat4(Page[ImageInfo])
-    implicit val InstanceFlavorFormat = jsonFormat4(InstanceFlavor)
-    implicit val SiteFormat = jsonFormat3(Site)
+    implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id","imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+    implicit val PageImgFormat = jsonFormat4(Page[ImageInfo])
+    implicit val InstanceFlavorFormat = jsonFormat4(InstanceFlavor.apply)
+
+    implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
+
     implicit val listOfTestFormat = jsonFormat2(Test)
     implicit val listOfTestImplicitFormat = jsonFormat(TestImplicit,"id","name","image")
+
+    implicit val storageInfoFormat = jsonFormat3(StorageInfo.apply)
+    implicit val tupleFormat = jsonFormat3(Tuple.apply)
+
+    implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
+      override def write (obj: KeyPairStatus): JsValue = JsString(obj.toString)
+
+      override def read(json: JsValue): KeyPairStatus = json match {
+        case JsString(str) => KeyPairStatus.withName(str)
+        case _ => throw new DeserializationException("Enum string expected")
+      }
+    }
+    implicit val keyPairInfoFormat = jsonFormat8(KeyPairInfo.apply)
+    implicit val sshAccessInfoFormat = jsonFormat4(SSHAccessInfo.apply)
+
+    implicit val portRangeFormat = jsonFormat3(PortRange.apply)
+    implicit val instanceConnectionFormat = jsonFormat4(InstanceConnection.apply)
+
+    implicit val softwareForamt = jsonFormat8(Software.apply)
+    implicit val processInfoFormat = jsonFormat9(ProcessInfo.apply)
+
+    implicit val instanceUserFormat = jsonFormat3(InstanceUser.apply)
+
+    implicit val instanceFormat = jsonFormat18(Instance.apply)
+    implicit val SiteFormat = jsonFormat2(Site.apply)
 
     var catalogService = new CatalogService()
 
@@ -106,54 +135,41 @@ object Main {
                val totalObjects = count
                complete(Page[ImageInfo](startIndex,count,totalObjects,lists))
              }
-             case None => complete("List not found")
+             case None => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List")
            }
         }
       } ~ path("images") {
-        put { entity(as[ImageInfo]) { image =>
-
-        complete(catalogService.buildImage(image))
-          //val cmpl =  image.toGraphOfImageInfo.toGraph(image)
-          //complete("success")
-
+        put {
+          entity(as[ImageInfo]) { image =>
+            val buildImage = catalogService.buildImage(image)
+            onSuccess(buildImage) {
+              case Some(successResponse) => complete(StatusCodes.OK, successResponse)
+              case None => complete(StatusCodes.BadRequest, "Unable to Save Image")
+            }
+          }
         }
-        }
-      } ~ path("images"/LongNumber){ imageId =>
+      } ~ path("images" / LongNumber) { imageId =>
         delete {
-          complete(catalogService.deleteImage(imageId))
+          val deleteImages = catalogService.deleteImage(imageId)
+          onSuccess(deleteImages) {
+            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
+            case None => complete(StatusCodes.BadRequest, "Unable to Delete Image")
+          }
         }
       } ~ path("instanceTypes"/IntNumber){ siteId =>
        get  {
-          complete(catalogService.getInstanceFlavor(siteId))
-        }
-      } ~ path("saveSites"){
-        put{ entity(as[List[Test]]) { test =>
+          val listOfInstanceFlavors = catalogService.getInstanceFlavor(siteId)
+         onSuccess(listOfInstanceFlavors) { lists =>
 
-          val saveTest = catalogService.saveTest(test)
-
-          onSuccess(saveTest) {
-
-            case Some(save) => complete(save)
-            case None => complete("failed")
-          }
-
-        }
-        }
-      } ~ path("getImplicitTest"){
-        get{
-          complete(catalogService.getTest)
-        }
-      } ~path("saveImplicitTest"){
-        put{ entity(as[TestImplicit]){ test =>
-         //val cmpl = test.toGraphOfTestImplicit.toGraph(test)
-          val cmpl = catalogService.saveImplicitTest(test)
-              complete(cmpl)
-        }
+             val startIndex = 0
+             val count = lists.size
+             val totalObjects = count
+             complete(Page[InstanceFlavor](startIndex,count,totalObjects,lists))
+           }
         }
       }
 
     }
-
 
     val route = itemRoute ~ orderRoute ~ catalogRoutes
 
