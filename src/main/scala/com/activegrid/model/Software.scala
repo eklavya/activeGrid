@@ -13,5 +13,5 @@ case class Software(override val id: Option[Long],
                      @JsonInclude(JsonInclude.Include.NON_NULL) provider: String,
                      @JsonInclude(JsonInclude.Include.NON_NULL) downloadURL: String,
                      @JsonInclude(JsonInclude.Include.NON_NULL) port: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) processNames: Array[String],
+                     @JsonInclude(JsonInclude.Include.NON_NULL) processNames: List[String],
                      @JsonInclude(JsonInclude.Include.NON_NULL) discoverApplications: Boolean) extends BaseEntity
