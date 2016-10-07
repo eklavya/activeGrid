@@ -13,30 +13,30 @@ object CatalogImplicits {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "SoftwaresTest"
 
-    override def toGraph(software: Software): Option[Node] = {
+    override def toNeo4jGraph(software: Software): Option[Node] = {
       logger.debug(s"In toGraph for Software: ${software}")
       val map: Map[String, Any] = Map("version" -> software.version,
         "name" -> software.name,
         "provider" -> software.provider,
         "downloadURL" -> software.downloadURL,
         "port" -> software.port,
-        "processNames" -> software.processNames,
+        "processNames" -> software.processNames.toArray,
         "discoverApplications" -> software.discoverApplications)
 
       val softwareNode = GraphDBExecutor.saveEntity[Software](label, map)
       softwareNode
     }
 
-    override def fromGraph(nodeId: Long): Option[Software] = {
+    override def fromNeo4jGraph(nodeId: Long): Option[Software] = {
       val node = GraphDBExecutor.findNodeById(nodeId)
       val map = GraphDBExecutor.getProperties(node, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
-      val software = Software(Some(node.getId),
+      val software = Software(Some(nodeId),
         map.get("version").get.asInstanceOf[String],
         map.get("name").get.asInstanceOf[String],
         map.get("provider").get.asInstanceOf[String],
         map.get("downloadURL").get.asInstanceOf[String],
         map.get("port").get.asInstanceOf[String],
-        map.get("processNames").get.asInstanceOf[Array[String]],
+        map.get("processNames").get.asInstanceOf[Array[String]].toList,
         map.get("discoverApplications").get.asInstanceOf[Boolean])
       Some(software)
     }
@@ -46,7 +46,7 @@ object CatalogImplicits {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImageInfoTest"
 
-    override def toGraph(imageInfo: ImageInfo): Option[Node] = {
+    override def toNeo4jGraph(imageInfo: ImageInfo): Option[Node] = {
       logger.debug(s"In toGraph for Image Info: ${imageInfo}")
       val map: Map[String, Any] = Map("state" -> imageInfo.state,
         "ownerId" -> imageInfo.ownerId,
@@ -66,7 +66,7 @@ object CatalogImplicits {
       imageInfoNode
     }
 
-    override def fromGraph(nodeId: Long): Option[ImageInfo] = {
+    override def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
       val node = GraphDBExecutor.findNodeById(nodeId)
       val map = GraphDBExecutor.getProperties(node, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
       val imageInfo = ImageInfo(Some(node.getId),
@@ -85,4 +85,5 @@ object CatalogImplicits {
       Some(imageInfo)
     }
   }
+
 }

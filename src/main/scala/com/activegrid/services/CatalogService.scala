@@ -12,28 +12,27 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 class CatalogService(implicit val executionContext: ExecutionContext) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  val softwareLabel: String = "SoftwaresTest"
-  val imageLabel: String = "ImageInfoTest"
+  val softwareLabel: String = "Softwares"
+  val imageLabel: String = "Images"
 
   def buildSoftware(software: Software): Future[Option[String]] = Future {
-    software.toGraph(software)
+    software.toNeo4jGraph(software)
     Some("Saved Software Successfully")
   }
 
   def buildImage(image: ImageInfo): Future[Option[String]] = Future {
-    image.toGraph(image)
-    Some("Built ImageInfo Successfully")
+    image.toNeo4jGraph(image)
+    Some("Saved Image Successfully")
   }
 
-  def deleteSoftware(softwareId: Long): Future[Option[String]] = Future {
+  def deleteSoftware(softwareId: Long): Future[Unit] = Future {
     GraphDBExecutor.deleteEntity[Software](softwareId)
-    Some("Deleted Successfully")
   }
 
   def getSoftwares(): Future[Option[Page[Software]]] = Future {
     val nodesList = GraphDBExecutor.getNodesByLabel(softwareLabel)
     val software: Software = null
-    val softwaresList = nodesList.map(node => software.fromGraph(node.getId).get)
+    val softwaresList = nodesList.map(node => software.fromNeo4jGraph(node.getId).get)
 
     Some(Page[Software](0, softwaresList.size, softwaresList.size, softwaresList))
   }
@@ -41,7 +40,7 @@ class CatalogService(implicit val executionContext: ExecutionContext) {
   def getImages(): Future[Option[Page[ImageInfo]]] = Future {
     val nodesList = GraphDBExecutor.getNodesByLabel(imageLabel)
     val imageInfo: ImageInfo = null
-    val imageInfoList = nodesList.map(node => imageInfo.fromGraph(node.getId).get)
+    val imageInfoList = nodesList.map(node => imageInfo.fromNeo4jGraph(node.getId).get)
 
     Some(Page[ImageInfo](0, imageInfoList.size, imageInfoList.size, imageInfoList))
   }

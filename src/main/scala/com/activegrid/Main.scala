@@ -3,11 +3,11 @@ package com.activegrid
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import com.activegrid.model.{ImageInfo, Page, Software}
 import com.activegrid.services.CatalogService
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -19,7 +19,6 @@ object Main {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
-  implicit val config = ConfigFactory.load
 
   def main(args: Array[String]) {
     implicit val softwareFormat = jsonFormat8(Software)
@@ -31,31 +30,56 @@ object Main {
     val catalogRoutes = pathPrefix("catalog") {
       path("images" / "view") {
         get {
-          complete(catalogService.getImages)
+          val getImages = catalogService.getImages
+          onSuccess(getImages) {
+            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
+            case None => complete(StatusCodes.BadRequest, "Unable to Retrieve Images")
+          }
         }
       } ~ path("images") {
         put {
           entity(as[ImageInfo]) { image =>
-            complete(catalogService.buildImage(image))
+            val buildImage = catalogService.buildImage(image)
+            onSuccess(buildImage) {
+              case Some(successResponse) => complete(StatusCodes.OK, successResponse)
+              case None => complete(StatusCodes.BadRequest, "Unable to Save Image")
+            }
           }
         }
       } ~ path("images" / LongNumber) { imageId =>
         delete {
+          val deleteImages = catalogService.deleteImage(imageId)
+          onSuccess(deleteImages) {
+            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
+            case None => complete(StatusCodes.BadRequest, "Unable to Delete Image")
+          }
           complete(catalogService.deleteImage(imageId))
         }
       } ~ path("softwares") {
         put {
           entity(as[Software]) { software =>
-            complete(catalogService.buildSoftware(software))
+            val buildSoftware = catalogService.buildSoftware(software)
+            onSuccess(buildSoftware) {
+              case Some(a) => complete(StatusCodes.OK, a)
+              case None => complete(StatusCodes.BadRequest, "Unable to Save Software")
+            }
           }
         }
       } ~ path("softwares" / LongNumber) { softwareid =>
         delete {
-          complete(catalogService.deleteSoftware(softwareid))
+          val deleteSoftware = catalogService.deleteImage(softwareid)
+          onSuccess(deleteSoftware) {
+            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
+            case None => complete(StatusCodes.BadRequest, "Unable to Delete Software")
+          }
         }
       } ~ path("softwares") {
         get {
-          complete(catalogService.getSoftwares)
+          val getSoftwares = catalogService.getSoftwares
+          onSuccess(getSoftwares) {
+            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
+            case None => complete(StatusCodes.BadRequest, "Unable to Retrieve Softwares")
+          }
         }
       }
     }
