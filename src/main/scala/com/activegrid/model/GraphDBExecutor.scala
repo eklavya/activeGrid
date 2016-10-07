@@ -7,43 +7,18 @@ import org.neo4j.graphdb.{Direction, DynamicRelationshipType, Node}
 import scala.collection.JavaConversions._
 
 
+
 /**
   * Created by shareefn on 23/9/16.
   */
 object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider{
 
+  val VID : String = "id"
+
   def neo4jStoreDir = "./graphdb/activegrid/test"
 
-  def createGraphNode[T <:BaseEntity: Manifest](entity: T, label:String): Option[Node] =
-    withTx { neo =>
 
-
-      val node = createNode(entity, label)(neo)
-
-      println(s" new node ${node.getLabels}, id ${node.getId}")
-      println(s" imageId ${node.getProperty("imageId")}")
-
-      Some(node)
-    }
-
-
-  def persistEntity[T <: BaseEntity: Manifest](entity: T, label: String): Option[T] = {
-
-    withTx { neo =>
-
-      //val node = createNode(entity)(neo)
-
-      val node = createNode(entity, label)(neo)
-
-
-      println(s" new node ${node.getLabels}, id ${node.getId}")
-      println(s" imageId ${node.getProperty("imageId")}")
-    }
-
-    return Some(entity)
-  }
-
-  def createEmptyGraphNode[T <:BaseEntity: Manifest](label:String, map: Map[String, Any]): Option[Node] =
+  def createGraphNodeWithPrimitives[T <:BaseEntity: Manifest](label:String, map: Map[String, Any]): Option[Node] =
 
     withTx { neo =>
 
@@ -53,9 +28,8 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       map.foreach { case (k, v) => node.setProperty(k, v) }
 
       println(s" new node ${node.getLabels}, id ${node.getId}")
-      println(s" Id ${node.getProperty("id")}")
-      println(s" Name ${node.getProperty("name")}")
 
+      node.setProperty(VID,node.getId)
       Some(node)
     }
 
@@ -74,11 +48,8 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     withTx { neo =>
 
       val node = getNodeById(nodeId)(neo)
-      //val mapOfPrimitives :Map[String,AnyRef]  = node.getAllProperties.asInstanceOf[Map[String,AnyRef]]
-      //val keys = node.getPropertyKeys
 
         listOfKeys.map(key=> (key,node.getProperty(key).asInstanceOf[Any])).toMap[String,Any]
-
 
     }
 
@@ -100,7 +71,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
     val node = getNodeById(parentNode)(neo)
 
-    node.getSingleRelationship("HAS_image",Direction.OUTGOING).getEndNode.getId
+    node.getSingleRelationship(relation,Direction.OUTGOING).getEndNode.getId
 
   }
   }
@@ -111,30 +82,10 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
       val node = getNodeById(parentNode)(neo)
 
-      node.getRelationships("HAS_image",Direction.OUTGOING).map(rel=> rel.getEndNode.getId).toList
+      node.getRelationships(relation,Direction.OUTGOING).map(rel=> rel.getEndNode.getId).toList
 
     }
   }
-
-
-
-  def getEntities[T:Manifest](label: String): Option[List[T]] = {
-
-    withTx {  neo =>
-
-      println(getAllNodes(neo) )
-      val relations = getAllNodesWithLabel(label)(neo).foreach(a=> a.getRelationships)
-
-      println(s"relations ${relations}")
-
-      val nodes = getAllNodesWithLabel(label)(neo)
-
-      Some(nodes.map(_.toCC[T].get).toList)
-
-    }
-  }
-
-
 
   def deleteEntity[T<:BaseEntity: Manifest](imageId: Long): Unit = {
 
@@ -147,118 +98,12 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     }
   }
 
+  def getNodesByLabel(label: String): List[Node] = withTx { neo =>
 
-
-  def getEntity[T<:BaseEntity :Manifest](id: Long): Option[T] = {
-
-    withTx{ neo =>
-
-      val node = getNodeById(id)(neo)
-
-      node.toCC[T]
-
-    }
+    getAllNodesWithLabel(label)(neo).toList
 
   }
 
-  def persistEntityTest(entity: Site, label: String): Option[Site] = {
-
-    withTx { neo =>
-
-
-      /*   val obj : Object = List("1","2").asInstanceOf[Object]
-
-         if(obj.isInstanceOf[Object]) println("obj is instance of Object")*/
-
-
-      val node = createNode("Site")(neo)
-
-      println(entity.instances)
-
-
-
-      val fieldsInSite = entity.getClass.getDeclaredFields()
-      fieldsInSite.foreach(println)
-
-      val ClassOfList = classOf[List[String]]
-      val ClassOfInt = classOf[Int]
-      val ClassOfString = classOf[String]
-
-      fieldsInSite.foreach(field => {
-
-
-        println("-->" + field.getName + "<---" + field.getType)
-
-        field.setAccessible(true)
-
-        field.getType match {
-          case ClassOfList => {
-
-
-            // val listToArray  = entity.instances.toArray
-
-            val list2Array  = field.get(entity).asInstanceOf[scala.collection.immutable.List[String]].toArray
-
-            node.setProperty(field.getName,list2Array)
-
-          }
-          case ClassOfInt  =>{
-
-            node.setProperty(field.getName,field.get(entity).asInstanceOf[Int])
-
-          }
-
-          case ClassOfString => {
-
-            node.setProperty(field.getName,field.get(entity).asInstanceOf[String])
-          }
-        }
-
-
-      })
-
-
-      val m1 = node.getProperties("instances")
-      m1 foreach {case (key, value) => {
-
-        println (key + "-->" + value.asInstanceOf[Array[String]](0) + "  " + value.asInstanceOf[Array[String]](1))
-      }
-      }
-      println(node.getProperties("d_id"))
-      println(node.getProperties("d_name"))
-
-
-      println(s" new node ${node.getLabels}, id ${node.getId}")
-      //println(s" imageId ${node.getProperty("imageId")}")
-    }
-
-    return Some(entity)
-  }
-
-  def persistEntityTest[T](entity: List[T], label: String)(implicit x: Neo4jRep[T]): Option[List[T]] = {
-
-//entity.map(test=> x.toGraph(test))
-
-Some(entity)
-  }
-
-
-  def getTest(label: String) : Option[String] = {
-
-    withTx {  neo =>
-
-      val nodes = getAllNodesWithLabel(label)(neo)
-
-      nodes.foreach{ node =>
-
-        println("node properties" + node.getProperties("id","name","set_property_test"))
-        println("node rel" + node.getRelationshipTypes)
-        println(node.getSingleRelationship("HAS_image",Direction.OUTGOING))
-
-      }
-    }
-    Some("success")
-  }
 
 
 }
