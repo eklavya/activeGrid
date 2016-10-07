@@ -14,7 +14,5 @@ object  Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher;
 
-  val binding = {
-    Http().bindAndHandle(handler = EndpointsAggregator.endPoints, interface = "localhost", port = 5000)
-  };
+  Http().bindAndHandle(handler = EndpointsAggregator.endPoints, interface = "localhost", port = 5000)
 }
