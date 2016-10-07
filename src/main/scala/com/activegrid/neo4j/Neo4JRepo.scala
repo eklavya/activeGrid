@@ -1,4 +1,4 @@
-package com.activegrid.Neo4j
+package com.activegrid.neo4j
 
 import com.activegrid.entities.BaseEntity
 
@@ -8,6 +8,7 @@ import com.activegrid.entities.BaseEntity
 trait Neo4JRepo[T <: BaseEntity] {
 
   def toGraph(entity: T): Unit
-  def fromGraph(nodeId: Long) : T
+
+  def fromGraph(nodeId: Long): T
 
 }
