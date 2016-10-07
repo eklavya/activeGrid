@@ -16,21 +16,19 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 
     val label: String = "ImageInfo"
 
-    GraphDBExecutor.getEntities[ImageInfo](label)
+    val nodesList = GraphDBExecutor.getNodesByLabel(label)
+    val imageInfo: ImageInfo = null
+    val imageInfoList = nodesList.map(node => imageInfo.fromNeo4jGraph(node.getId).get)
 
+    Some(imageInfoList)
   }
 
-  def buildImage(image:ImageInfo):Future[Option[ImageInfo]] = Future {
+  def buildImage(image:ImageInfo):Future[Option[String]] = Future {
 
-    /*val label : String = "ImageInfo"
 
-  GraphDBExecutor.persistEntity[ImageInfo](image, label)*/
+    image.toNeo4jGraph(image)
 
-    import Implicits._
-
-    image.toGraph(image)
-
-    Some(image)
+    Some("Built ImageInfo Successfully")
 
   }
 
@@ -39,52 +37,24 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 
     GraphDBExecutor.deleteEntity[ImageInfo](imageId)
 
-    Some("true")
+    Some("Deleted successfully")
 
   }
 
-  def getInstanceFlavor(siteId: Long): Future[Option[List[InstanceFlavor]]] = Future {
+  def getInstanceFlavor(siteId: Long): Future[List[InstanceFlavor]] = Future {
 
+    val s : Site  = null
 
-    val site: Option[Site]  = GraphDBExecutor.getEntity[Site](siteId)
+    val site: Option[Site]  = s.fromNeo4jGraph(siteId)
 
     site match {
 
       case Some(a) => {
         val listOfInstances = a.instances
-        Some(listOfInstances.map(instance => InstanceFlavor("CloudInstance", 100,100.10,200.10)))
+        listOfInstances.map(instance => InstanceFlavor(instance.instanceType, None, instance.memoryInfo.total,instance.rootDiskInfo.total))
       }
+      case None => List()
     }
   }
-
-  def saveTest(site:List[Test]):Future[Option[List[Test]]] = Future {
-
-    val label : String = "Test"
-
-    //GraphDBExecutor.persistEntityTest(site, label)
-Some(site)
-  }
-
-
-  def saveImplicitTest(entity: TestImplicit): Future[Option[String]] = Future{
-
-    import Implicits._
-
-    entity.toGraph(entity)
-
-    Some("success")
-  }
-
-  def getTest(): Future[Option[TestImplicit]] = Future {
-    val label: String = "TestImplicit"
-
-  //  val success = GraphDBExecutor.getTest(label)
-    import Implicits._
-    val testImplicit: TestImplicit = null
-
-    testImplicit.fromGraph(14)
-
-  }
-
 
 }

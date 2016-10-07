@@ -1,57 +1,61 @@
 package com.activegrid.model
 
 
-import akka.http.scaladsl.model.headers.Date
+import java.util.Date
+
+import com.activegrid.model.Graph.Neo4jRep
 import com.activegrid.model.KeyPairStatus.KeyPairStatus
+import org.neo4j.graphdb.Node
 
 
 /**
   * Created by shareefn on 27/9/16.
   */
 
-case class Site(instances: List[Instance]) extends BaseEntity
-
-case class Instance(instanceId: String,
-                    name: String,
-                    state: String,
-                    platform: String,
-                    architecture: String,
-                    publicDnsName: String,
-                    launchTime: Date,
-                    memoryInfo: StorageInfo,
-                    rootDiskInfo: StorageInfo,
-                    tags: List[Tuple],
-                    sshAccessInfo: SSHAccessInfo,
-                    liveConnections: List[InstanceConnection],
-                    estimatedConnections: List[InstanceConnection],
-                    processes: Set[ProcessInfo],
-                    image: ImageInfo,
-                    existingUsers: List[InstanceUser]
-                   ) extends BaseEntity
-
-case class StorageInfo(used: Double, total: Double) extends BaseEntity
-
-case class Tuple(key: String, value: String)  extends BaseEntity
-
-case class SSHAccessInfo(keyPair : KeyPairInfo, userName: String, port: Int)  extends BaseEntity
-
-case class InstanceConnection(sourceNodeId: String, targetNodeId: String, portRanges: List[PortRange])  extends BaseEntity
-
-case class ProcessInfo(pid: Int, parentPid: Int, name: String, command: String, owner: String, residentBytes: Long, software: Software, softwareVersion: String)  extends BaseEntity
-
-case class InstanceUser(userName: String, publicKeys: List[String])  extends BaseEntity
+case class Site(override val id: Option[Long],instances: List[Instance]) extends BaseEntity
 
 
-case class PortRange(fromPort: Int, toPort: Int)  extends BaseEntity
+object Site{
+  implicit class SiteImpl(site: Site) extends Neo4jRep[Site]{
 
-case class Software(version: String, name: String, provider: String, downloadURL: String, port: String, processNames: List[String],discoverApplications: Boolean)  extends BaseEntity
+    override def toNeo4jGraph(entity: Site): Option[Node] = {
 
-case class KeyPairInfo(keyName: String,keyFingerprint: String,keyMaterial: String, filePath:String, status: KeyPairStatus, defaultUser: String, passPhrase: String )  extends BaseEntity
+      val label : String = "Site"
 
-object KeyPairStatus extends Enumeration{
-  type KeyPairStatus = Value
-  val UPLOADED, NOT_YET_UPLOADED, INCORRECT_UPLOAD = Value
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[Site](label,Map.empty)
+      val relationship = "HAS_site"
+
+
+      entity.instances.foreach{instance =>
+
+        val instanceNode = instance.toNeo4jGraph(instance)
+        GraphDBExecutor.setGraphRelationship(node,instanceNode,relationship)
+
+      }
+
+      node
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[Site] = {
+
+      val relationship = "HAS_site"
+      val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId,relationship)
+
+      val instances: List[Instance] = childNodeIds.map{ childId =>
+        val instance:Instance = null
+        instance.fromNeo4jGraph(childId).get
+      }
+      Some(Site(Some(nodeId),instances))
+    }
+
+
+  }
 }
+
+
+
+
+
 
 
 /*
