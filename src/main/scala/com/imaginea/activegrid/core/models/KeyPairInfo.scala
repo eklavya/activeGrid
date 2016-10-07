@@ -1,24 +1,22 @@
 package com.imaginea.activegrid.core.models
 
-import com.fasterxml.jackson.annotation.JsonInclude
 import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by babjik on 26/9/16.
-  */
+ * Created by babjik on 26/9/16.
+ */
 case class KeyPairInfo(id: Option[Long]
-                      , keyName: String
-                      , keyFingerprint: String
-                      , keyMaterial: String
-                      , filePath: String
-                      , status: KeyPairStatus
-                      , defaultUser: String
-                      , passPhrase: String
-                      ) extends BaseEntity
-
+                       , keyName: String
+                       , keyFingerprint: String
+                       , keyMaterial: String
+                       , filePath: String
+                       , status: KeyPairStatus
+                       , defaultUser: String
+                       , passPhrase: String
+                        ) extends BaseEntity
 
 
 object KeyPairInfo {
@@ -49,7 +47,7 @@ object KeyPairInfo {
       val node = Neo4jRepository.findNodeById(nodeId).get
       val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
 
-      val keyPairInfo = KeyPairInfo (
+      val keyPairInfo = KeyPairInfo(
         Some(node.getId),
         map.get("keyName").get.asInstanceOf[String],
         map.get("keyFingerprint").get.asInstanceOf[String],

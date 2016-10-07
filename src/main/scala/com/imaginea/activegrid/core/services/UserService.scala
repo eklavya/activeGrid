@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * Created by babjik on 27/9/16.
-  */
-class UserService (implicit val executionContext: ExecutionContext){
+ * Created by babjik on 27/9/16.
+ */
+class UserService(implicit val executionContext: ExecutionContext) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   val label = "User"
@@ -20,7 +20,7 @@ class UserService (implicit val executionContext: ExecutionContext){
   def getUsers: Future[Option[Page[User]]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
 
-    val listOfUsers: List[User] = nodeList.map(node => user.fromGraph(node.getId))
+    val listOfUsers: List[User] = nodeList.map(node => user.fromGraph(node.getId)).flatten
 
     Some(Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers))
   }
@@ -41,11 +41,18 @@ class UserService (implicit val executionContext: ExecutionContext){
     import com.imaginea.activegrid.core.models.UserGroup.RichUserGroup
 
     val nodeList = Neo4jRepository.getNodesByLabel(UserGroupProtocol.labelUserGroup)
-    val userGroup : UserGroup = null;
-    val listOfUserGroups : List[Option[UserGroup]] = nodeList.map(node => userGroup.fromGraph(node.getId))
+    val userGroup: UserGroup = null;
+    val listOfUserGroups: List[UserGroup] =
+      nodeList.map {
+        node =>
+          val a = userGroup.fromGraph(node.getId)
+          println("Mapping = " + a)
+          a
+      }.flatten
 
-    Page[UserGroup](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups.map(_.get))
+    Page[UserGroup](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups)
   }
+
   def getUserGroup(id: Long): Future[Option[UserGroup]] = Future {
     import com.imaginea.activegrid.core.models.UserGroup.RichUserGroup
 
@@ -56,12 +63,12 @@ class UserService (implicit val executionContext: ExecutionContext){
   }
 
   def getUser(userId: Long): Future[Option[User]] = Future {
-    Some(user.fromGraph(userId))
+    user.fromGraph(userId)
   }
 
-  def getKeys(userId: Long): Future[Option[Page[KeyPairInfo]]] = Future {
-    val keysList = user.fromGraph(userId).publicKeys
-    Some(Page(0, keysList.size, keysList.size, keysList))
+  def getKeys(userId: Long): Future[Page[KeyPairInfo]] = Future {
+    val keysList = user.fromGraph(userId).map(_.publicKeys).getOrElse(List.empty)
+    Page(0, keysList.size, keysList.size, keysList)
   }
 
 
@@ -73,29 +80,19 @@ class UserService (implicit val executionContext: ExecutionContext){
 
     maybeNode match {
       case None => {
-        Some(Page(0,0,0, List()))
+        Some(Page(0, 0, 0, List()))
       }
       case Some(node) => {
-        val keysList = user.fromGraph(node.getId).publicKeys
+        val keysList = user.fromGraph(node.getId).map(_.publicKeys).getOrElse(List.empty)
         Some(Page(0, keysList.size, keysList.size, keysList))
       }
     }
 
   }
 
-  def getKeyById (userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    val keysList: List[KeyPairInfo] = user.fromGraph(userId).publicKeys
-
-    keysList match {
-    case keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-    case _::keyInfo::_ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-    case _ => None
-  }
-  }
-  def getKey (userId: Long, keyId: Long): Future[Option[KeyPairInfo]] = Future {
+  def getKey(userId: Long, keyId: Long): Future[Option[KeyPairInfo]] = Future {
     getKeyById(userId, keyId)
   }
-
 
   def deleteKey(userId: Long, keyId: Long): Future[Option[String]] = Future {
     logger.debug(s"Deleting Key[${keyId}] of User[${userId}] ")
@@ -104,20 +101,28 @@ class UserService (implicit val executionContext: ExecutionContext){
     Some(s"Deleted key with id ${keyId}")
   }
 
+  def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
+    val keysList: List[KeyPairInfo] = user.fromGraph(userId).map(_.publicKeys).getOrElse(List.empty)
+
+    keysList match {
+      case keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
+      case _ :: keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
+      case _ => None
+    }
+  }
 
   def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Option[Page[KeyPairInfo]]] = Future {
 
     val keyMaterial = sSHKeyContentInfo.keyMaterials
 
-    keyMaterial.foreach{case(key: String, value: String) => {
+    keyMaterial.foreach { case (key: String, value: String) => {
       logger.debug(s" (${key}  --> (${value}))")
-    }}
+    }
+    }
 
     //TODO: need to add code to write data to file
 
-    val userGraph = user.fromGraph(userId)
-
-    val keysList = userGraph.publicKeys
+    val keysList = user.fromGraph(userId).map(_.publicKeys).getOrElse(List.empty)
     Some(Page(0, keysList.size, keysList.size, keysList))
   }
 

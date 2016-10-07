@@ -6,13 +6,12 @@ import org.slf4j.LoggerFactory
 
 
 /**
-  * Created by babjik on 5/10/16.
-  */
+ * Created by babjik on 5/10/16.
+ */
 case class UserGroup(id: Option[Long]
-                    , name: String
-                    , users: Option[Set[User]]
-                    , accesses: Option[Set[ResourceACL]]) extends BaseEntity
-
+                     , name: String
+                     , users: Option[Set[User]]
+                     , accesses: Option[Set[ResourceACL]]) extends BaseEntity
 
 case class UserGroupProxy(name: String) extends BaseEntity
 
@@ -21,56 +20,62 @@ object UserGroupProtocol {
 }
 
 sealed trait ResponseMessage
-case class SuccessResponse(id:String) extends ResponseMessage
+
+case class SuccessResponse(id: String) extends ResponseMessage
+
 object FailureResponse extends ResponseMessage
 
 object UserGroup {
 
   implicit class RichUserGroup(userGroup: UserGroup) extends Neo4jRep2[UserGroup] {
-    import Implicits._
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
     val has_users = "HAS_users"
     val has_resourceAccess = "HAS_resourceAccess"
 
-    implicit def toUserGroupProxy(userGroup: UserGroup) : UserGroupProxy =
+    implicit def toUserGroupProxy(userGroup: UserGroup): UserGroupProxy =
       UserGroupProxy(userGroup.name)
 
     override def toGraph(userGroup: UserGroup): Option[Node] = {
-      logger.debug(s"toGraph for UserGroup ${userGroup}")
+      logger.debug(s"UserGroup toGraph ${userGroup}")
 
       val userGroupNode = Neo4jRepository.saveEntity[UserGroupProxy](userGroup,UserGroupProtocol.labelUserGroup)
-      logger.debug(s"UserGroup Node fetched from db - ${userGroupNode.get}")
+      logger.debug(s"UserGroupProxy Node saved into db - ${userGroupNode.get}")
 
       //val map: Map[String, Any] = Map("name" -> userGroup.name)
       //val node = Neo4jRepository.saveEntity[KeyPairInfo](ResourceACLProtocol.label, userGroup.id, map)
 
-      for(user <- userGroup.users){
+      for (user <- userGroup.users) {
+        logger.debug(s"UserGroupProxy has relation with Users $user")
         user.foreach(user => {
           val userNode = user.toGraph(user)
           Neo4jRepository.createRelation(has_users, userGroupNode.get, userNode.get)
         })
       }
 
-      for( access <- userGroup.accesses){
+      for (access <- userGroup.accesses) {
+        logger.debug(s"UserGroupProxy has relation with ResourceACL $access")
         access.foreach(resource => {
-          val resourceNode : Option[Node] = resource.toGraph(resource)
+          val resourceNode: Option[Node] = resource.toGraph(resource)
           Neo4jRepository.createRelation(has_resourceAccess, userGroupNode.get, resourceNode.get)
         })
       }
       userGroupNode
     }
-    override def fromGraph(nodeId: Long): Option[UserGroup] = {
-      val node = Neo4jRepository.fetchNodeById(nodeId)
-      node.fold(ex => None, node => {
-        val userProxy: Option[UserGroupProxy] = Neo4jRepository.getEntity[UserGroupProxy](nodeId)
-        val userNodes = Neo4jRepository.getNodesWithRelation(node, has_users)
 
-        val users = userNodes.map(child => {
+    override def fromGraph(nodeId: Long): Option[UserGroup] = {
+      val nodeOption = Neo4jRepository.fetchNodeById[UserGroupProxy](nodeId)
+
+      nodeOption.fold(ex => None, result => {
+        val (node, userProxy) = result
+        logger.debug(s" UserGroupProxy ${userProxy}")
+
+        val userNodes = Neo4jRepository.getNodesWithRelation(node, has_users)
+        val users: Set[User] = userNodes.map(child => {
           logger.debug(s" UserGroup -> User node ${child}")
           val user: User = null
           user.fromGraph(child.getId)
-        }).toSet
+        }).flatten.toSet
 
         val accessNodes = Neo4jRepository.getNodesWithRelation(node, has_resourceAccess)
         val resources = accessNodes.map(child => {
@@ -79,7 +84,7 @@ object UserGroup {
           resource.fromGraph(child.getId).get
         }).toSet
 
-        val user = userProxy.map( obj => {
+        val user = userProxy.map(obj => {
           UserGroup(
             id = Some(node.getId),
             name = obj.name,

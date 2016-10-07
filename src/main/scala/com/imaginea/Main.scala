@@ -1,17 +1,15 @@
 package com.imaginea
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.KeyPairStatus.{KeyPairStatus, _}
+import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 import com.imaginea.activegrid.core.models._
-import com.imaginea.activegrid.core.services.{CatalogService, UserService}
-import com.imaginea.activegrid.core.utils.Constants
+import com.imaginea.activegrid.core.services.UserService
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
@@ -49,7 +47,7 @@ object Main extends App {
   implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
 
 
-  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId",  "publicKeys",  "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
   implicit val PageUsersFormat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
 
   implicit val ResourceACLFormat = jsonFormat3(ResourceACL.apply)
@@ -128,21 +126,21 @@ object Main extends App {
             entity(as[UserGroup]) { userGroup =>
               onSuccess(userService.saveUserGroup(userGroup)) {
                 case FailureResponse => complete(StatusCodes.BadRequest, None)
-                case a : SuccessResponse => complete(StatusCodes.OK, a)
+                case a: SuccessResponse => complete(StatusCodes.OK, a)
               }
             }
           }
       } ~ get {
-        pathPrefix(Segment / "keys") { userName =>
-          complete(userService.getKeys(userName))
-        }
-      } ~ get {
-        complete(userService.getUsers)
-      } ~ post {
-        entity(as[User]) { user =>
-          complete(userService.saveUser(user))
-        }
+      pathPrefix(Segment / "keys") { userName =>
+        complete(userService.getKeys(userName))
       }
+    } ~ get {
+      complete(userService.getUsers)
+    } ~ post {
+      entity(as[User]) { user =>
+        complete(userService.saveUser(user))
+      }
+    }
   }
 
   val route: Route = userRoute

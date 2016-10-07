@@ -5,9 +5,9 @@ import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by babjik on 26/9/16.
-  */
-case class User (id: Option[Long]
+ * Created by babjik on 26/9/16.
+ */
+case class User(id: Option[Long]
                 , username: String
                 , password: String
                 , email: String
@@ -20,25 +20,41 @@ case class User (id: Option[Long]
                 , displayName: String)
   extends BaseEntity
 
+case class UserProxy(
+                      username: String
+                      , password: String
+                      , email: String
+                      , uniqueId: String
+                      , accountNonExpired: Boolean
+                      , accountNonLocked: Boolean
+                      , credentialsNonExpired: Boolean
+                      , enabled: Boolean
+                      , displayName: String)
+  extends BaseEntity
 
 object User {
-  implicit class RichUser(user: User) extends Neo4jRep[User] {
+
+  implicit class RichUser(user: User) extends Neo4jRep2[User] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "User"
 
+    implicit def toUserProxy(user: User) =
+      new UserProxy(
+        user.username,
+        user.password,
+        user.email,
+        user.uniqueId,
+        user.accountNonExpired,
+        user.accountNonLocked,
+        user.credentialsNonExpired,
+        user.enabled,
+        user.displayName
+      )
+
     override def toGraph(entity: User): Option[Node] = {
       logger.debug(s"toGraph for Image ${entity}")
-      val map: Map[String, Any] = Map("username" -> entity.username,
-        "password" -> entity.username,
-        "email" -> entity.email,
-        "uniqueId" -> entity.uniqueId,
-        "accountNonExpired" -> entity.accountNonExpired,
-        "accountNonLocked" -> entity.accountNonLocked,
-        "credentialsNonExpired" -> entity.credentialsNonExpired,
-        "enabled" -> entity.enabled,
-        "displayName" -> entity.displayName)
 
-      val node = Neo4jRepository.saveEntity[User](label, entity.id, map)
+      val node = Neo4jRepository.saveEntity[UserProxy](entity,label)
       logger.debug(s"node - ${node.get}")
 
       //publicKeys: List[KeyPairInfo]
@@ -47,31 +63,38 @@ object User {
       node
     }
 
-    override def fromGraph(nodeId: Long): User = {
-      val node = Neo4jRepository.findNodeById(nodeId).get
-      val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+    override def fromGraph(nodeId: Long): Option[User] = {
+      val nodeOption = Neo4jRepository.fetchNodeById[UserProxy](nodeId)
+      nodeOption.fold(ex => None,
+        result => {
+          //val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+          val (node, entity) = result
+          val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserOperations.has_publicKeys)
+          val keyPairInfo: KeyPairInfo = null
 
-      val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserOperations.has_publicKeys)
-      val keyPairInfo: KeyPairInfo = null
+          val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
+            keyPairInfo.fromGraph(keyPairNode.getId)
+          })
 
-      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {keyPairInfo.fromGraph(keyPairNode.getId)})
-
-      val user = User(Some(node.getId),
-        map.get("username").get.asInstanceOf[String],
-        map.get("password").get.asInstanceOf[String],
-        map.get("email").get.asInstanceOf[String],
-        map.get("uniqueId").get.asInstanceOf[String],
-        keyPairInfos,
-        map.get("accountNonExpired").get.asInstanceOf[Boolean],
-        map.get("accountNonLocked").get.asInstanceOf[Boolean],
-        map.get("credentialsNonExpired").get.asInstanceOf[Boolean],
-        map.get("enabled").get.asInstanceOf[Boolean],
-        map.get("displayName").get.asInstanceOf[String])
-
-      logger.debug(s"user - ${user}")
-      user
+          val user = entity.map(userProxy => {
+            new User(Some(node.getId),
+              userProxy.username,
+              userProxy.password,
+              userProxy.email,
+              userProxy.uniqueId,
+              keyPairInfos,
+              userProxy.accountNonExpired,
+              userProxy.accountNonLocked,
+              userProxy.credentialsNonExpired,
+              userProxy.enabled,
+              userProxy.displayName)
+          })
+          logger.debug(s"User - ${user}")
+          user
+        })
     }
   }
+
 }
 
 object UserOperations {
