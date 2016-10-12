@@ -25,5 +25,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-spray-json-experimental" % "2.4.10",
   "com.typesafe.akka" %% "akka-http-xml-experimental" % "2.4.10",
   "ch.qos.logback" %  "logback-classic" % "1.1.7",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0"
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
+   "org.neo4j.driver" % "neo4j-java-driver" % "1.0.4",
+  "eu.fakod" % "neo4j-scala_2.11" %  "0.3.3"
+
 )
+
+

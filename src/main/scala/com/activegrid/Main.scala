@@ -2,18 +2,25 @@ package com.activegrid
 
 import akka.Done
 import akka.actor.ActorSystem
+import akka.actor.Status.Success
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.Date
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
+import com.activegrid.model.KeyPairStatus.KeyPairStatus
+import com.activegrid.model._
+import com.activegrid.services.CatalogService
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
+import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
 
 import scala.concurrent.Future
-
+import scala.util._
 
 object Main {
 
@@ -79,7 +86,96 @@ object Main {
     }
 
 
-    val route = itemRoute ~ orderRoute
+    implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id","imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+    implicit val PageImgFormat = jsonFormat4(Page[ImageInfo])
+    implicit val InstanceFlavorFormat = jsonFormat4(InstanceFlavor.apply)
+
+    implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
+
+    implicit val listOfTestFormat = jsonFormat2(Test)
+    implicit val listOfTestImplicitFormat = jsonFormat(TestImplicit,"id","name","image")
+
+    implicit val storageInfoFormat = jsonFormat3(StorageInfo.apply)
+    implicit val tupleFormat = jsonFormat3(Tuple.apply)
+
+    implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
+      override def write (obj: KeyPairStatus): JsValue = JsString(obj.toString)
+
+      override def read(json: JsValue): KeyPairStatus = json match {
+        case JsString(str) => KeyPairStatus.withName(str)
+        case _ => throw new DeserializationException("Enum string expected")
+      }
+    }
+    implicit val keyPairInfoFormat = jsonFormat8(KeyPairInfo.apply)
+    implicit val sshAccessInfoFormat = jsonFormat4(SSHAccessInfo.apply)
+
+    implicit val portRangeFormat = jsonFormat3(PortRange.apply)
+    implicit val instanceConnectionFormat = jsonFormat4(InstanceConnection.apply)
+
+    implicit val softwareForamt = jsonFormat8(Software.apply)
+    implicit val processInfoFormat = jsonFormat9(ProcessInfo.apply)
+
+    implicit val instanceUserFormat = jsonFormat3(InstanceUser.apply)
+
+    implicit val instanceFormat = jsonFormat18(Instance.apply)
+    implicit val SiteFormat = jsonFormat2(Site.apply)
+
+    var catalogService = new CatalogService()
+
+    val catalogRoutes  = pathPrefix("catalog") {
+
+      path("images"/"view") {
+        get {
+          val listOfImages : Future[List[ImageInfo]] = catalogService.getImages()
+
+          onComplete(listOfImages) {
+             case util.Success(lists) => {
+               val startIndex = 0
+               val count = lists.size
+               val totalObjects = count
+               complete(Page[ImageInfo](startIndex,count,totalObjects,lists))
+             }
+             case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List; Failed with " + ex)
+           }
+        }
+      } ~ path("images") {
+        put {
+          entity(as[ImageInfo]) { image =>
+            val buildImage = catalogService.buildImage(image)
+            onComplete(buildImage) {
+              case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Save Image; Failed with" + ex )
+            }
+          }
+        }
+      } ~ path("images" / LongNumber) { imageId =>
+        delete {
+          val deleteImages = catalogService.deleteImage(imageId)
+          onComplete(deleteImages) {
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Delete Image; Failed with" + ex )
+          }
+
+        }
+      } ~ path("instanceTypes"/IntNumber) { siteId =>
+        get {
+          val listOfInstanceFlavors = catalogService.getInstanceFlavor(siteId)
+          onComplete(listOfInstanceFlavors) {
+            case util.Success(lists) => {
+
+              val startIndex = 0
+              val count = lists.size
+              val totalObjects = count
+              complete(Page[InstanceFlavor](startIndex, count, totalObjects, lists))
+            }
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to get List; Failed with" + ex)
+          }
+        }
+      }
+
+    }
+
+    val route = itemRoute ~ orderRoute ~ catalogRoutes
 
     val bindingFuture = Http().bindAndHandle(route, "localhost", 9000)
     logger.info(s"Server online at http://localhost:9000")
