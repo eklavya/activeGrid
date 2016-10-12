@@ -12,7 +12,7 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 
 
 
-  def getImages(): Future[Option[List[ImageInfo]]] = Future {
+  def getImages(): Future[List[ImageInfo]] = Future {
 
     val label: String = "ImageInfo"
 
@@ -20,24 +20,24 @@ class CatalogService(implicit val executionContext: ExecutionContext){
     val imageInfo: ImageInfo = null
     val imageInfoList = nodesList.map(node => imageInfo.fromNeo4jGraph(node.getId).get)
 
-    Some(imageInfoList)
+    imageInfoList
   }
 
-  def buildImage(image:ImageInfo):Future[Option[String]] = Future {
+  def buildImage(image:ImageInfo):Future[String] = Future {
 
 
     image.toNeo4jGraph(image)
 
-    Some("Built ImageInfo Successfully")
+    "Built ImageInfo Successfully"
 
   }
 
-  def deleteImage(imageId:Long): Future[Option[String]] = Future {
+  def deleteImage(imageId:Long): Future[String] = Future {
 
 
     GraphDBExecutor.deleteEntity[ImageInfo](imageId)
 
-    Some("Deleted successfully")
+    "Deleted image successfully"
 
   }
 
