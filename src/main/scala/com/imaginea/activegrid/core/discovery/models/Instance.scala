@@ -36,7 +36,7 @@ case class SSHAccessInfo(keyPairkey: KeyPairInfo,keyName: String,port : Option[I
 
 case class InstanceConnection(sourceNodeId: String,targetNodeId: String,portRanges: List[PortRange]) extends BaseEntity{
   def this(sourceId: String,targetNodeId: String){
-    this(sourceNodeId,targetNodeId,List.empty)
+    this(sourceId,targetNodeId,List.empty)
   }
 }
 

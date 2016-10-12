@@ -1,7 +1,6 @@
-package com.imaginea.activegrid.core.apm.models
+package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.discovery.models.Site
-import com.imaginea.activegrid.core.models.BaseEntity
 
 import scala.collection.immutable.HashMap
 
@@ -10,7 +9,7 @@ import scala.collection.immutable.HashMap
  */
 case class APMServerDetails(name: String,
                             serverUrl: String,
-                            val headers : HashMap,
+                            val headers : Map[String,String],
                             monitoredSite: Site,
                             provider: APMProvider) extends BaseEntity{
 

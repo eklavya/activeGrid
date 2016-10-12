@@ -27,9 +27,12 @@ class UserService(implicit val executionContext: ExecutionContext) {
 
   def saveUser(user: User): Future[Option[String]] = Future {
     user.toNeo4jGraph(user)
-    Some("Successfull")
+    Some("Successful")
   }
 
+  /* Returning ResponseMessage type. It could be either FailureResponse or SuccessResponse
+  *  SuccessResponse holding the node id of the saved entity for the future reference
+  */
   def saveUserGroup(userGroup: UserGroup): Future[ResponseMessage] = Future {
     userGroup.toNeo4jGraph(userGroup) match {
       case None => FailureResponse
@@ -37,6 +40,10 @@ class UserService(implicit val executionContext: ExecutionContext) {
     }
   }
 
+  /*
+  * Returning the Future of Page UserGroup
+  * Page content have empty list if no result found
+  */
   def getUserGroups: Future[Page[UserGroup]] = Future {
     import com.imaginea.activegrid.core.models.UserGroup.RichUserGroup
 
@@ -53,14 +60,21 @@ class UserService(implicit val executionContext: ExecutionContext) {
     Page[UserGroup](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups)
   }
 
+  /*
+  * Id parameter is used to fetch the node
+  * Returning Option[UserGroup]
+  */
   def getUserGroup(id: Long): Future[Option[UserGroup]] = Future {
     import com.imaginea.activegrid.core.models.UserGroup.RichUserGroup
 
     val userGroup: UserGroup = null;
-    val user = userGroup.fromNeo4jGraph(id)
-
-    user
+    userGroup.fromNeo4jGraph(id)
   }
+
+  def deleteUserGroup(userGroupId: Long): Future[Unit] =
+    Future {
+      Neo4jRepository.removeEntity[UserGroupProxy](userGroupId)
+    }
 
   def getUser(userId: Long): Future[Option[User]] = Future {
     user.fromNeo4jGraph(userId)
@@ -129,13 +143,12 @@ class UserService(implicit val executionContext: ExecutionContext) {
   def deleteUser(userId: Long): Future[Option[String]] = Future {
     try {
       Neo4jRepository.deleteEntity(userId)
-      Some("Successfull")
+      Some("Successful")
     } catch {
       case e: NotFoundException => {
         Some(e.getMessage)
       }
     }
-
   }
 
   def createACL(siteACL: SiteACL): Future[SiteACL] = Future {

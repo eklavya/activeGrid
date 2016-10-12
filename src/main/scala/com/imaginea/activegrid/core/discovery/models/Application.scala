@@ -1,7 +1,6 @@
 package com.imaginea.activegrid.core.discovery.models
 
-import com.imaginea.activegrid.core.apm.models.APMServerDetails
-import com.imaginea.activegrid.core.models.BaseEntity
+import com.imaginea.activegrid.core.models.{APMServerDetails, BaseEntity}
 
 /**
  * Created by ranjithrajd on 12/10/16.

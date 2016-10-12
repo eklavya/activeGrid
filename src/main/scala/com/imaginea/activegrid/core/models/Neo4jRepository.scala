@@ -6,6 +6,7 @@ import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
+import scala.concurrent.Future
 
 /**
  * Created by babjik on 23/9/16.
@@ -26,12 +27,13 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
    */
   /* Manifest is added to support for toCC method*/
 
-  def fetchNodeById[T <: BaseEntity : Manifest](id: Long): Either[NotFoundException, (Node, Option[T])] = withTx { neo =>
+  def fetchNodeById[T <: BaseEntity : Manifest](id: Long): Either[Exception, (Node, Option[T])] = withTx { neo =>
     try {
       val node = getNodeById(id)(neo)
       Right((node, node.toCC[T]))
     } catch {
-      case ex: NotFoundException => Left(ex)
+        case ex: NotFoundException => Left(ex)
+        case ex:Exception => Left(ex)
     }
   }
 
@@ -144,12 +146,14 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     node.toCC[T]
   }
 
+  import scala.concurrent.{ExecutionContext, Future}
   /**
-   * deletes the node with the given label and propery details
+   * deletes the node with the given label and property details
    * @param nodeId
    */
+
   def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
-    val node = findNodeById(nodeId).get
+     val node = findNodeById(nodeId).get
     //TODO: need to delete relations before deleting node
     val relations = node.getRelationships(Direction.OUTGOING)
     logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
@@ -161,6 +165,31 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     }
     logger.debug(s"finally deleting node ${node}")
     node.delete
+  }
+  /* Validating the availability of the requested node,
+   * If it fails re-throwing exception otherwise do the deleting process
+   */
+  def removeEntity[T <: BaseEntity : Manifest](nodeId: Long): Unit = withTx { implicit neo =>
+    fetchNodeById[T](nodeId).fold(
+      ex =>{
+        logger.debug(s"Exception while removing entity ${ex.getMessage}")
+        throw new Exception(ex.getMessage)
+      },
+      result => {
+        val (node,entity) = result
+        //TODO: need to delete relations before deleting node
+        val relations = node.getRelationships(Direction.OUTGOING)
+        logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
+        val relationsIterator = relations.iterator()
+        while (relationsIterator.hasNext) {
+          val relation = relationsIterator.next()
+          logger.debug(s"deleting relation")
+          relation.delete()
+        }
+        logger.debug(s"finally deleting node ${node}")
+        node.delete
+      }
+    )
   }
 
   def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
