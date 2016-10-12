@@ -18,7 +18,7 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   val appSettingService : AppSettingService = new AppSettingService
 
-  val routes = appSettingService.addAppSetting ~ appSettingService.addSetting ~ appSettingService.getAppSettings ~ appSettingService.deleteSettings ~ appSettingService.getSettings ~ appSettingService.getLogLevel ~ appSettingService.updateLogLevel
+  val routes = appSettingService.addAppSetting ~ appSettingService.addSetting ~ appSettingService.getAppSettings ~ appSettingService.deleteSettings ~ appSettingService.getSettings ~ appSettingService.getLogLevel ~ appSettingService.updateLogLevel~appSettingService.index
   Http().bindAndHandle(routes, "localhost", 8000)
   logger.info(s"Server online at http://localhost:8000")
 
