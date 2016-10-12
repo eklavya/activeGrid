@@ -18,19 +18,17 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
   val addAppSetting = post {
     path("appsettings") {
       entity(as[AppSettings]) {
-        appsetting => onSuccess(appSettingRepository.saveAppSettings(appsetting)) {
-          case Some(response) => complete(StatusCodes.OK,response)
-          case None => complete(StatusCodes.BadRequest,"Unable to save App Settings")
-        }
+        appsetting =>appSettingRepository.saveAppSettings(appsetting)
+         complete(StatusCodes.OK,"Done")
       }
     }
   }
   val getAppSettings = get {
     path("config") {
       val appSettings = appSettingRepository.getAppSettings()
-      onSuccess(appSettings){
-        case Some(response) => complete(StatusCodes.OK,response)
-        case None => complete(StatusCodes.BadRequest , "Unable to fetch App Settings")
+      onComplete(appSettings) {
+        case util.Success(response) => complete(StatusCodes.OK, response)
+        case util.Failure(exception) => complete(StatusCodes.BadRequest,"Unable to get App Settings")
       }
 
     }
@@ -39,11 +37,8 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
     path(PathMatchers.separateOnSlashes("config/settings")) {
       entity(as[Map[String, String]]) {
         setting =>
-          val response = appSettingRepository.saveSetting(setting)
-          onSuccess(response){
-            case Some(respo) => complete(StatusCodes.OK,respo)
-            case None => complete(StatusCodes.BadRequest,"Unable to save settings")
-          }
+          appSettingRepository.saveSetting(setting)
+          complete(StatusCodes.OK, "Done")
       }
     }
   }
@@ -51,9 +46,9 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
   val getSettings = path(PathMatchers.separateOnSlashes("config/settings")) {
     get {
       val appSettings = appSettingRepository.getSettings()
-      onSuccess(appSettings){
-        case Some(response) => complete(StatusCodes.OK,response)
-        case None => complete(StatusCodes.BadRequest,"Unable to get Settings")
+      onComplete(appSettings) {
+        case util.Success(response)  => complete(StatusCodes.OK, response)
+        case util.Failure(exception) => complete(StatusCodes.BadRequest, "Unable to fetch the settings")
       }
     }
   }
@@ -62,10 +57,10 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
     delete {
       entity(as[List[String]]) { list =>
         val isDeleted = appSettingRepository.deleteSettings(list)
-        onSuccess(isDeleted){
-          case Some(response) => complete(StatusCodes.OK, response)
-          case None => complete(StatusCodes.BadRequest,"Unable to delete settings")
-         }
+        onComplete(isDeleted) {
+          case util.Success(response)  => complete(StatusCodes.OK, "Done")
+          case util.Failure(exception) => complete(StatusCodes.BadRequest,"Unable to delete  settings")
+        }
       }
     }
   }
@@ -74,10 +69,10 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
     put {
       entity(as[String]) {
         level =>
-          val res = logLevelUpdater.setLogLevel(logLevelUpdater.ROOT, level)
-          onSuccess(res){
-            case Some(response) => complete(StatusCodes.OK,response)
-            case None => complete(StatusCodes.BadRequest , "Unable to update the log level")
+          val loglevel = logLevelUpdater.setLogLevel(logLevelUpdater.ROOT, level)
+          onComplete(loglevel) {
+            case util.Success(response) => complete(StatusCodes.OK, "Done")
+            case util.Failure(exception) => complete(StatusCodes.BadRequest,"Unable to update log level")
           }
 
       }
@@ -85,10 +80,10 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
   }
   val getLogLevel = path(PathMatchers.separateOnSlashes("config/logs/level")) {
     get {
-      val loglevel = logLevelUpdater.getLogLevel(logLevelUpdater.ROOT)
-      onSuccess(loglevel){
-        case Some(response) => complete(StatusCodes.OK, response)
-        case None => complete(StatusCodes.BadRequest , "Unable get log level")
+      val response = logLevelUpdater.getLogLevel(logLevelUpdater.ROOT)
+      onComplete(response) {
+       case util.Success(response) =>  complete(StatusCodes.OK, response)
+       case util.Failure(exception) => complete(StatusCodes.BadRequest,"Unable to get the log level")
       }
 
     }
