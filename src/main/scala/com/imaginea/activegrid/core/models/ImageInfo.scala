@@ -32,7 +32,7 @@ object ImageInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImageInfo"
 
-    override def toGraph(entity: ImageInfo): Option[Node] = {
+    override def toNeo4jGraph(entity: ImageInfo): Option[Node] = {
       logger.debug(s"toGraph for Image ${imageInfo}")
       // TODO: Image fields
       val map: Map[String, Any] = Map()
@@ -42,7 +42,7 @@ object ImageInfo {
       node
     }
 
-    override def fromGraph(nodeId: Long): ImageInfo = {
+    override def fromNeo4jGraph(nodeId: Long): ImageInfo = {
       ImageInfo(Some(0L), "", "", "", false, "", "", "", "", "", "", "", "", "")
     }
   }

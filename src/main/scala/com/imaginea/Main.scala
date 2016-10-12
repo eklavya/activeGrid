@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
 
+import scala.util.{Success, Failure}
+
 /**
  * Created by babjik on 22/9/16.
  */
@@ -111,18 +113,24 @@ object Main extends App {
     }
   } ~ pathPrefix("users") {
     path("groups" / LongNumber) { id =>
-      get {
+      get { //Handling Future of Option[UserGroup]
         onSuccess(userService.getUserGroup(id)) {
           case None => complete(StatusCodes.NoContent, None)
           case Some(group) => complete(StatusCodes.OK, group)
         }
+      } ~
+      delete { //Handling Future of Unit
+        onComplete(userService.deleteUserGroup(id)) {
+          case Success(result) => complete(StatusCodes.OK, "Successfully deleted")
+          case Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to delete, Exception: ${ex.getMessage}")
+        }
       }
     } ~
       path("groups") {
-        get {
+        get { //Handling Future of Page[UserGroup]
           complete(userService.getUserGroups)
         } ~
-          post {
+          post { //Handling Future of sealed ResponseMessage type
             entity(as[UserGroup]) { userGroup =>
               onSuccess(userService.saveUserGroup(userGroup)) {
                 case FailureResponse => complete(StatusCodes.BadRequest, None)
@@ -140,7 +148,17 @@ object Main extends App {
       entity(as[User]) { user =>
         complete(userService.saveUser(user))
       }
-    }
+    } /*~
+    path("access") {
+      post {
+        entity(as[SiteACL]) { siteACL =>
+          onSuccess(userService.createACL(siteACL)) {
+            case None => complete(StatusCodes.NoContent, None)
+            case Some(group) => complete(StatusCodes.OK, group)
+          }
+        }
+      }
+    }*/
   }
 
   val route: Route = userRoute
