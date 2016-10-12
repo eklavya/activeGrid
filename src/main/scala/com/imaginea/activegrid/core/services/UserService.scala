@@ -24,22 +24,21 @@ class UserService(implicit val executionContext: ExecutionContext) {
     Some(Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers))
   }
 
-  def saveUser(user: User): Future[Option[String]] = Future {
+  def saveUser(user: User): Future[Unit] = Future {
     user.toNeo4jGraph(user)
-    Some("Successfull")
   }
 
-  def getUser(userId: Long): Future[Option[User]] = Future {
-    Some(user.fromNeo4jGraph(userId))
+  def getUser(userId: Long): Future[User] = Future {
+    user.fromNeo4jGraph(userId)
   }
 
-  def getKeys(userId: Long): Future[Option[Page[KeyPairInfo]]] = Future {
+  def getKeys(userId: Long): Future[Page[KeyPairInfo]] = Future {
     val keysList = user.fromNeo4jGraph(userId).publicKeys
-    Some(Page(0, keysList.size, keysList.size, keysList))
+    Page(0, keysList.size, keysList.size, keysList)
   }
 
 
-  def getKeys(userName: String): Future[Option[Page[KeyPairInfo]]] = Future {
+  def getKeys(userName: String): Future[Page[KeyPairInfo]] = Future {
     logger.debug(s"Searching Users with name ${userName}")
     val maybeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(label, "username", userName)
 
@@ -47,11 +46,11 @@ class UserService(implicit val executionContext: ExecutionContext) {
 
     maybeNode match {
       case None => {
-        Some(Page(0, 0, 0, List()))
+        Page(0, 0, 0, List())
       }
       case Some(node) => {
         val keysList = user.fromNeo4jGraph(node.getId).publicKeys
-        Some(Page(0, keysList.size, keysList.size, keysList))
+        Page(0, keysList.size, keysList.size, keysList)
       }
     }
 
@@ -72,7 +71,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
   }
 
 
-  def deleteKey(userId: Long, keyId: Long): Future[Option[String]] = Future {
+  def deleteKey(userId: Long, keyId: Long): Future[Unit] = Future {
     logger.debug(s"Deleting Key[${keyId}] of User[${userId}] ")
     val key = getKeyById(userId, keyId)
 
@@ -80,16 +79,16 @@ class UserService(implicit val executionContext: ExecutionContext) {
       case Some(keyPairInfo) => {
         val status = Neo4jRepository.deleteChildNode(keyId)
         status match {
-          case Some(true) => Some("Deleted Successfully")
-          case _ => Some("Failed to delete node")
+          case Some(false) | None => throw new Exception(s"No key pair found with id ${keyId}")
+          case Some(true) => // do nothing
         }
       }
-      case None => Some(s"No key pair found with id ${keyId}")
+      case None => throw new Exception(s"No key pair found with id ${keyId}")
     }
   }
 
 
-  def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Option[Page[KeyPairInfo]]] = Future {
+  def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Page[KeyPairInfo]] = Future {
 
     FileUtils.createDirectories(UserUtils.getKeyDirPath(userId))
 
@@ -110,19 +109,11 @@ class UserService(implicit val executionContext: ExecutionContext) {
     val userGraph = user.fromNeo4jGraph(userId)
 
     val keysList = resultKeys.toList
-    Some(Page(0, keysList.size, keysList.size, keysList))
+    Page(0, keysList.size, keysList.size, keysList)
   }
 
-  def deleteUser(userId: Long): Future[Option[String]] = Future {
-    try {
-      Neo4jRepository.deleteEntity(userId)
-      Some("Successfull")
-    } catch {
-      case e: NotFoundException => {
-        Some(e.getMessage)
-      }
-    }
-
+  def deleteUser(userId: Long): Future[Unit] = Future {
+    Neo4jRepository.deleteEntity(userId)
   }
 
   def saveUserGroup(userGroup: UserGroup): Future[Option[String]] = Future {

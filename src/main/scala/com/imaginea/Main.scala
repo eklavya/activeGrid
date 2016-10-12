@@ -61,58 +61,65 @@ object Main extends App {
     pathPrefix("keys") {
       pathPrefix(LongNumber) { keyId =>
         get {
-          onSuccess(userService.getKey(userId, keyId)) {
-            case Some(response) => complete(StatusCodes.OK, response)
-            case None => complete(StatusCodes.BadRequest, "Unable to get the key")
+          val key = userService.getKey(userId, keyId)
+          onComplete(key) {
+            case util.Success(response) => {
+              response match {
+                case Some(keyPairInfo) => complete(StatusCodes.OK, keyPairInfo)
+                case None => complete(StatusCodes.BadRequest, "Unable to get the key")
+              }
+            }
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get the key, Reason: ${ex.getMessage}")
           }
+
         } ~ delete {
-          onSuccess(userService.deleteKey(userId, keyId)) {
-            case Some(response) => complete(StatusCodes.OK, response)
-            case None => complete(StatusCodes.BadRequest, "Unable delete Key")
+          onComplete(userService.deleteKey(userId, keyId)) {
+            case util.Success(result) => complete(StatusCodes.OK, "Deleted Successfully")
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed delete, Message: ${ex.getMessage}")
           }
         }
       } ~ get {
-        onSuccess(userService.getKeys(userId)) {
-          case Some(response) => complete(StatusCodes.OK, response)
-          case None => complete(StatusCodes.BadRequest, "Unable to get keys")
+        onComplete(userService.getKeys(userId)) {
+          case util.Success(page) => complete(StatusCodes.OK, page)
+          case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed get Users, Message: ${ex.getMessage}")
         }
       } ~ post {
         entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
-          onSuccess(userService.addKeyPair(userId, sshKeyInfo)) {
-            case Some(response) => complete(StatusCodes.OK, response)
-            case None => complete(StatusCodes.BadRequest, "Unable to add keys")
+          onComplete(userService.addKeyPair(userId, sshKeyInfo)) {
+            case util.Success(page) => complete(StatusCodes.OK, page)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to add keys, Message: ${ex.getMessage}")
           }
         }
       }
     } ~ get {
-      onSuccess(userService.getUser(userId)) {
-        case Some(response) => complete(StatusCodes.OK, response)
-        case None => complete(StatusCodes.BadRequest, "Unable to get User")
+      onComplete(userService.getUser(userId)) {
+        case util.Success(user) => complete(StatusCodes.OK, user)
+        case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get user, Message: ${ex.getMessage}")
       }
     } ~ delete {
-      onSuccess(userService.deleteUser(userId)) {
-        case Some(response) => complete(StatusCodes.OK, response)
-        case None => complete(StatusCodes.BadRequest, "Unable delete Users")
+      onComplete(userService.deleteUser(userId)) {
+        case util.Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
+        case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to delete user, Message: ${ex.getMessage}")
       }
     }
   } ~ pathPrefix("users") {
     get {
       pathPrefix(Segment / "keys") { userName =>
-        onSuccess(userService.getKeys(userName)) {
-          case Some(response) => complete(StatusCodes.OK, response)
-          case None => complete(StatusCodes.BadRequest, "Unable get keys by user name")
+        onComplete(userService.getKeys(userName)) {
+          case util.Success(page) => complete(StatusCodes.OK, page)
+          case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get keys, Message: ${ex.getMessage}")
         }
       }
     } ~ get {
-      onSuccess(userService.getUsers) {
-        case Some(response) => complete(StatusCodes.OK, response)
-        case None => complete(StatusCodes.BadRequest, "Unable get users list")
+      onComplete(userService.getUsers) {
+        case util.Success(page) => complete(StatusCodes.OK, page)
+        case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get users, Message: ${ex.getMessage}")
       }
     } ~ post {
       entity(as[User]) { user =>
-        onSuccess(userService.saveUser(user)) {
-          case Some(response) => complete(StatusCodes.OK, response)
-          case None => complete(StatusCodes.BadRequest, "Unable save user")
+        onComplete(userService.saveUser(user)) {
+          case util.Success(status) => complete(StatusCodes.OK, "Successfully saved user")
+          case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed save user, Message: ${ex.getMessage}")
         }
       }
     } ~ pathPrefix("groups") {
