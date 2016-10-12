@@ -21,9 +21,9 @@ object Main {
   implicit val executionContext = system.dispatcher
 
   def main(args: Array[String]) {
-    implicit val softwareFormat = jsonFormat8(Software)
+    implicit val softwareFormat = jsonFormat(Software.apply,"id","version","name","provider","downloadURL","port","processNames","discoverApplications")
     implicit val softwarePageFormat = jsonFormat4(Page[Software])
-    implicit val ImageFormat = jsonFormat13(ImageInfo)
+    implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id","state","ownerId","publicValue","architecture","imageType","platform","imageOwnerAlias","name","description","rootDeviceType","rootDeviceName","version")
     implicit val PageFormat = jsonFormat4(Page[ImageInfo])
 
     var catalogService = new CatalogService()
@@ -31,54 +31,53 @@ object Main {
       path("images" / "view") {
         get {
           val getImages = catalogService.getImages
-          onSuccess(getImages) {
-            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
-            case None => complete(StatusCodes.BadRequest, "Unable to Retrieve Images")
+          onComplete(getImages) {
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(exception) => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List. Failed with " + exception)
           }
         }
       } ~ path("images") {
         put {
           entity(as[ImageInfo]) { image =>
             val buildImage = catalogService.buildImage(image)
-            onSuccess(buildImage) {
-              case Some(successResponse) => complete(StatusCodes.OK, successResponse)
-              case None => complete(StatusCodes.BadRequest, "Unable to Save Image")
+            onComplete(buildImage) {
+              case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case util.Failure(exception) => complete(StatusCodes.BadRequest, "Unable to Save Image. Failed with" + exception )
             }
           }
         }
       } ~ path("images" / LongNumber) { imageId =>
         delete {
           val deleteImages = catalogService.deleteImage(imageId)
-          onSuccess(deleteImages) {
-            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
-            case None => complete(StatusCodes.BadRequest, "Unable to Delete Image")
+          onComplete(deleteImages) {
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(exception) => complete(StatusCodes.BadRequest, "Unable to Delete Image. Failed with" + exception )
           }
-          complete(catalogService.deleteImage(imageId))
         }
       } ~ path("softwares") {
         put {
           entity(as[Software]) { software =>
             val buildSoftware = catalogService.buildSoftware(software)
-            onSuccess(buildSoftware) {
-              case Some(a) => complete(StatusCodes.OK, a)
-              case None => complete(StatusCodes.BadRequest, "Unable to Save Software")
+            onComplete(buildSoftware) {
+              case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case util.Failure(exception) => complete(StatusCodes.BadRequest, "Unable to Save Software. Failed with" + exception)
             }
           }
         }
       } ~ path("softwares" / LongNumber) { softwareid =>
         delete {
-          val deleteSoftware = catalogService.deleteImage(softwareid)
-          onSuccess(deleteSoftware) {
-            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
-            case None => complete(StatusCodes.BadRequest, "Unable to Delete Software")
+          val deleteSoftware = catalogService.deleteSoftware(softwareid)
+          onComplete(deleteSoftware) {
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(exception) => complete(StatusCodes.BadRequest, "Unable to Delete Software. Failed with" + exception )
           }
         }
       } ~ path("softwares") {
         get {
           val getSoftwares = catalogService.getSoftwares
-          onSuccess(getSoftwares) {
-            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
-            case None => complete(StatusCodes.BadRequest, "Unable to Retrieve Softwares")
+          onComplete(getSoftwares) {
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(exception) => complete(StatusCodes.BadRequest, "Unable to Retrieve Softwares List. Failed with " + exception)
           }
         }
       }
