@@ -126,46 +126,50 @@ object Main {
 
       path("images"/"view") {
         get {
-          val listOfImages : Future[Option[List[ImageInfo]]] = catalogService.getImages()
+          val listOfImages : Future[List[ImageInfo]] = catalogService.getImages()
 
-          onSuccess(listOfImages) {
-             case Some(lists) => {
+          onComplete(listOfImages) {
+             case util.Success(lists) => {
                val startIndex = 0
                val count = lists.size
                val totalObjects = count
                complete(Page[ImageInfo](startIndex,count,totalObjects,lists))
              }
-             case None => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List")
+             case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List; Failed with " + ex)
            }
         }
       } ~ path("images") {
         put {
           entity(as[ImageInfo]) { image =>
             val buildImage = catalogService.buildImage(image)
-            onSuccess(buildImage) {
-              case Some(successResponse) => complete(StatusCodes.OK, successResponse)
-              case None => complete(StatusCodes.BadRequest, "Unable to Save Image")
+            onComplete(buildImage) {
+              case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Save Image; Failed with" + ex )
             }
           }
         }
       } ~ path("images" / LongNumber) { imageId =>
         delete {
           val deleteImages = catalogService.deleteImage(imageId)
-          onSuccess(deleteImages) {
-            case Some(successResponse) => complete(StatusCodes.OK, successResponse)
-            case None => complete(StatusCodes.BadRequest, "Unable to Delete Image")
+          onComplete(deleteImages) {
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Delete Image; Failed with" + ex )
           }
-        }
-      } ~ path("instanceTypes"/IntNumber){ siteId =>
-       get  {
-          val listOfInstanceFlavors = catalogService.getInstanceFlavor(siteId)
-         onSuccess(listOfInstanceFlavors) { lists =>
 
-             val startIndex = 0
-             val count = lists.size
-             val totalObjects = count
-             complete(Page[InstanceFlavor](startIndex,count,totalObjects,lists))
-           }
+        }
+      } ~ path("instanceTypes"/IntNumber) { siteId =>
+        get {
+          val listOfInstanceFlavors = catalogService.getInstanceFlavor(siteId)
+          onComplete(listOfInstanceFlavors) {
+            case util.Success(lists) => {
+
+              val startIndex = 0
+              val count = lists.size
+              val totalObjects = count
+              complete(Page[InstanceFlavor](startIndex, count, totalObjects, lists))
+            }
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to get List; Failed with" + ex)
+          }
         }
       }
 
