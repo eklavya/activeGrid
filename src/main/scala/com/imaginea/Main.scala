@@ -140,6 +140,16 @@ object Main extends App {
       entity(as[User]) { user =>
         complete(userService.saveUser(user))
       }
+    } ~
+    path("access") {
+      post {
+        entity(as[SiteACL]) { siteACL =>
+          onSuccess(userService.createACL(siteACL)) {
+            case None => complete(StatusCodes.NoContent, None)
+            case Some(group) => complete(StatusCodes.OK, group)
+          }
+        }
+      }
     }
   }
 

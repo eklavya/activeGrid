@@ -20,18 +20,18 @@ class UserService(implicit val executionContext: ExecutionContext) {
   def getUsers: Future[Option[Page[User]]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
 
-    val listOfUsers: List[User] = nodeList.map(node => user.fromGraph(node.getId)).flatten
+    val listOfUsers: List[User] = nodeList.map(node => user.fromNeo4jGraph(node.getId)).flatten
 
     Some(Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers))
   }
 
   def saveUser(user: User): Future[Option[String]] = Future {
-    user.toGraph(user)
+    user.toNeo4jGraph(user)
     Some("Successfull")
   }
 
   def saveUserGroup(userGroup: UserGroup): Future[ResponseMessage] = Future {
-    userGroup.toGraph(userGroup) match {
+    userGroup.toNeo4jGraph(userGroup) match {
       case None => FailureResponse
       case Some(node) => new SuccessResponse(node.getId.toString())
     }
@@ -45,7 +45,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
     val listOfUserGroups: List[UserGroup] =
       nodeList.map {
         node =>
-          val a = userGroup.fromGraph(node.getId)
+          val a = userGroup.fromNeo4jGraph(node.getId)
           println("Mapping = " + a)
           a
       }.flatten
@@ -57,17 +57,17 @@ class UserService(implicit val executionContext: ExecutionContext) {
     import com.imaginea.activegrid.core.models.UserGroup.RichUserGroup
 
     val userGroup: UserGroup = null;
-    val user = userGroup.fromGraph(id)
+    val user = userGroup.fromNeo4jGraph(id)
 
     user
   }
 
   def getUser(userId: Long): Future[Option[User]] = Future {
-    user.fromGraph(userId)
+    user.fromNeo4jGraph(userId)
   }
 
   def getKeys(userId: Long): Future[Page[KeyPairInfo]] = Future {
-    val keysList = user.fromGraph(userId).map(_.publicKeys).getOrElse(List.empty)
+    val keysList = user.fromNeo4jGraph(userId).map(_.publicKeys).getOrElse(List.empty)
     Page(0, keysList.size, keysList.size, keysList)
   }
 
@@ -83,7 +83,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
         Some(Page(0, 0, 0, List()))
       }
       case Some(node) => {
-        val keysList = user.fromGraph(node.getId).map(_.publicKeys).getOrElse(List.empty)
+        val keysList = user.fromNeo4jGraph(node.getId).map(_.publicKeys).getOrElse(List.empty)
         Some(Page(0, keysList.size, keysList.size, keysList))
       }
     }
@@ -102,7 +102,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
   }
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    val keysList: List[KeyPairInfo] = user.fromGraph(userId).map(_.publicKeys).getOrElse(List.empty)
+    val keysList: List[KeyPairInfo] = user.fromNeo4jGraph(userId).map(_.publicKeys).getOrElse(List.empty)
 
     keysList match {
       case keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
@@ -122,7 +122,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
 
     //TODO: need to add code to write data to file
 
-    val keysList = user.fromGraph(userId).map(_.publicKeys).getOrElse(List.empty)
+    val keysList = user.fromNeo4jGraph(userId).map(_.publicKeys).getOrElse(List.empty)
     Some(Page(0, keysList.size, keysList.size, keysList))
   }
 
@@ -138,8 +138,8 @@ class UserService(implicit val executionContext: ExecutionContext) {
 
   }
 
-  /*def saveUserGroup(userGroup: UserGroup): Future[Option[String]] = Future{
-    userGroup.toGraph(userGroup)
-    Some("Successfull")
-  }*/
+  def createACL(siteACL: SiteACL): Future[SiteACL] = Future {
+    //TODO : Persistence impl
+    siteACL
+  }
 }

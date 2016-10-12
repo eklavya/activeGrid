@@ -36,7 +36,7 @@ object UserGroup {
     implicit def toUserGroupProxy(userGroup: UserGroup): UserGroupProxy =
       UserGroupProxy(userGroup.name)
 
-    override def toGraph(userGroup: UserGroup): Option[Node] = {
+    override def toNeo4jGraph(userGroup: UserGroup): Option[Node] = {
       logger.debug(s"UserGroup toGraph ${userGroup}")
 
       val userGroupNode = Neo4jRepository.saveEntity[UserGroupProxy](userGroup,UserGroupProtocol.labelUserGroup)
@@ -48,7 +48,7 @@ object UserGroup {
       for (user <- userGroup.users) {
         logger.debug(s"UserGroupProxy has relation with Users $user")
         user.foreach(user => {
-          val userNode = user.toGraph(user)
+          val userNode = user.toNeo4jGraph(user)
           Neo4jRepository.createRelation(has_users, userGroupNode.get, userNode.get)
         })
       }
@@ -56,14 +56,14 @@ object UserGroup {
       for (access <- userGroup.accesses) {
         logger.debug(s"UserGroupProxy has relation with ResourceACL $access")
         access.foreach(resource => {
-          val resourceNode: Option[Node] = resource.toGraph(resource)
+          val resourceNode: Option[Node] = resource.toNeo4jGraph(resource)
           Neo4jRepository.createRelation(has_resourceAccess, userGroupNode.get, resourceNode.get)
         })
       }
       userGroupNode
     }
 
-    override def fromGraph(nodeId: Long): Option[UserGroup] = {
+    override def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
       val nodeOption = Neo4jRepository.fetchNodeById[UserGroupProxy](nodeId)
 
       nodeOption.fold(ex => None, result => {
@@ -74,14 +74,14 @@ object UserGroup {
         val users: Set[User] = userNodes.map(child => {
           logger.debug(s" UserGroup -> User node ${child}")
           val user: User = null
-          user.fromGraph(child.getId)
+          user.fromNeo4jGraph(child.getId)
         }).flatten.toSet
 
         val accessNodes = Neo4jRepository.getNodesWithRelation(node, has_resourceAccess)
         val resources = accessNodes.map(child => {
           logger.debug(s" UserGroup -> Resource node ${child}")
           val resource: ResourceACL = null
-          resource.fromGraph(child.getId).get
+          resource.fromNeo4jGraph(child.getId).get
         }).toSet
 
         val user = userProxy.map(obj => {

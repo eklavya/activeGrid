@@ -33,8 +33,8 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-spray-json-experimental" % AkkaVersion,
     "com.typesafe.akka" %% "akka-http-xml-experimental" % AkkaVersion,
     "ch.qos.logback" % "logback-classic" % "1.1.2",
-    "org.json4s" %% "json4s-native" % Json4sVersion,
-    "org.json4s" %% "json4s-ext" % Json4sVersion,
+   /* "org.json4s" %% "json4s-native" % Json4sVersion,
+    "org.json4s" %% "json4s-ext" % Json4sVersion,*/
     "de.heikoseeberger" %% "akka-http-json4s" % "1.4.2",
     "org.neo4j.driver" % "neo4j-java-driver" % neo4jVersion,
     "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,

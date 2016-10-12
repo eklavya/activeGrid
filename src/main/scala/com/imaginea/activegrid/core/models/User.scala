@@ -51,7 +51,7 @@ object User {
         user.displayName
       )
 
-    override def toGraph(entity: User): Option[Node] = {
+    override def toNeo4jGraph(entity: User): Option[Node] = {
       logger.debug(s"toGraph for Image ${entity}")
 
       val node = Neo4jRepository.saveEntity[UserProxy](entity,label)
@@ -63,7 +63,7 @@ object User {
       node
     }
 
-    override def fromGraph(nodeId: Long): Option[User] = {
+    override def fromNeo4jGraph(nodeId: Long): Option[User] = {
       val nodeOption = Neo4jRepository.fetchNodeById[UserProxy](nodeId)
       nodeOption.fold(ex => None,
         result => {
@@ -73,7 +73,7 @@ object User {
           val keyPairInfo: KeyPairInfo = null
 
           val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
-            keyPairInfo.fromGraph(keyPairNode.getId)
+            keyPairInfo.fromNeo4jGraph(keyPairNode.getId)
           })
 
           val user = entity.map(userProxy => {
@@ -103,7 +103,7 @@ object UserOperations {
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Relationship = {
     val userNode = Neo4jRepository.findNodeById(userId).get
-    val publicKeyNode = keyPairInfo.toGraph(keyPairInfo)
+    val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
     Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode.get)
   }
 }

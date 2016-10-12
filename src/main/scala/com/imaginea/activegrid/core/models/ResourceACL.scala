@@ -21,10 +21,10 @@ object ResourceACL {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ResourceACL"
 
-    override def toGraph(resource: ResourceACL): Option[Node] =
+    override def toNeo4jGraph(resource: ResourceACL): Option[Node] =
       Neo4jRepository.saveEntity[ResourceACL](resource,label)
 
-    override def fromGraph(nodeId: Long): Option[ResourceACL] = Neo4jRepository.getEntity[ResourceACL](nodeId)
+    override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = Neo4jRepository.getEntity[ResourceACL](nodeId)
   }
 
 }
