@@ -28,7 +28,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
     val map: scala.collection.mutable.Map[String, AnyRef] = scala.collection.mutable.Map()
     keys.foreach(key => {
-      println(s" (${key}) --> (${node.getProperty(key)}) ")
       map += ((key, node.getProperty(key)))
     })
     map.toMap
@@ -82,9 +81,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     withTx { neo =>
       val node = createNode(label)(neo)
       map.foreach { case (k, v) => node.setProperty(k, v) }
-      println(s" new node ${node.getLabels}, id ${node.getId}")
-      println(s" Id ${node.getProperty("id")}")
-      println(s" Name ${node.getProperty("name")}")
       Some(node)
     }
 }
