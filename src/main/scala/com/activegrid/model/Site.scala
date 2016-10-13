@@ -14,49 +14,43 @@ import org.neo4j.graphdb.Node
 
 case class Site(override val id: Option[Long],instances: List[Instance]) extends BaseEntity
 
-
 object Site{
+
   implicit class SiteImpl(site: Site) extends Neo4jRep[Site]{
 
     override def toNeo4jGraph(entity: Site): Option[Node] = {
 
-      val label : String = "Site"
+      val label = "Site"
 
       val node = GraphDBExecutor.createGraphNodeWithPrimitives[Site](label,Map.empty)
       val relationship = "HAS_site"
 
-
       entity.instances.foreach{instance =>
-
         val instanceNode = instance.toNeo4jGraph(instance)
         GraphDBExecutor.setGraphRelationship(node,instanceNode,relationship)
-
       }
 
       node
+
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[Site] = {
+    override def fromNeo4jGraph(nodeId: Long): Site = {
 
       val relationship = "HAS_site"
       val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId,relationship)
 
       val instances: List[Instance] = childNodeIds.map{ childId =>
         val instance:Instance = null
-        instance.fromNeo4jGraph(childId).get
+        instance.fromNeo4jGraph(childId)
       }
-      Some(Site(Some(nodeId),instances))
+
+      Site(Some(nodeId),instances)
+
     }
 
-
   }
+
 }
-
-
-
-
-
-
 
 /*
 case class Site(siteName: String,

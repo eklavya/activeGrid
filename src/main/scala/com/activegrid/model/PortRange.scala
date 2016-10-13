@@ -14,25 +14,28 @@ object PortRange{
 
     override def toNeo4jGraph(entity: PortRange): Option[Node] = {
 
-      val label: String = "PortRange"
+      val label  = "PortRange"
 
-      val mapPrimitives : Map[String, Any] = Map("fromPort" -> entity.fromPort, "toPort" -> entity.toPort)
+      val mapPrimitives  = Map("fromPort" -> entity.fromPort, "toPort" -> entity.toPort)
 
       val node = GraphDBExecutor.createGraphNodeWithPrimitives[PortRange](label, mapPrimitives)
+
       node
 
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[PortRange] = {
+    override def fromNeo4jGraph(nodeId: Long): PortRange = {
 
-      val listOfKeys: List[String] = List("fromPort","toPort")
+      val listOfKeys  = List("fromPort","toPort")
 
-      val propertyValues: Map[String,Any] = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
+      val propertyValues  = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
       val fromPort: Int = propertyValues.get("fromPort").get.toString.toInt
       val toPort : Int =  propertyValues.get("toPort").get.toString.toInt
 
-      Some(PortRange(Some(nodeId),fromPort,toPort))
+      PortRange(Some(nodeId),fromPort,toPort)
+
     }
 
   }
+
 }
