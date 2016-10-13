@@ -31,6 +31,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       node.setProperty(VID, node.getId)
 
       Some(node)
+
     }
 
 
@@ -73,6 +74,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       node.getSingleRelationship(relation, Direction.OUTGOING).getEndNode.getId
 
     }
+
   }
 
   def getChildNodeIds(parentNode: Long, relation: String): List[Long] = {
@@ -84,6 +86,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       node.getRelationships(relation, Direction.OUTGOING).map(rel => rel.getEndNode.getId).toList
 
     }
+
   }
 
   def deleteEntity[T <: BaseEntity : Manifest](imageId: Long): Unit = {
@@ -95,6 +98,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       node.delete()
 
     }
+
   }
 
   def getNodesByLabel(label: String): List[Node] = withTx { neo =>
