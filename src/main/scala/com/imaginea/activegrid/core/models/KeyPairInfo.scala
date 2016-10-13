@@ -2,6 +2,7 @@ package com.imaginea.activegrid.core.models
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -19,14 +20,14 @@ case class KeyPairInfo(override val id: Option[Long]
                        , passPhrase: Option[String]
                       ) extends BaseEntity {
   def this(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus)
-  = this(None, keyName, Some(""), keyMaterial, filePath, status, Some(""), Some(""))
+  = this(None, keyName, None, keyMaterial, filePath, status, None, None)
 }
 
 
 object KeyPairInfo {
 
   def apply(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus): KeyPairInfo =
-    new KeyPairInfo(None, keyName, Some(""), keyMaterial, filePath, status, Some(""), Some(""))
+    new KeyPairInfo(None, keyName, None, keyMaterial, filePath, status, None, None)
 
   implicit class RichKeyPairInfo(keyPairInfo: KeyPairInfo) extends Neo4jRep[KeyPairInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -34,14 +35,14 @@ object KeyPairInfo {
 
     override def toNeo4jGraph(entity: KeyPairInfo): Option[Node] = {
       logger.debug(s"toGraph for KeyPairInfo ${entity}")
-      val map: Map[String, Any] = Map(
+      val map = Map(
         "keyName" -> entity.keyName,
-        "keyFingerprint" -> entity.keyFingerprint.get,
+        "keyFingerprint" -> entity.keyFingerprint.getOrElse(null),
         "keyMaterial" -> entity.keyMaterial,
         "filePath" -> entity.filePath,
         "status" -> entity.status.toString,
-        "defaultUser" -> entity.defaultUser.get,
-        "passPhrase" -> entity.passPhrase.get
+        "defaultUser" -> entity.defaultUser.getOrElse(null),
+        "passPhrase" -> entity.passPhrase.getOrElse(null)
       )
 
       val node = Neo4jRepository.saveEntity[KeyPairInfo](label, entity.id, map)
@@ -57,12 +58,12 @@ object KeyPairInfo {
       val keyPairInfo = KeyPairInfo(
         Some(node.getId),
         map.get("keyName").get.asInstanceOf[String],
-        Some(map.get("keyFingerprint").get.asInstanceOf[String]),
+        ActiveGridUtils.getValueFromMapAs[String](map, "keyFingerprint"),
         map.get("keyMaterial").get.asInstanceOf[String],
         map.get("filePath").get.asInstanceOf[String],
         KeyPairStatus.withName(map.get("status").get.asInstanceOf[String]),
-        Some(map.get("defaultUser").get.asInstanceOf[String]),
-        Some(map.get("passPhrase").get.asInstanceOf[String])
+        ActiveGridUtils.getValueFromMapAs[String](map, "defaultUser"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "passPhrase")
       )
 
       logger.debug(s"Key pair info - ${keyPairInfo}")
@@ -70,6 +71,5 @@ object KeyPairInfo {
     }
 
   }
-
 
 }

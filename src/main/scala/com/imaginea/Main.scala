@@ -1,20 +1,17 @@
 package com.imaginea
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.KeyPairStatus.{KeyPairStatus, _}
+import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 import com.imaginea.activegrid.core.models._
-import com.imaginea.activegrid.core.services.{CatalogService, UserService}
-import com.imaginea.activegrid.core.utils.Constants
+import com.imaginea.activegrid.core.services.UserService
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
@@ -30,8 +27,6 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
-  implicit val neo4jRepository = Neo4jRepository
-
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
     override def write(obj: KeyPairStatus): JsValue = JsString(obj.toString)
 
@@ -40,9 +35,6 @@ object Main extends App {
       case _ => throw new DeserializationException("Enum string expected")
     }
   }
-
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-  implicit val PageImageInfoFormat = jsonFormat(Page[ImageInfo], "startIndex", "count", "totalObjects", "objects")
 
   implicit val KeyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
   implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
@@ -69,7 +61,10 @@ object Main extends App {
                 case None => complete(StatusCodes.BadRequest, "Unable to get the key")
               }
             }
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get the key, Reason: ${ex.getMessage}")
+            case util.Failure(ex) => {
+              logger.error(s"Unable to get the key, Reason: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Unable to get the key, Reason: ${ex.getMessage}")
+            }
           }
 
         } ~ delete {

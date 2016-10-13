@@ -12,29 +12,11 @@ import scala.collection.JavaConversions._
   */
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-
-  def neo4jStoreDir = "./graphdb/activegriddb"
-
   // constants
   val V_ID = "id"
   val CLASS = "@Class"
 
-  /**
-    * Returns the node with given id if not found throws not found excpetion
-    *
-    * @param id
-    * @return
-    */
-  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
-    try {
-      Some(getNodeById(id))
-    } catch {
-      case e: NotFoundException => {
-        logger.warn(s"node with Id ${id} is not found", e)
-        throw e
-      }
-    }
-  }
+  def neo4jStoreDir = "./graphdb/activegriddb"
 
   /**
     * Finding the first Node with given label and property details
@@ -68,7 +50,12 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     val node = getOrSaveEntity(label, id)
     map.foreach { case (k, v) => {
       logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v")
-      node.setProperty(k, v)
+      v match {
+        case null | None => {
+          if (node.hasProperty(k)) node.removeProperty(k)
+        }
+        case _ => node.setProperty(k, v)
+      }
     }
     }
 
@@ -100,33 +87,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   /**
-    * Saves entity of type T and returns the same entity
-    *
-    * @param entity
-    * @param label
-    * @tparam T
-    * @return
-    */
-  def saveEntity[T <: BaseEntity : Manifest](entity: T, label: String): T = withTx { neo =>
-    val node = createNode(entity, label)(neo)
-    logger.debug(s"created entity of label ${node.getLabels}, new node Id is ${node.getId} ")
-    entity
-  }
-
-  /**
-    *
-    * @param label
-    * @tparam T
-    * @return
-    */
-  def getEntityList[T: Manifest](label: String): List[T] = withTx { neo =>
-    logger.debug(s"picking the list for $label")
-    val nodesList = getAllNodesWithLabel(label)(neo)
-    nodesList.foreach(node => logger.debug(s"${node.getId} -> ${node.getLabels} -- properties ${node.getAllProperties}"))
-    nodesList.map(_.toCC[T].get).toList
-  }
-
-  /**
     * Returns all the nodes given with the node label
     *
     * @param label
@@ -146,12 +106,16 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
     val map: scala.collection.mutable.Map[String, AnyRef] = scala.collection.mutable.Map()
     keys.foreach(key => {
-      logger.debug(s" (${key}) --> (${node.getProperty(key)}) ")
-      map += ((key, node.getProperty(key)))
+      try {
+        val value = node.getProperty(key)
+        logger.debug(s" (${key}) --> (${node.getProperty(key)}) ")
+        map += ((key, value))
+      } catch {
+        case ex: Throwable => logger.warn(s"failed to get values for the key ${key}")
+      }
     })
     map.toMap
   }
-
 
   /**
     * Finds the node with given node and property information
@@ -166,28 +130,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     val nodes = findNodesByLabelAndProperty(label, propertyName, propertyValue)(neo)
     nodes.map(_.toCC[T].get).toList.head
   }
-
-
-  /**
-    * deletes the node with the given label and property details
-    * deletes all out going relations from the node as well
-    *
-    * @param nodeId
-    */
-  def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
-    val node = findNodeById(nodeId).get
-    val relations = getRelationships(node, Direction.OUTGOING)
-    logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
-
-    relations.foreach(outRelation => {
-      logger.debug(s"deleting out relation ${outRelation}  -- ${outRelation.getType}")
-      outRelation.delete()
-    })
-
-    logger.debug(s"finally deleting node ${node}")
-    node.delete
-  }
-
 
   /**
     * Deletes the Incoming / out going relations along with the node
@@ -209,6 +151,55 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
     deleteEntity(nodeId)
     Some(true)
+  }
+
+  /**
+    * deletes the node with the given label and property details
+    * deletes all out going relations from the node as well
+    *
+    * @param nodeId
+    */
+  def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
+    val node = findNodeById(nodeId).get
+    val relations = getRelationships(node, Direction.OUTGOING)
+    logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
+
+    relations.foreach(outRelation => {
+      logger.debug(s"deleting out relation ${outRelation}  -- ${outRelation.getType}")
+      outRelation.delete()
+    })
+
+    logger.debug(s"finally deleting node ${node}")
+    node.delete
+  }
+
+  /**
+    * Returns the node with given id if not found throws not found excpetion
+    *
+    * @param id
+    * @return
+    */
+  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
+    try {
+      Some(getNodeById(id))
+    } catch {
+      case e: NotFoundException => {
+        logger.warn(s"node with Id ${id} is not found", e)
+        throw e
+      }
+    }
+  }
+
+  /**
+    * Returns the List of relations from the node, in given direction like  OUTGOING, INCOMING, BOTH
+    *
+    * @param node
+    * @param direction
+    * @return
+    */
+  def getRelationships(node: Node, direction: Direction): List[Relationship] = withTx { implicit neo =>
+    logger.debug(s"fetching realtions of ${node} in the direction ${direction}")
+    node.getRelationships(direction).toList
   }
 
   /**
@@ -241,18 +232,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     val relations = fromNode.getRelationships(relType, Direction.OUTGOING).iterator()
     val childNodes: scala.collection.mutable.ListBuffer[Node] = scala.collection.mutable.ListBuffer()
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
-  }
-
-  /**
-    * Returns the List of relations from the node, in given direction like  OUTGOING, INCOMING, BOTH
-    *
-    * @param node
-    * @param direction
-    * @return
-    */
-  def getRelationships(node: Node, direction: Direction): List[Relationship] = withTx { implicit neo =>
-    logger.debug(s"fetching realtions of ${node} in the direction ${direction}")
-    node.getRelationships(direction).toList
   }
 
 }

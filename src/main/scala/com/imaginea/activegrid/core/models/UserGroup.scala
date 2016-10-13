@@ -28,7 +28,11 @@ object UserGroup {
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): UserGroup = super.fromNeo4jGraph(nodeId)
+    override def fromNeo4jGraph(nodeId: Long): UserGroup = {
+      val node = Neo4jRepository.findNodeById(nodeId).get
+      val map = Neo4jRepository.getProperties(node, "name")
+      UserGroup(Some(nodeId), map.get("name").asInstanceOf[String], None, None)
+    }
   }
 
 }
