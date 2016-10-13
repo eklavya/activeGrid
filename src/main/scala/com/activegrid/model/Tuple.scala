@@ -10,28 +10,31 @@ import org.neo4j.graphdb.Node
 case class Tuple(override val id: Option[Long],key: String, value: String)  extends BaseEntity
 
 object  Tuple{
+
   implicit class TupleImpl(tuple: Tuple) extends Neo4jRep[Tuple]{
 
     override def toNeo4jGraph(entity: Tuple): Option[Node] = {
 
-      val label: String = "Tuple"
+      val label = "Tuple"
 
-      val mapPrimitives : Map[String, Any] = Map("key" -> entity.key, "value" -> entity.value)
+      val mapPrimitives = Map("key" -> entity.key, "value" -> entity.value)
 
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[PortRange](label, mapPrimitives)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[Tuple](label, mapPrimitives)
+
       node
 
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[Tuple] = {
+    override def fromNeo4jGraph(nodeId: Long): Tuple = {
 
-      val listOfKeys: List[String] = List("key","value")
+      val listOfKeys = List("key","value")
 
-      val propertyValues: Map[String,Any] = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
-      val key: String = propertyValues.get("key").get.toString
-      val value: String =  propertyValues.get("value").get.toString
+      val propertyValues  = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
+      val key = propertyValues.get("key").get.toString
+      val value =  propertyValues.get("value").get.toString
 
-      Some(Tuple(Some(nodeId),key,value))
+      Tuple(Some(nodeId),key,value)
+
     }
 
   }

@@ -10,14 +10,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Graph  {
 
-
-
   trait Neo4jRep[T] {
-    def toNeo4jGraph(entity: T): Option[Node] = ???
 
-    def fromNeo4jGraph(nodeId: Long): Option[T] = ???
+    def toNeo4jGraph(entity: T): Option[Node]
+
+    def fromNeo4jGraph(nodeId: Long): T
+
   }
-
-
 }
 
