@@ -44,7 +44,7 @@ object Instance{
         "publicDnsName" -> entity.publicDnsName,
         "launchTime"    -> entity.launchTime)
 
-      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[TestImplicit](label, mapPrimitives)
+      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[Instance](label, mapPrimitives)
 
       //TO BE DONE
       /*    val dateNode: Option[Node] = entity.launchTime.toGraph(entity.launchTime)
@@ -115,7 +115,7 @@ object Instance{
       val publicDnsName = propertyValues.get("publicDnsName").get.toString
       //TO DO
       //val launchTime: Date = new Date(propertyValues.get("launchTime").get.toString.toLong)
-      val launchTime = 100
+      val launchTime: Long = 100
       //propertyValues.get("launchTime").get.toString.toLong
 
       val relationship_info1 = "HAS_storageInfo1"

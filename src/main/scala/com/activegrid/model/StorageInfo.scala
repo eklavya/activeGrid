@@ -12,27 +12,28 @@ object StorageInfo {
 
   implicit class StorageInfoImpl(storageInfo: StorageInfo) extends Neo4jRep[StorageInfo] {
 
-
     override def toNeo4jGraph(entity: StorageInfo): Option[Node] = {
 
-      val label: String = "StorageInfo"
+      val label = "StorageInfo"
 
-      val mapPrimitives : Map[String, Any] = Map("used" -> entity.used, "total" -> entity.total)
+      val mapPrimitives = Map("used" -> entity.used, "total" -> entity.total)
 
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[PortRange](label, mapPrimitives)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[StorageInfo](label, mapPrimitives)
+
       node
 
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[StorageInfo] = {
+    override def fromNeo4jGraph(nodeId: Long): StorageInfo = {
 
-      val listOfKeys: List[String] = List("used","total")
+      val listOfKeys  = List("used","total")
 
-      val propertyValues: Map[String,Any] = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
+      val propertyValues = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
       val used: Double = propertyValues.get("used").get.toString.toDouble
       val total : Double =  propertyValues.get("total").get.toString.toDouble
 
-      Some(StorageInfo(Some(nodeId),used,total))
+      StorageInfo(Some(nodeId),used,total)
+
     }
 
   }
