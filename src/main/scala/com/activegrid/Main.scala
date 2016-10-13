@@ -85,19 +85,12 @@ object Main {
       }
     }
 
-
     implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id","imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
     implicit val PageImgFormat = jsonFormat4(Page[ImageInfo])
     implicit val InstanceFlavorFormat = jsonFormat4(InstanceFlavor.apply)
-
     implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
-
-    implicit val listOfTestFormat = jsonFormat2(Test)
-    implicit val listOfTestImplicitFormat = jsonFormat(TestImplicit,"id","name","image")
-
     implicit val storageInfoFormat = jsonFormat3(StorageInfo.apply)
     implicit val tupleFormat = jsonFormat3(Tuple.apply)
-
     implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
       override def write (obj: KeyPairStatus): JsValue = JsString(obj.toString)
 
@@ -108,15 +101,11 @@ object Main {
     }
     implicit val keyPairInfoFormat = jsonFormat8(KeyPairInfo.apply)
     implicit val sshAccessInfoFormat = jsonFormat4(SSHAccessInfo.apply)
-
     implicit val portRangeFormat = jsonFormat3(PortRange.apply)
     implicit val instanceConnectionFormat = jsonFormat4(InstanceConnection.apply)
-
     implicit val softwareForamt = jsonFormat8(Software.apply)
     implicit val processInfoFormat = jsonFormat9(ProcessInfo.apply)
-
     implicit val instanceUserFormat = jsonFormat3(InstanceUser.apply)
-
     implicit val instanceFormat = jsonFormat18(Instance.apply)
     implicit val SiteFormat = jsonFormat2(Site.apply)
 
