@@ -10,16 +10,16 @@ import org.slf4j.LoggerFactory
   */
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class Software(override val id: Option[Long],
-                     @JsonInclude(JsonInclude.Include.NON_NULL) version: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) name: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) provider: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) downloadURL: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) port: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) processNames: List[String],
-                     @JsonInclude(JsonInclude.Include.NON_NULL) discoverApplications: Boolean) extends BaseEntity
+                    @JsonInclude(JsonInclude.Include.NON_NULL) version: String,
+                    @JsonInclude(JsonInclude.Include.NON_NULL) name: String,
+                    @JsonInclude(JsonInclude.Include.NON_NULL) provider: String,
+                    @JsonInclude(JsonInclude.Include.NON_NULL) downloadURL: String,
+                    @JsonInclude(JsonInclude.Include.NON_NULL) port: String,
+                    @JsonInclude(JsonInclude.Include.NON_NULL) processNames: List[String],
+                    @JsonInclude(JsonInclude.Include.NON_NULL) discoverApplications: Boolean) extends BaseEntity
 
 
-object Software{
+object Software {
 
   implicit class SoftwareImpl(software: Software) extends Neo4jRep[Software] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -27,7 +27,7 @@ object Software{
 
     override def toNeo4jGraph(software: Software): Option[Node] = {
       logger.debug(s"In toGraph for Software: ${software}")
-      val map: Map[String, Any] = Map("version" -> software.version,
+      val map= Map("version" -> software.version,
         "name" -> software.name,
         "provider" -> software.provider,
         "downloadURL" -> software.downloadURL,

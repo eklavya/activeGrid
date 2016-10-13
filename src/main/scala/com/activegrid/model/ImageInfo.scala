@@ -10,20 +10,20 @@ import org.slf4j.LoggerFactory
   */
 @JsonIgnoreProperties(ignoreUnknown = true)
 case class ImageInfo(override val id: Option[Long],
-                     @JsonInclude(JsonInclude.Include.NON_NULL) state : String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) ownerId  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) publicValue :Boolean,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) architecture  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) imageType  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) platform  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) imageOwnerAlias  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) name  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) description  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) rootDeviceType  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) rootDeviceName  :String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) version :String) extends BaseEntity
+                     @JsonInclude(JsonInclude.Include.NON_NULL) state: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) ownerId: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) publicValue: Boolean,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) architecture: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) imageType: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) platform: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) imageOwnerAlias: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) name: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) description: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) rootDeviceType: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) rootDeviceName: String,
+                     @JsonInclude(JsonInclude.Include.NON_NULL) version: String) extends BaseEntity
 
-object ImageInfo{
+object ImageInfo {
 
   implicit class ImageInfoImpl(imageInfo: ImageInfo) extends Neo4jRep[ImageInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -31,7 +31,7 @@ object ImageInfo{
 
     override def toNeo4jGraph(imageInfo: ImageInfo): Option[Node] = {
       logger.debug(s"In toGraph for Image Info: ${imageInfo}")
-      val map: Map[String, Any] = Map("state" -> imageInfo.state,
+      val map= Map("state" -> imageInfo.state,
         "ownerId" -> imageInfo.ownerId,
         "publicValue" -> imageInfo.publicValue,
         "architecture" -> imageInfo.architecture,
@@ -68,4 +68,5 @@ object ImageInfo{
       Some(imageInfo)
     }
   }
+
 }
