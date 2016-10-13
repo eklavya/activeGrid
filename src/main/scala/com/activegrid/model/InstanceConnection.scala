@@ -16,45 +16,39 @@ object InstanceConnection{
 
     override def toNeo4jGraph(entity: InstanceConnection): Option[Node] = {
 
-      val label: String = "InstanceConnection"
+      val label = "InstanceConnection"
 
-      val mapPrimitives : Map[String, Any] = Map("sourceNodeId" -> entity.sourceNodeId, "targetNodeId" -> entity.targetNodeId)
+      val mapPrimitives  = Map("sourceNodeId" -> entity.sourceNodeId, "targetNodeId" -> entity.targetNodeId)
 
-      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[TestImplicit](label, mapPrimitives)
+      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[InstanceConnection](label, mapPrimitives)
 
       val relationship = "HAS_portRange"
       entity.portRanges.foreach{portRange =>
-
         val portRangeNode = portRange.toNeo4jGraph(portRange)
         GraphDBExecutor.setGraphRelationship(node,portRangeNode,relationship)
-
       }
 
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[InstanceConnection] = {
+    override def fromNeo4jGraph(nodeId: Long): InstanceConnection = {
 
-      val listOfKeys: List[String] = List("sourceNodeId","targetNodeId")
-
-      val propertyValues: Map[String,Any] = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
-      val sourceNodeId: String = propertyValues.get("sourceNodeId").get.toString
-      val targetNodeId: String = propertyValues.get("targetNodeId").get.toString
-
+      val listOfKeys = List("sourceNodeId","targetNodeId")
+      val propertyValues = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
+      val sourceNodeId = propertyValues.get("sourceNodeId").get.toString
+      val targetNodeId = propertyValues.get("targetNodeId").get.toString
 
       val relationship = "HAS_portRange"
       val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId,relationship)
-      println(childNodeIds)
 
       val portRanges: List[PortRange] = childNodeIds.map{ childId =>
         val port:PortRange = null
-        port.fromNeo4jGraph(childId).get
+        port.fromNeo4jGraph(childId)
       }
 
-      Some(InstanceConnection(Some(nodeId), sourceNodeId,targetNodeId,portRanges))
+      InstanceConnection(Some(nodeId), sourceNodeId,targetNodeId,portRanges)
     }
 
   }
-
 
 }
