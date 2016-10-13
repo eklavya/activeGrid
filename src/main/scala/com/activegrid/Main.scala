@@ -16,7 +16,7 @@ object Main extends App {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
-  val appSettingService : AppSettingService = new AppSettingService
+  val appSettingService = new AppSettingService
 
   val routes = appSettingService.addAppSetting ~ appSettingService.addSetting ~ appSettingService.getAppSettings ~ appSettingService.deleteSettings ~ appSettingService.getSettings ~ appSettingService.getLogLevel ~ appSettingService.updateLogLevel~appSettingService.index
   Http().bindAndHandle(routes, "localhost", 8000)

@@ -23,15 +23,22 @@ class AppSettingRepository(implicit executionContext: ExecutionContext) {
 
   def getAppSettings(): Future[AppSettings] = Future {
     logger.info(s"Executing $getClass getAppSettings")
-    val appSettings = new AppSettings(Some(0), null, null).fromNeo4jGraph();
-    appSettings
+    val appSettings = new AppSettings(Some(0), Map.empty, Map.empty).fromNeo4jGraph();
+    if(appSettings == null)
+      throw new Exception("Unable to find App Settings")
+    else
+      appSettings
   }
 
 
-  def saveSetting(setting: Map[String, String]): Unit = {
+  def saveSetting(setting: Map[String, String]): Future[Unit] = Future{
     logger.info(s"Executing $getClass ::saveSetting")
-    val appSettingsImpl = new AppSettingsImpl(null)
-    val appSettings = appSettingsImpl.updateAppSettings(setting, "Has_Settings")
+    val appSettingsImpl = new AppSettingsImpl(AppSettings(Some(0),Map.empty,Map.empty))
+    try {
+      val appSettings = appSettingsImpl.updateAppSettings(setting, "Has_Settings")
+    }catch {
+      case exception : Exception => throw exception
+    }
   }
 
   def getSettings(): Future[AppSettings] = {
@@ -43,8 +50,12 @@ class AppSettingRepository(implicit executionContext: ExecutionContext) {
   def deleteSettings(settingNames: List[String]): Future[Boolean] = Future {
     logger.info("Executing deleteSettings")
     val appSettingsImpl = new AppSettingsImpl(null)
-    appSettingsImpl.deleteSettings(settingNames, "Has_Settings")
-    logger.info("Deleted settings")
+    try {
+      appSettingsImpl.deleteSettings(settingNames, "Has_Settings")
+      logger.info("Deleted settings")
+    }catch {
+      case exception : Exception => throw exception
+    }
     true
   }
 
