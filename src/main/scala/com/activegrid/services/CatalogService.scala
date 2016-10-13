@@ -9,18 +9,16 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 class CatalogService(implicit val executionContext: ExecutionContext){
 
-
-
-
   def getImages(): Future[List[ImageInfo]] = Future {
 
     val label: String = "ImageInfo"
 
     val nodesList = GraphDBExecutor.getNodesByLabel(label)
     val imageInfo: ImageInfo = null
-    val imageInfoList = nodesList.map(node => imageInfo.fromNeo4jGraph(node.getId).get)
+    val imageInfoList = nodesList.map(node => imageInfo.fromNeo4jGraph(node.getId))
 
     imageInfoList
+
   }
 
   def buildImage(image:ImageInfo):Future[String] = Future {
@@ -45,16 +43,12 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 
     val s : Site  = null
 
-    val site: Option[Site]  = s.fromNeo4jGraph(siteId)
+    val site: Site  = s.fromNeo4jGraph(siteId)
 
-    site match {
+    val listOfInstances = site.instances
 
-      case Some(a) => {
-        val listOfInstances = a.instances
-        listOfInstances.map(instance => InstanceFlavor(instance.instanceType, None, instance.memoryInfo.total,instance.rootDiskInfo.total))
-      }
-      case None => List()
-    }
+    listOfInstances.map(instance => InstanceFlavor(instance.instanceType, None, instance.memoryInfo.total,instance.rootDiskInfo.total))
+
   }
 
 }
