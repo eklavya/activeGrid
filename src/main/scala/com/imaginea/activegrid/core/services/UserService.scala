@@ -96,7 +96,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
       val filePath: String = UserUtils.getKeyFilePath(userId, keyName)
       FileUtils.saveContentToFile(filePath, keyMaterial)
 
-      val keyPairInfo = KeyPairInfo(keyName, keyMaterial, filePath, KeyPairStatus.UPLOADED)
+      val keyPairInfo = KeyPairInfo(keyName, keyMaterial, filePath, UploadedKeyPair)
       logger.debug(s" new Key Pair Info ${keyPairInfo}")
       UserUtils.addKeyPair(userId, keyPairInfo)
       keyPairInfo

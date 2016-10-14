@@ -1,7 +1,5 @@
 package com.imaginea.activegrid.core.models
 
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
@@ -61,7 +59,7 @@ object KeyPairInfo {
         ActiveGridUtils.getValueFromMapAs[String](map, "keyFingerprint"),
         map.get("keyMaterial").get.asInstanceOf[String],
         map.get("filePath").get.asInstanceOf[String],
-        KeyPairStatus.withName(map.get("status").get.asInstanceOf[String]),
+        KeyPairStatus.toKeyPairStatus(map.get("status").get.asInstanceOf[String]),
         ActiveGridUtils.getValueFromMapAs[String](map, "defaultUser"),
         ActiveGridUtils.getValueFromMapAs[String](map, "passPhrase")
       )

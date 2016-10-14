@@ -1,14 +1,12 @@
 package com.imaginea
 
 import akka.actor.ActorSystem
-import akka.http.javadsl.model.MediaType.Multipart
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.services.{KeyPairService, UserService}
 import com.typesafe.config.ConfigFactory
@@ -29,10 +27,10 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
 
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
-    override def write(obj: KeyPairStatus): JsValue = JsString(obj.toString)
+    override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
 
     override def read(json: JsValue): KeyPairStatus = json match {
-      case JsString(str) => KeyPairStatus.withName(str)
+      case JsString(str) => KeyPairStatus.toKeyPairStatus(str)
       case _ => throw new DeserializationException("Enum string expected")
     }
   }
