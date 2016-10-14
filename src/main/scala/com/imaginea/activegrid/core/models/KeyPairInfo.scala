@@ -16,11 +16,7 @@ case class KeyPairInfo(override val id: Option[Long]
                        , status: KeyPairStatus
                        , defaultUser: Option[String]
                        , passPhrase: Option[String]
-                      ) extends BaseEntity {
-  def this(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus)
-  = this(None, keyName, None, keyMaterial, filePath, status, None, None)
-}
-
+                      ) extends BaseEntity
 
 object KeyPairInfo {
 
