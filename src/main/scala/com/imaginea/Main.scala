@@ -1,15 +1,16 @@
 package com.imaginea
 
 import akka.actor.ActorSystem
+import akka.http.javadsl.model.MediaType.Multipart
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 import com.imaginea.activegrid.core.models._
-import com.imaginea.activegrid.core.services.UserService
+import com.imaginea.activegrid.core.services.{KeyPairService, UserService}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -129,8 +130,37 @@ object Main extends App {
     }
   }
 
+  //KeyPair Serivce
+  val keyPairService = new KeyPairService
+  def keyPairRoute: Route = pathPrefix("keypairs") {
+      pathPrefix(LongNumber) { keyId =>
+        get {
+          onComplete(keyPairService.getKey(keyId)) {
+            case util.Success(key) => complete(StatusCodes.OK, key)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get Key Pair, Message: ${ex.getMessage}")
+          }
+        } ~ delete {
+          onComplete(keyPairService.deleteKeyById(keyId)) {
+            case util.Success(key) => complete(StatusCodes.OK, "Deleted Successfully")
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to delete Key Pair, Message: ${ex.getMessage}")
+          }
+        }
+      } ~ get {
+        onComplete(keyPairService.getKeyPairs) {
+          case util.Success(page) => complete(StatusCodes.OK, page)
+          case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get Keys, Message: ${ex.getMessage}")
+        }
+      } ~ put {
+          entity(as[Multipart.FormData]) { formData =>
+            onComplete(keyPairService.uploadKeyPairs(formData)) {
+              case util.Success(page) => complete(StatusCodes.OK, page)
+              case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to update Keys, Message: ${ex.getMessage}")
+            }
+          }
+      }
+  }
 
-  val route: Route = userRoute
+  val route: Route = userRoute ~ keyPairRoute
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")

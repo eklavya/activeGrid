@@ -142,6 +142,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     // get realtion with parent  (incoming relations)
     // delete incoming
     // delete node
+    logger.debug(s"trying to delete node with id ${nodeId}")
     val node = getNodeById(nodeId)
     val incomingRelations = getRelationships(node, Direction.INCOMING)
     incomingRelations.foreach(incomingRelation => {
@@ -187,6 +188,18 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
         logger.warn(s"node with Id ${id} is not found", e)
         throw e
       }
+    }
+  }
+
+  def findNodeByLabelAndId(label: String, id: Long): Option[Node] = withTx { implicit neo =>
+    val maybeNode = findNodeById(id)
+
+    maybeNode match {
+      case None => throw new Exception(s"node with Id ${id} is not found")
+      case Some(node) if node.hasLabel(label) => {
+        maybeNode
+      }
+      case _ => throw new Exception(s"node with Id ${id} and label ${label} is not found")
     }
   }
 

@@ -3,7 +3,6 @@ package com.imaginea.activegrid.core.services
 import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.utils.FileUtils
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,11 +16,11 @@ class UserService(implicit val executionContext: ExecutionContext) {
   val label = "User"
   val user: User = null
 
-  def getUsers: Future[Option[Page[User]]] = Future {
+  def getUsers: Future[Page[User]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
     val listOfUsers = nodeList.map(node => user.fromNeo4jGraph(node.getId))
 
-    Some(Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers))
+    Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers)
   }
 
   def saveUser(user: User): Future[Unit] = Future {
