@@ -2,8 +2,8 @@ package com.imaginea.activegrid.core.policy.models
 
 import java.util.Date
 
-import com.imaginea.activegrid.core.apm.models.{UnitType, MetricType}
-import com.imaginea.activegrid.core.discovery.models.{ScalingGroup, ApplicationTier, Application}
+import com.imaginea.activegrid.core.apm.models.{MetricType, UnitType}
+import com.imaginea.activegrid.core.discovery.models.{Application, ApplicationTier, ScalingGroup}
 import com.imaginea.activegrid.core.models.BaseEntity
 
 /**
@@ -12,19 +12,30 @@ import com.imaginea.activegrid.core.models.BaseEntity
 case class AutoScalingPolicy(application: Application,
                              primaryConditions: List[PolicyCondition] = List.empty,
                              secondaryConditions: List[PolicyCondition] = List.empty,
-                             lastAppliedAt: Date) extends BaseEntity{
+                             lastAppliedAt: Date) extends BaseEntity {
 }
 
 case class PolicyCondition(applicationTier: ApplicationTier,
                            metricType: MetricType,
                            threshold: Double,
                            unitType: UnitType,
-                           conditionType: ConditionType ,
+                           conditionType: ConditionType,
                            scaleType: ScaleType,
                            scalingGroup: ScalingGroup) extends BaseEntity
 
 
-class ConditionType extends Enumeration {
-  type ConditionType = Value
-  val GREATER_THAN, LESS_THAN, EQUAL_TO = Value
+sealed trait ConditionType{
+  def name: String
+  override def toString: String = name
+}
+case object GreaterThanCondition extends ConditionType { val name = "GREATER_THAN" }
+case object LessThanCondition extends ConditionType { val name = "GREATER_THAN" }
+case object EqualToCondition extends ConditionType { val name = "GREATER_THAN" }
+
+object ConditionType{
+  implicit def toConditionType(name: String): ConditionType = name match {
+    case "GREATER_THAN" => GreaterThanCondition
+    case "GREATER_THAN" => LessThanCondition
+    case "GREATER_THAN" => EqualToCondition
+  }
 }

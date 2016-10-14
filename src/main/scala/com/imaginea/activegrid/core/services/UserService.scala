@@ -16,7 +16,6 @@ class UserService(implicit val executionContext: ExecutionContext) {
   val label = "User"
   val user: User = null
 
-
   def getUsers: Future[Option[Page[User]]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
 
@@ -108,13 +107,6 @@ class UserService(implicit val executionContext: ExecutionContext) {
     getKeyById(userId, keyId)
   }
 
-  def deleteKey(userId: Long, keyId: Long): Future[Option[String]] = Future {
-    logger.debug(s"Deleting Key[${keyId}] of User[${userId}] ")
-    val node = getKeyById(userId, keyId)
-    logger.debug(s"node to be deleted -- ${node}")
-    Some(s"Deleted key with id ${keyId}")
-  }
-
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
     val keysList: List[KeyPairInfo] = user.fromNeo4jGraph(userId).map(_.publicKeys).getOrElse(List.empty)
 
@@ -123,6 +115,13 @@ class UserService(implicit val executionContext: ExecutionContext) {
       case _ :: keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
       case _ => None
     }
+  }
+
+  def deleteKey(userId: Long, keyId: Long): Future[Option[String]] = Future {
+    logger.debug(s"Deleting Key[${keyId}] of User[${userId}] ")
+    val node = getKeyById(userId, keyId)
+    logger.debug(s"node to be deleted -- ${node}")
+    Some(s"Deleted key with id ${keyId}")
   }
 
   def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Option[Page[KeyPairInfo]]] = Future {

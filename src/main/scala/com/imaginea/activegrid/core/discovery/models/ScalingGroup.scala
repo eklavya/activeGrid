@@ -11,7 +11,7 @@ class ScalingGroup(name: String,
                    availabilityZones: List[String] = List.empty,
                    instanceIds: List[String] = List.empty,
                    loadBalancerNames: List[String] = List.empty,
-                   tags: List[(String, String)]= List.empty,
+                   tags: List[(String, String)] = List.empty,
                    desiredCapacity: Int,
                    maxCapacity: Int,
                    minCapacity: Int

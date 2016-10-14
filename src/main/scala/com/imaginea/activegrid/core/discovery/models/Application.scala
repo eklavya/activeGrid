@@ -12,8 +12,9 @@ case class Application(name: String,
                        instances: List[Instance] = List.empty,
                        tiers: List[ApplicationTier] = List.empty,
                        apmServer: Option[APMServerDetails] = None,
-                       responseTime: Double) extends BaseEntity{
+                       responseTime: Double) extends BaseEntity {
 }
-case class ApplicationTier(name: String,description: String,
+
+case class ApplicationTier(name: String, description: String,
                            instances: List[Instance] = List.empty,
                            apmServer: APMServerDetails) extends BaseEntity
