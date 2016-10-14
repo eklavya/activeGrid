@@ -9,7 +9,15 @@ class InstanceGroup(groupType: GroupType,
                     name: String,
                     instances: List[Instance] = List.empty) extends BaseEntity
 
-class GroupType extends Enumeration {
-  type GroupType = Value
-  val ROLE = Value
+sealed trait GroupType{
+  def name: String
+  override def toString: String = name
 }
+case object RoleGroupType extends GroupType { val name = "ROLE" }
+
+object GroupType{
+  implicit def toGroupType(name: String): GroupType = name match {
+    case "ROLE" => RoleGroupType
+  }
+}
+

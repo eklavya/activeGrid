@@ -46,27 +46,23 @@ object UserGroup {
       //val node = Neo4jRepository.saveEntity[KeyPairInfo](ResourceACLProtocol.label, userGroup.id, map)
 
       //map function is used to extract the option value
-      userGroup.users.map { users =>
-        logger.debug(s"UserGroupProxy has relation with Users $users")
-        //Iterating the users and linking to the UserGroup
-        for {user <- users
-             ugn <- userGroupNode
-             userNode <- user.toNeo4jGraph(user)} {
-          Neo4jRepository.createRelation(has_users, ugn, userNode)
-        }
+      //Iterating the users and linking to the UserGroup
+      logger.debug(s"UserGroupProxy has relation with Users ${userGroup.users}")
+      for {users <- userGroup.users
+           user <- users
+           ugn <- userGroupNode
+           userNode <- user.toNeo4jGraph(user)} {
+        Neo4jRepository.createRelation(has_users, ugn, userNode)
       }
 
       //map function is used to extract the option value
       //Iterating the access and linking to the UserGroup
-      userGroup.accesses.map {
-        accesses => {
-          logger.debug(s"UserGroupProxy has relation with ResourceACL $accesses")
-          for {resource <- accesses
-               ugn <- userGroupNode
-               resourceNode <- resource.toNeo4jGraph(resource)} {
-            Neo4jRepository.createRelation(has_resourceAccess, ugn, resourceNode)
-          }
-        }
+      logger.debug(s"UserGroupProxy has relation with ResourceACL ${userGroup.accesses}")
+      for {accesses <- userGroup.accesses
+           resource <- accesses
+           ugn <- userGroupNode
+           resourceNode <- resource.toNeo4jGraph(resource)} {
+        Neo4jRepository.createRelation(has_resourceAccess, ugn, resourceNode)
       }
 
       userGroupNode

@@ -7,8 +7,8 @@ import org.slf4j.LoggerFactory
 /**
  * Created by babjik on 26/9/16.
  */
-case class ResourceACL(resources: String = ResourceType.All.toString
-                       , permission: String = Permission.All.toString
+case class ResourceACL(resources: String = AllResource.name
+                       , permission: String = AllPermission.name
                        , resourceIds: Array[Long] = Array.empty) extends BaseEntity
 
 object ResourceACLProtocol {

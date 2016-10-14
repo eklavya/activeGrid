@@ -6,7 +6,6 @@ import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
-import scala.concurrent.Future
 
 /**
  * Created by babjik on 23/9/16.
@@ -19,23 +18,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   val CLASS = "@Class"
 
   def neo4jStoreDir = "./graphdb/activegriddb"
-
-  /**
-   * fetchNode find the node by id and return Either type
-   * @param id
-   * @return
-   */
-  /* Manifest is added to support for toCC method*/
-
-  def fetchNodeById[T <: BaseEntity : Manifest](id: Long): Either[Exception, (Node, Option[T])] = withTx { neo =>
-    try {
-      val node = getNodeById(id)(neo)
-      Right((node, node.toCC[T]))
-    } catch {
-        case ex: NotFoundException => Left(ex)
-        case ex:Exception => Left(ex)
-    }
-  }
 
   /**
    * Finding the first Node with given label and property details
@@ -53,8 +35,9 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       case _ => None
     }
   }
-
+  import KeyPairStatus._
   def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
+
     val node = getOrSaveEntity(label, id)
     map.foreach { case (k, v) => {
       logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v")
@@ -146,14 +129,13 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     node.toCC[T]
   }
 
-  import scala.concurrent.{ExecutionContext, Future}
   /**
    * deletes the node with the given label and property details
    * @param nodeId
    */
 
   def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
-     val node = findNodeById(nodeId).get
+    val node = findNodeById(nodeId).get
     //TODO: need to delete relations before deleting node
     val relations = node.getRelationships(Direction.OUTGOING)
     logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
@@ -166,17 +148,29 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     logger.debug(s"finally deleting node ${node}")
     node.delete
   }
+
+  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
+    try {
+      Some(getNodeById(id))
+    } catch {
+      case e: NotFoundException => {
+        logger.warn(s"node with Id ${id} is not found", e)
+        throw e
+      }
+    }
+  }
+
   /* Validating the availability of the requested node,
    * If it fails re-throwing exception otherwise do the deleting process
    */
   def removeEntity[T <: BaseEntity : Manifest](nodeId: Long): Unit = withTx { implicit neo =>
     fetchNodeById[T](nodeId).fold(
-      ex =>{
+      ex => {
         logger.debug(s"Exception while removing entity ${ex.getMessage}")
         throw new Exception(ex.getMessage)
       },
       result => {
-        val (node,entity) = result
+        val (node, entity) = result
         //TODO: need to delete relations before deleting node
         val relations = node.getRelationships(Direction.OUTGOING)
         logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
@@ -192,14 +186,20 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     )
   }
 
-  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
+  /**
+   * fetchNode find the node by id and return Either type
+   * @param id
+   * @return
+   */
+  /* Manifest is added to support for toCC method*/
+
+  def fetchNodeById[T <: BaseEntity : Manifest](id: Long): Either[Exception, (Node, Option[T])] = withTx { neo =>
     try {
-      Some(getNodeById(id))
+      val node = getNodeById(id)(neo)
+      Right((node, node.toCC[T]))
     } catch {
-      case e: NotFoundException => {
-        logger.warn(s"node with Id ${id} is not found", e)
-        throw e
-      }
+      case ex: NotFoundException => Left(ex)
+      case ex: Exception => Left(ex)
     }
   }
 

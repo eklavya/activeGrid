@@ -1,6 +1,5 @@
 package com.imaginea.activegrid.core.models
 
-import com.imaginea.activegrid.core.models.KeyPairStatus.KeyPairStatus
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -8,18 +7,19 @@ import org.slf4j.LoggerFactory
 /**
  * Created by babjik on 26/9/16.
  */
-case class KeyPairInfo(id: Option[Long]
-                       , keyName: String
-                       , keyFingerprint: String
-                       , keyMaterial: String
-                       , filePath: String
-                       , status: KeyPairStatus
-                       , defaultUser: String
-                       , passPhrase: String
+case class KeyPairInfo(val id: Option[Long]
+                       , val keyName: String
+                       , val keyFingerprint: Option[String] = None
+                       , val keyMaterial: Option[String] = None
+                       , val filePath: Option[String] = None
+                       , val status: KeyPairStatus
+                       , val defaultUser: Option[String] = None
+                       , val passPhrase: Option[String] = None
                         ) extends BaseEntity
 
 
 object KeyPairInfo {
+  import KeyPairStatus._
 
   implicit class RichKeyPairInfo(keyPairInfo: KeyPairInfo) extends Neo4jRep[KeyPairInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -29,12 +29,12 @@ object KeyPairInfo {
       logger.debug(s"toGraph for KeyPairInfo ${entity}")
       val map: Map[String, Any] = Map(
         "keyName" -> entity.keyName,
-        "keyFingerprint" -> entity.keyFingerprint,
-        "keyMaterial" -> entity.keyMaterial,
-        "filePath" -> entity.filePath,
+        "keyFingerprint" -> entity.keyFingerprint.getOrElse(""),
+        "keyMaterial" -> entity.keyMaterial.getOrElse(""),
+        "filePath" -> entity.filePath.getOrElse(""),
         "status" -> entity.status.toString,
-        "defaultUser" -> entity.defaultUser,
-        "passPhrase" -> entity.passPhrase
+        "defaultUser" -> entity.defaultUser.getOrElse(""),
+        "passPhrase" -> entity.passPhrase.getOrElse("")
       )
 
       val node = Neo4jRepository.saveEntity[KeyPairInfo](label, entity.id, map)
@@ -50,12 +50,12 @@ object KeyPairInfo {
       val keyPairInfo = KeyPairInfo(
         Some(node.getId),
         map.get("keyName").get.asInstanceOf[String],
-        map.get("keyFingerprint").get.asInstanceOf[String],
-        map.get("keyMaterial").get.asInstanceOf[String],
-        map.get("filePath").get.asInstanceOf[String],
-        KeyPairStatus.withName(map.get("status").get.asInstanceOf[String]),
-        map.get("defaultUser").get.asInstanceOf[String],
-        map.get("passPhrase").get.asInstanceOf[String]
+        Some(map.get("keyFingerprint").get.asInstanceOf[String]),
+        Some(map.get("keyMaterial").get.asInstanceOf[String]),
+        Some(map.get("filePath").get.asInstanceOf[String]),
+        map.get("status").get.asInstanceOf[String],
+        Some(map.get("defaultUser").get.asInstanceOf[String]),
+        Some(map.get("passPhrase").get.asInstanceOf[String])
       )
 
       logger.debug(s"Key pair info - ${keyPairInfo}")
