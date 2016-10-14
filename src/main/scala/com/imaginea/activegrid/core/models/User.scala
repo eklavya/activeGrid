@@ -23,6 +23,7 @@ case class User(override val id: Option[Long]
 
 
 object User {
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   implicit class RichUser(user: User) extends Neo4jRep[User] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -51,37 +52,38 @@ object User {
 
 
     override def fromNeo4jGraph(nodeId: Long): User = {
-      val node = Neo4jRepository.findNodeById(nodeId).get
-      val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
-
-      val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
-      val keyPairInfo: KeyPairInfo = null
-
-      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
-        keyPairInfo.fromNeo4jGraph(keyPairNode.getId)
-      })
-
-      val user = User(Some(node.getId),
-        map.get("username").get.asInstanceOf[String],
-        map.get("password").get.asInstanceOf[String],
-        map.get("email").get.asInstanceOf[String],
-        map.get("uniqueId").get.asInstanceOf[String],
-        keyPairInfos,
-        map.get("accountNonExpired").get.asInstanceOf[Boolean],
-        map.get("accountNonLocked").get.asInstanceOf[Boolean],
-        map.get("credentialsNonExpired").get.asInstanceOf[Boolean],
-        map.get("enabled").get.asInstanceOf[Boolean],
-        map.get("displayName").get.asInstanceOf[String])
-
-      logger.debug(s"user - ${user}")
-      user
+      User.fromNeo4jGraph(nodeId)
     }
   }
 
+  def fromNeo4jGraph(nodeId: Long): User = {
+    val node = Neo4jRepository.findNodeById(nodeId).get
+    val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+
+    val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
+
+    val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
+      KeyPairInfo.fromNeo4jGraph(keyPairNode.getId)
+    })
+
+    val user = User(Some(node.getId),
+      map.get("username").get.asInstanceOf[String],
+      map.get("password").get.asInstanceOf[String],
+      map.get("email").get.asInstanceOf[String],
+      map.get("uniqueId").get.asInstanceOf[String],
+      keyPairInfos,
+      map.get("accountNonExpired").get.asInstanceOf[Boolean],
+      map.get("accountNonLocked").get.asInstanceOf[Boolean],
+      map.get("credentialsNonExpired").get.asInstanceOf[Boolean],
+      map.get("enabled").get.asInstanceOf[Boolean],
+      map.get("displayName").get.asInstanceOf[String])
+
+    logger.debug(s"user - ${user}")
+    user
+  }
 }
 
 object UserUtils {
-  val keyPairInfo: KeyPairInfo = null
   val has_publicKeys = "HAS_publicKeys"
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Relationship = {

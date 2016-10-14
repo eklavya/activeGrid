@@ -14,11 +14,10 @@ class UserService(implicit val executionContext: ExecutionContext) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   val label = "User"
-  val user: User = null
 
   def getUsers: Future[Page[User]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
-    val listOfUsers = nodeList.map(node => user.fromNeo4jGraph(node.getId))
+    val listOfUsers = nodeList.map(node => User.fromNeo4jGraph(node.getId))
 
     Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers)
   }
@@ -28,11 +27,11 @@ class UserService(implicit val executionContext: ExecutionContext) {
   }
 
   def getUser(userId: Long): Future[User] = Future {
-    user.fromNeo4jGraph(userId)
+    User.fromNeo4jGraph(userId)
   }
 
   def getKeys(userId: Long): Future[Page[KeyPairInfo]] = Future {
-    val keysList = user.fromNeo4jGraph(userId).publicKeys
+    val keysList = User.fromNeo4jGraph(userId).publicKeys
     Page(0, keysList.size, keysList.size, keysList)
   }
 
@@ -48,7 +47,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
         Page(0, 0, 0, List())
       }
       case Some(node) => {
-        val keysList = user.fromNeo4jGraph(node.getId).publicKeys
+        val keysList = User.fromNeo4jGraph(node.getId).publicKeys
         Page(0, keysList.size, keysList.size, keysList)
       }
     }
@@ -56,7 +55,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
   }
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    val keysList: List[KeyPairInfo] = user.fromNeo4jGraph(userId).publicKeys
+    val keysList: List[KeyPairInfo] = User.fromNeo4jGraph(userId).publicKeys
 
     keysList match {
       case keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
@@ -105,7 +104,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
 
     logger.debug(s"result from map ${resultKeys}")
 
-    val userGraph = user.fromNeo4jGraph(userId)
+    val userGraph = User.fromNeo4jGraph(userId)
 
     val keysList = resultKeys.toList
     Page(0, keysList.size, keysList.size, keysList)

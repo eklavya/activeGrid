@@ -15,7 +15,7 @@ case class ResourceACL (override val id: Option[Long]) extends BaseEntity/* {
 */
 
 object ResourceACL {
-
+  //TODO: handled by Ranjit
   implicit class RichResourceACL(resourceACL: ResourceACL) extends Neo4jRep[ResourceACL] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ResourceACL"
@@ -25,10 +25,12 @@ object ResourceACL {
     }
 
     override def fromNeo4jGraph(nodeId: Long): ResourceACL = {
-      ResourceACL(Some(0L))
+      ResourceACL.fromNeo4jGraph(nodeId)
     }
   }
 
-
+  def fromNeo4jGraph(nodeId: Long): ResourceACL = {
+    ResourceACL(Some(0L))
+  }
 
 }

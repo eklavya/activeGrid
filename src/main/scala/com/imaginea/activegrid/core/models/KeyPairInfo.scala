@@ -19,7 +19,7 @@ case class KeyPairInfo(override val id: Option[Long]
                       ) extends BaseEntity
 
 object KeyPairInfo {
-
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   def apply(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus): KeyPairInfo =
     new KeyPairInfo(None, keyName, None, keyMaterial, filePath, status, None, None)
 
@@ -46,24 +46,28 @@ object KeyPairInfo {
     }
 
     override def fromNeo4jGraph(nodeId: Long): KeyPairInfo = {
-      val node = Neo4jRepository.findNodeById(nodeId).get
-      val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
-
-      val keyPairInfo = KeyPairInfo(
-        Some(node.getId),
-        map.get("keyName").get.asInstanceOf[String],
-        ActiveGridUtils.getValueFromMapAs[String](map, "keyFingerprint"),
-        map.get("keyMaterial").get.asInstanceOf[String],
-        map.get("filePath").get.asInstanceOf[String],
-        KeyPairStatus.toKeyPairStatus(map.get("status").get.asInstanceOf[String]),
-        ActiveGridUtils.getValueFromMapAs[String](map, "defaultUser"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "passPhrase")
-      )
-
-      logger.debug(s"Key pair info - ${keyPairInfo}")
-      keyPairInfo
+      KeyPairInfo.fromNeo4jGraph(nodeId)
     }
 
+  }
+
+  def fromNeo4jGraph(nodeId: Long): KeyPairInfo = {
+    val node = Neo4jRepository.findNodeById(nodeId).get
+    val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
+
+    val keyPairInfo = KeyPairInfo(
+      Some(node.getId),
+      map.get("keyName").get.asInstanceOf[String],
+      ActiveGridUtils.getValueFromMapAs[String](map, "keyFingerprint"),
+      map.get("keyMaterial").get.asInstanceOf[String],
+      map.get("filePath").get.asInstanceOf[String],
+      KeyPairStatus.toKeyPairStatus(map.get("status").get.asInstanceOf[String]),
+      ActiveGridUtils.getValueFromMapAs[String](map, "defaultUser"),
+      ActiveGridUtils.getValueFromMapAs[String](map, "passPhrase")
+    )
+
+    logger.debug(s"Key pair info - ${keyPairInfo}")
+    keyPairInfo
   }
 
 }
