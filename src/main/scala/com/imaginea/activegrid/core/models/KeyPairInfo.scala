@@ -35,12 +35,12 @@ object KeyPairInfo {
       logger.debug(s"toGraph for KeyPairInfo ${entity}")
       val map = Map(
         "keyName" -> entity.keyName,
-        "keyFingerprint" -> entity.keyFingerprint.getOrElse(null),
+        "keyFingerprint" -> entity.keyFingerprint.getOrElse(None),
         "keyMaterial" -> entity.keyMaterial,
         "filePath" -> entity.filePath,
         "status" -> entity.status.toString,
-        "defaultUser" -> entity.defaultUser.getOrElse(null),
-        "passPhrase" -> entity.passPhrase.getOrElse(null)
+        "defaultUser" -> entity.defaultUser.getOrElse(None),
+        "passPhrase" -> entity.passPhrase.getOrElse(None)
       )
 
       val node = Neo4jRepository.saveEntity[KeyPairInfo](label, entity.id, map)
