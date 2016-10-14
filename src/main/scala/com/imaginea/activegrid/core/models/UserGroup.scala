@@ -8,41 +8,32 @@ import org.slf4j.LoggerFactory
 /**
  * Created by babjik on 5/10/16.
  */
-case class UserGroup(id: Option[Long]
+case class UserGroup(override val id: Option[Long]
                      , name: String
                      , users: Option[Set[User]]
                      , accesses: Option[Set[ResourceACL]]) extends BaseEntity
 
-case class UserGroupProxy(name: String) extends BaseEntity
-
-object UserGroupProtocol {
-  val labelUserGroup = "UserGroup"
-}
 
 sealed trait ResponseMessage
-
 case class SuccessResponse(id: String) extends ResponseMessage
-
 object FailureResponse extends ResponseMessage
 
 object UserGroup {
+  val label = "UserGroup"
 
-  implicit class RichUserGroup(userGroup: UserGroup) extends Neo4jRep2[UserGroup] {
+  implicit class RichUserGroup(userGroup: UserGroup) extends Neo4jRep[UserGroup] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
     val has_users = "HAS_users"
     val has_resourceAccess = "HAS_resourceAccess"
 
-    implicit def toUserGroupProxy(userGroup: UserGroup): UserGroupProxy =
-      UserGroupProxy(userGroup.name)
-
     override def toNeo4jGraph(userGroup: UserGroup): Option[Node] = {
 
-      logger.debug(s"UserGroup toGraph ${userGroup}")
-      val userGroupNode: Option[Node] = Neo4jRepository.saveEntity[UserGroupProxy](userGroup,UserGroupProtocol.labelUserGroup)
+      logger.debug(s"UserGroupProxy Node saved into db - ${userGroup}")
+      val map = Map("name" -> userGroup.name)
 
-      logger.debug(s"UserGroupProxy Node saved into db - ${userGroupNode}")
-      //val map: Map[String, Any] = Map("name" -> userGroup.name)
+      val userGroupNode = Neo4jRepository.saveEntity[UserGroup](UserGroup.label, userGroup.id, map)
+
       //val node = Neo4jRepository.saveEntity[KeyPairInfo](ResourceACLProtocol.label, userGroup.id, map)
 
       //map function is used to extract the option value
@@ -68,12 +59,14 @@ object UserGroup {
       userGroupNode
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
-      val nodeOption = Neo4jRepository.fetchNodeById[UserGroupProxy](nodeId)
 
-      nodeOption.fold(ex => None, result => {
-        val (node, userProxy) = result
-        logger.debug(s" UserGroupProxy ${userProxy}")
+    override def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
+      val nodeOption = Neo4jRepository.findNodeById(nodeId)
+
+      nodeOption.map(node => {
+        logger.debug(s" UserGroupProxy ${node}")
+
+        val userGroupMap = Neo4jRepository.getProperties(node, "name")
 
         val userNodes = Neo4jRepository.getNodesWithRelation(node, has_users)
         val users: Set[User] = userNodes.map(child => {
@@ -89,16 +82,14 @@ object UserGroup {
           resource.fromNeo4jGraph(child.getId)
         }).flatten.toSet
 
-        val user = userProxy.map(obj => {
-          UserGroup(
-            id = Some(node.getId),
-            name = obj.name,
-            users = Some(users),
-            accesses = Some(resources)
-          )
-        })
-        logger.debug(s"UserGroup - ${user}")
-        user
+        val userGroup = UserGroup(
+          id = Some(node.getId),
+          name = userGroupMap.get("name").get.asInstanceOf[String],
+          users = Some(users),
+          accesses = Some(resources)
+        )
+        logger.debug(s"UserGroup - ${userGroup}")
+        userGroup
       })
     }
   }

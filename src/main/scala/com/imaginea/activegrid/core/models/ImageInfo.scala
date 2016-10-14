@@ -1,6 +1,5 @@
 package com.imaginea.activegrid.core.models
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -9,21 +8,20 @@ import org.slf4j.LoggerFactory
  * Created by babjik on 22/9/16.
  */
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-case class ImageInfo(id: Option[Long]
-                     , imageId: String
-                     , state: String
-                     , ownerId: String
+case class ImageInfo(override val id: Option[Long]
+                     , imageId: Option[String] = None
+                     , state: Option[String] = None
+                     , ownerId: Option[String] = None
                      , publicValue: Boolean
-                     , architecture: String
-                     , imageType: String
-                     , platform: String
-                     , imageOwnerAlias: String
-                     , name: String
-                     , description: String
-                     , rootDeviceType: String
-                     , rootDeviceName: String
-                     , version: String) extends BaseEntity
+                     , architecture: Option[String] = None
+                     , imageType: Option[String] = None
+                     , platform: Option[String] = None
+                     , imageOwnerAlias: Option[String] = None
+                     , name: Option[String] = None
+                     , description: Option[String] = None
+                     , rootDeviceType: Option[String] = None
+                     , rootDeviceName: Option[String] = None
+                     , version: Option[String] = None) extends BaseEntity
 
 
 object ImageInfo {
@@ -42,8 +40,9 @@ object ImageInfo {
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): ImageInfo = {
-      ImageInfo(Some(0L), "", "", "", false, "", "", "", "", "", "", "", "", "")
+    //TODO : Change the Empty string
+    override def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
+      Some(ImageInfo(id = None, publicValue = false))
     }
   }
 
