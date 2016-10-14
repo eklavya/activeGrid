@@ -1,13 +1,15 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
- * Created by babjik on 26/9/16.
- */
-case class User(id: Option[Long]
+<<<<<<< HEAD
+  * Created by babjik on 26/9/16.
+  */
+case class User(override val id: Option[Long]
                 , username: String
                 , password: String
                 , email: String
@@ -20,84 +22,64 @@ case class User(id: Option[Long]
                 , displayName: String)
   extends BaseEntity
 
-case class UserProxy(
-                      username: String
-                      , password: String
-                      , email: String
-                      , uniqueId: String
-                      , accountNonExpired: Boolean
-                      , accountNonLocked: Boolean
-                      , credentialsNonExpired: Boolean
-                      , enabled: Boolean
-                      , displayName: String)
-  extends BaseEntity
-
 object User {
+  val label = "User"
 
-  implicit class RichUser(user: User) extends Neo4jRep2[User] {
+  implicit class RichUser(user: User) extends Neo4jRep[User] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    val label = "User"
-
-    implicit def toUserProxy(user: User) =
-      new UserProxy(
-        user.username,
-        user.password,
-        user.email,
-        user.uniqueId,
-        user.accountNonExpired,
-        user.accountNonLocked,
-        user.credentialsNonExpired,
-        user.enabled,
-        user.displayName
-      )
 
     override def toNeo4jGraph(entity: User): Option[Node] = {
-      logger.debug(s"toGraph for Image ${entity}")
+      logger.debug(s"toGraph for User ${entity}")
+      val map = Map("username" -> entity.username,
+        "password" -> entity.username,
+        "email" -> entity.email,
+        "uniqueId" -> entity.uniqueId,
+        "accountNonExpired" -> entity.accountNonExpired,
+        "accountNonLocked" -> entity.accountNonLocked,
+        "credentialsNonExpired" -> entity.credentialsNonExpired,
+        "enabled" -> entity.enabled,
+        "displayName" -> entity.displayName)
 
-      val node = Neo4jRepository.saveEntity[UserProxy](entity,label)
+      val node = Neo4jRepository.saveEntity[User](label, entity.id, map)
       logger.debug(s"node - ${node.get}")
 
       //publicKeys: List[KeyPairInfo]
       //Relation HAS_publicKeys
-      entity.publicKeys.foreach(publicKey => UserOperations.addKeyPair(node.get.getId, publicKey))
+      entity.publicKeys.foreach(publicKey => UserUtils.addKeyPair(node.get.getId, publicKey))
       node
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[User] = {
-      val nodeOption = Neo4jRepository.fetchNodeById[UserProxy](nodeId)
-      nodeOption.fold(ex => None,
-        result => {
-          //val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
-          val (node, entity) = result
-          val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserOperations.has_publicKeys)
-          val keyPairInfo: KeyPairInfo = null
+      val node = Neo4jRepository.findNodeById(nodeId).get
+      val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
-          val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
-            keyPairInfo.fromNeo4jGraph(keyPairNode.getId)
-          })
+      val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
+      val keyPairInfo: KeyPairInfo = null
 
-          val user = entity.map(userProxy => {
-            new User(Some(node.getId),
-              userProxy.username,
-              userProxy.password,
-              userProxy.email,
-              userProxy.uniqueId,
-              keyPairInfos,
-              userProxy.accountNonExpired,
-              userProxy.accountNonLocked,
-              userProxy.credentialsNonExpired,
-              userProxy.enabled,
-              userProxy.displayName)
-          })
-          logger.debug(s"User - ${user}")
-          user
-        })
+      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
+        keyPairInfo.fromNeo4jGraph(keyPairNode.getId)
+      }).flatten.toList
+
+      val user = User(Some(node.getId),
+        map.get("username").get.asInstanceOf[String],
+        map.get("password").get.asInstanceOf[String],
+        map.get("email").get.asInstanceOf[String],
+        map.get("uniqueId").get.asInstanceOf[String],
+        keyPairInfos,
+        map.get("accountNonExpired").get.asInstanceOf[Boolean],
+        map.get("accountNonLocked").get.asInstanceOf[Boolean],
+        map.get("credentialsNonExpired").get.asInstanceOf[Boolean],
+        map.get("enabled").get.asInstanceOf[Boolean],
+        map.get("displayName").get.asInstanceOf[String])
+
+      logger.debug(s"user - ${user}")
+      Some(user)
     }
   }
 
 }
 
-object UserOperations {
+object UserUtils {
   val keyPairInfo: KeyPairInfo = null
   val has_publicKeys = "HAS_publicKeys"
 
@@ -106,6 +88,13 @@ object UserOperations {
     val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
     Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode.get)
   }
+
+  def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
+
+  def getKeyDirPath(userId: Long): String = s"${getUserKeysDir}${Constants.FILE_SEPARATOR}${userId.toString}${Constants.FILE_SEPARATOR}"
+
+  def getKeyFilePath(userId: Long, keyName: String): String = s"${getKeyDirPath(userId)}${keyName}.pub"
+
 }
 
 

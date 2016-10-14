@@ -7,7 +7,8 @@ import org.slf4j.LoggerFactory
 /**
  * Created by babjik on 26/9/16.
  */
-case class KeyPairInfo(val id: Option[Long]
+
+case class KeyPairInfo(override val id: Option[Long]
                        , val keyName: String
                        , val keyFingerprint: Option[String] = None
                        , val keyMaterial: Option[String] = None
@@ -15,11 +16,23 @@ case class KeyPairInfo(val id: Option[Long]
                        , val status: KeyPairStatus
                        , val defaultUser: Option[String] = None
                        , val passPhrase: Option[String] = None
-                        ) extends BaseEntity
+                        ) extends BaseEntity {
 
+  def this(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus) =
+    this(id = None
+      , keyName = keyName
+      , keyMaterial = Some(keyMaterial)
+      , filePath = Some(filePath)
+      , status = NotYetUploadedKeyPair
+    )
+}
 
 object KeyPairInfo {
+
   import KeyPairStatus._
+
+  def apply(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus): KeyPairInfo =
+    new KeyPairInfo(keyName, keyMaterial, filePath, status)
 
   implicit class RichKeyPairInfo(keyPairInfo: KeyPairInfo) extends Neo4jRep[KeyPairInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -43,7 +56,7 @@ object KeyPairInfo {
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): KeyPairInfo = {
+    override def fromNeo4jGraph(nodeId: Long): Option[KeyPairInfo] = {
       val node = Neo4jRepository.findNodeById(nodeId).get
       val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
 
@@ -57,12 +70,9 @@ object KeyPairInfo {
         Some(map.get("defaultUser").get.asInstanceOf[String]),
         Some(map.get("passPhrase").get.asInstanceOf[String])
       )
-
       logger.debug(s"Key pair info - ${keyPairInfo}")
-      keyPairInfo
+      Some(keyPairInfo)
     }
-
   }
-
 
 }

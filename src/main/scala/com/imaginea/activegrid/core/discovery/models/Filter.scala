@@ -1,15 +1,16 @@
 package com.imaginea.activegrid.core.discovery.models
 
+import com.imaginea.activegrid.core.models.BaseEntity
+
 /**
  * Created by ranjithrajd on 12/10/16.
  */
-class Filter(filterType: FilterType,
-             values: List[String],
-             condition: Condition) {
+case class Filter(override val id: Option[Long]
+                  , filterType: FilterType
+                  , values: List[String]
+                  , condition: Condition) extends BaseEntity
 
-}
-
-sealed trait FilterType{
+sealed trait FilterType {
   def name: String
   override def toString: String = name
 }
@@ -21,7 +22,7 @@ case object IpRanges extends FilterType { val name = "IP_RANGES" }
 case object InstanceIds extends FilterType { val name = "INSTANCE_IDS" }
 case object Status extends FilterType { val name = "STATUS" }
 
-object FilterType{
+object FilterType {
   implicit def toFilterType(name: String): FilterType = name match {
     case "TAGS" => Tags
     case "KEYPAIR_NAMES" => KeypairNames
@@ -32,7 +33,7 @@ object FilterType{
   }
 }
 
-sealed trait Condition{
+sealed trait Condition {
   def name: String
   override def toString: String = name
 }
@@ -42,8 +43,7 @@ case object Contains extends Condition { val name = "CONTAINS" }
 case object StartsWith extends Condition { val name = "STARTSWITH" }
 case object EndsWith extends Condition { val name = "ENDSWITH" }
 
-
-object Condition{
+object Condition {
   implicit def toCondition(name: String): Condition = name match {
     case "EQUALS" => Equals
     case "CONTAINS" => Contains
