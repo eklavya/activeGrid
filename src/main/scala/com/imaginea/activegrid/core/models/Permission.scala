@@ -15,7 +15,7 @@ case object Execute extends Permission { val name = "Execute" }
 case object All extends Permission { val name = "All" }
 
 object Permission {
-  implicit def toKeyPairStatus(name: String): Permission = name match {
+  implicit def toPermission(name: String): Permission = name match {
     case "Create" => Create
     case "Read" => Read
     case "Update" => Update

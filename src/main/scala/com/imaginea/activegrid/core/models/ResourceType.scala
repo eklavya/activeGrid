@@ -15,7 +15,7 @@ case object UserGroupResourceType extends ResourceType { val name = "UserGroup" 
 case object ResourceTypeAll extends ResourceType { val name = "All" }
 
 object ResourceType {
-  implicit def toKeyPairStatus(name: String): ResourceType = name match {
+  implicit def toResourceType(name: String): ResourceType = name match {
     case "Site" => SiteResourceType
     case "Workflow" => WorkflowResourceType
     case "Instance" => InstanceResourceType
