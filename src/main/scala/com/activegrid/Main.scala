@@ -106,6 +106,7 @@ object Main {
     implicit val processInfoFormat = jsonFormat9(ProcessInfo.apply)
     implicit val instanceUserFormat = jsonFormat3(InstanceUser.apply)
     implicit val instanceFormat = jsonFormat18(Instance.apply)
+    implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
     implicit val SiteFormat = jsonFormat2(Site.apply)
 
     var catalogService = new CatalogService()
@@ -114,15 +115,10 @@ object Main {
 
       path("images"/"view") {
         get {
-          val listOfImages : Future[List[ImageInfo]] = catalogService.getImages()
+          val listOfImages : Future[Page[ImageInfo]] = catalogService.getImages()
 
           onComplete(listOfImages) {
-             case util.Success(lists) => {
-               val startIndex = 0
-               val count = lists.size
-               val totalObjects = count
-               complete(Page[ImageInfo](startIndex,count,totalObjects,lists))
-             }
+             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
              case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List; Failed with " + ex)
            }
         }
@@ -132,7 +128,7 @@ object Main {
             val buildImage = catalogService.buildImage(image)
             onComplete(buildImage) {
               case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-              case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Save Image; Failed with" + ex )
+              case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Save Image; Failed with " + ex )
             }
           }
         }
@@ -141,7 +137,7 @@ object Main {
           val deleteImages = catalogService.deleteImage(imageId)
           onComplete(deleteImages) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Delete Image; Failed with" + ex )
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Delete Image; Failed with " + ex )
           }
 
         }
@@ -149,14 +145,8 @@ object Main {
         get {
           val listOfInstanceFlavors = catalogService.getInstanceFlavor(siteId)
           onComplete(listOfInstanceFlavors) {
-            case util.Success(lists) => {
-
-              val startIndex = 0
-              val count = lists.size
-              val totalObjects = count
-              complete(Page[InstanceFlavor](startIndex, count, totalObjects, lists))
-            }
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to get List; Failed with" + ex)
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to get List; Failed with " + ex)
           }
         }
       }
@@ -179,12 +169,20 @@ object Main {
 
     val nodeService = new NodeService()
     def nodeRoute = pathPrefix("node"){
-      path(Segment){ name =>
+      path("list"){
+        get{
+          val listOfAllInstanceNodes = nodeService.getAllNodes
+          onComplete(listOfAllInstanceNodes){
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex )
+          }
+        }
+      } ~ path(Segment){ name =>
         get {
           val nodeInstance = nodeService.getNode(name)
           onComplete(nodeInstance){
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance with name $name; Failed with" + ex )
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance with name $name; Failed with " + ex )
           }
         }
       }
