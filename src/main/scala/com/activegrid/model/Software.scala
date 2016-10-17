@@ -23,11 +23,11 @@ object Software {
 
   implicit class SoftwareImpl(software: Software) extends Neo4jRep[Software] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    val label = "SoftwaresTest1"
+    val label = "SoftwaresTest2"
 
     override def toNeo4jGraph(software: Software): Option[Node] = {
       logger.debug(s"In toGraph for Software: ${software}")
-      val map= Map("version" -> software.version,
+      val map = Map("version" -> software.version,
         "name" -> software.name,
         "provider" -> software.provider,
         "downloadURL" -> software.downloadURL,
@@ -39,19 +39,25 @@ object Software {
       softwareNode
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[Software] = {
-      val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
-      val software = Software(Some(nodeId),
-        map.get("version").get.asInstanceOf[String],
-        map.get("name").get.asInstanceOf[String],
-        map.get("provider").get.asInstanceOf[String],
-        map.get("downloadURL").get.asInstanceOf[String],
-        map.get("port").get.asInstanceOf[String],
-        map.get("processNames").get.asInstanceOf[Array[String]].toList,
-        map.get("discoverApplications").get.asInstanceOf[Boolean])
-      Some(software)
+    override def fromNeo4jGraph(nodeId: Long): Software = {
+      Software.fromNeo4jGraph(nodeId)
     }
+
+  }
+
+  def fromNeo4jGraph(nodeId: Long): Software = {
+    val node = GraphDBExecutor.findNodeById(nodeId)
+    val map = GraphDBExecutor.getProperties(node, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+    val software = Software(Some(nodeId),
+      map.get("version").get.asInstanceOf[String],
+      map.get("name").get.asInstanceOf[String],
+      map.get("provider").get.asInstanceOf[String],
+      map.get("downloadURL").get.asInstanceOf[String],
+      map.get("port").get.asInstanceOf[String],
+      map.get("processNames").get.asInstanceOf[Array[String]].toList,
+      map.get("discoverApplications").get.asInstanceOf[Boolean])
+    software
+
   }
 
 }
