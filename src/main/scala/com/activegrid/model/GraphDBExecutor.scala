@@ -15,6 +15,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   val VID: String = "id"
+  val NO_VAL : String = "VALUE_DOES_NOT_EXIST"
 
   def neo4jStoreDir = "./graphdb/activegrid/test"
 
@@ -24,9 +25,17 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
       val node = createNode(label)(neo)
 
-      map.foreach { case (k, v) => node.setProperty(k, v) }
+      /*map.foreach { case (k, v) => {
+        v match {
+          case "DOES_NOT_EXIST" => logger.debug(s"$v property is null")
+          case _ => node.setProperty(k, v)
+        }
+        }
+        }*/
 
-      logger.debug(s" new node ${node.getLabels}, id ${node.getId}")
+      map.foreach { case(k,v) => node.setProperty(k,v) }
+
+      logger.debug(s" new node of ${node.getLabels}, created with id ${node.getId}")
 
       node.setProperty(VID, node.getId)
 
@@ -49,7 +58,11 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
       val node = getNodeById(nodeId)(neo)
 
-      listOfKeys.map(key => (key, node.getProperty(key).asInstanceOf[Any])).toMap[String, Any]
+//      listOfKeys.map(key => (key, node.getProperty(key).asInstanceOf[Any])).toMap[String, Any]
+
+      listOfKeys
+        .map(key => (key, node.getProperty(key).asInstanceOf[Any])).toMap[String, Any]
+        .filter{case (k,v) => v!= NO_VAL }
 
     }
 
@@ -65,26 +78,52 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
        start.getSingleRelationship(relType, Direction.OUTGOING)*/
     }
 
-  def getChildNodeId(parentNode: Long, relation: String): Long = {
+  def getChildNodeId(parentNode: Long, relation: String): Option[Long] = {
 
     withTx { neo =>
-
       val node = getNodeById(parentNode)(neo)
-
-      node.getSingleRelationship(relation, Direction.OUTGOING).getEndNode.getId
-
+      try {
+        Some(node.getSingleRelationship(relation, Direction.OUTGOING).getEndNode.getId)
+      }
+      catch {
+        case ex: Exception => {
+          logger.debug(s"does not have relationship")
+          None
+        }
+      }
     }
 
   }
 
+  def getChildNodeIdSoftware(parentNode: Long, relation: String): Option[Long] = withTx { neo =>
+
+    val node = getNodeById(parentNode)(neo)
+    try {
+      Some(node.getSingleRelationship(relation, Direction.OUTGOING).getEndNode.getId)
+    }
+    catch {
+      case ex: Exception => {
+        logger.debug(s"does not have relationship")
+        None
+      }
+    }
+
+  }
+
+
   def getChildNodeIds(parentNode: Long, relation: String): List[Long] = {
 
     withTx { neo =>
-
       val node = getNodeById(parentNode)(neo)
-
-      node.getRelationships(relation, Direction.OUTGOING).map(rel => rel.getEndNode.getId).toList
-
+      try {
+        node.getRelationships(relation, Direction.OUTGOING).map(rel => rel.getEndNode.getId).toList
+      }
+      catch{
+        case ex:Exception => {
+          logger.debug(s"does not have relationships")
+          List.empty[Long]
+        }
+      }
     }
 
   }

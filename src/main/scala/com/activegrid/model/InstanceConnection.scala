@@ -17,11 +17,8 @@ object InstanceConnection{
     override def toNeo4jGraph(entity: InstanceConnection): Option[Node] = {
 
       val label = "InstanceConnection"
-
       val mapPrimitives  = Map("sourceNodeId" -> entity.sourceNodeId, "targetNodeId" -> entity.targetNodeId)
-
       val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[InstanceConnection](label, mapPrimitives)
-
       val relationship = "HAS_portRange"
       entity.portRanges.foreach{portRange =>
         val portRangeNode = portRange.toNeo4jGraph(portRange)
@@ -31,24 +28,30 @@ object InstanceConnection{
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): InstanceConnection = {
-
-      val listOfKeys = List("sourceNodeId","targetNodeId")
-      val propertyValues = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
-      val sourceNodeId = propertyValues.get("sourceNodeId").get.toString
-      val targetNodeId = propertyValues.get("targetNodeId").get.toString
-
-      val relationship = "HAS_portRange"
-      val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId,relationship)
-
-      val portRanges: List[PortRange] = childNodeIds.map{ childId =>
-        val port:PortRange = null
-        port.fromNeo4jGraph(childId)
-      }
-
-      InstanceConnection(Some(nodeId), sourceNodeId,targetNodeId,portRanges)
+    override def fromNeo4jGraph(id: Option[Long]): Option[InstanceConnection] = {
+      InstanceConnection.fromNeo4jGraph(id)
     }
 
+  }
+
+  def fromNeo4jGraph(id: Option[Long]): Option[InstanceConnection] = {
+    id match {
+      case Some(nodeId) => {
+        val listOfKeys = List("sourceNodeId", "targetNodeId")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val sourceNodeId = propertyValues.get("sourceNodeId").get.toString
+        val targetNodeId = propertyValues.get("targetNodeId").get.toString
+        val relationship = "HAS_portRange"
+        val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship)
+        val portRanges: List[PortRange] = childNodeIds.map { childId =>
+          val port: PortRange = null
+          port.fromNeo4jGraph(Some(childId)).get
+        }
+
+        Some(InstanceConnection(Some(nodeId), sourceNodeId, targetNodeId, portRanges))
+      }
+      case None => None
+    }
   }
 
 }
