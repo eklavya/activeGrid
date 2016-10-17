@@ -16,26 +16,30 @@ object InstanceUser{
     override def toNeo4jGraph(entity: InstanceUser): Option[Node] = {
 
       val label = "InstanceUser"
-
       val mapPrimitives  = Map("userName" -> entity.userName, "publicKeys" -> entity.publicKeys.toArray)
-
       val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[InstanceUser](label, mapPrimitives)
 
       node
-
     }
 
-    override def fromNeo4jGraph(nodeId: Long): InstanceUser = {
-
-      val listOfKeys = List("userName","publicKeys")
-      val propertyValues = GraphDBExecutor.getGraphProperties(nodeId,listOfKeys)
-      val userName = propertyValues.get("userName").get.toString
-      val publicKeys  = propertyValues.get("publicKeys").get.asInstanceOf[Array[String]].toList
-
-      InstanceUser(Some(nodeId), userName,publicKeys)
-
+    override def fromNeo4jGraph(id: Option[Long]): Option[InstanceUser] = {
+      InstanceUser.fromNeo4jGraph(id)
     }
 
+  }
+
+  def fromNeo4jGraph(id: Option[Long]): Option[InstanceUser] = {
+    id match {
+      case Some(nodeId) => {
+        val listOfKeys = List("userName", "publicKeys")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val userName = propertyValues.get("userName").get.toString
+        val publicKeys = propertyValues.get("publicKeys").get.asInstanceOf[Array[String]].toList
+
+        Some(InstanceUser(Some(nodeId), userName, publicKeys))
+      }
+      case None => None
+    }
   }
 
 }
