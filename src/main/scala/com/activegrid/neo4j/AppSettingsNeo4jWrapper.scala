@@ -69,6 +69,8 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
       neo => {
         var genaralSettings = Map.empty[String, String];
         withTx { neo =>
+          // "AS" is key to "Application Settings" defined in the MAP  "labels"
+          // Fetching  nodes with  "Application Settings" Label
           val settingNodes = getAllNodesWithLabel(lables.get("AS").toString)(neo)
           for (n <- settingNodes) {
             logger.info(n.getAllProperties.toString)
