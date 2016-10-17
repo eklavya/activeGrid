@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
-import com.activegrid.services.AppSettingService
+import com.activegrid.services.{APMService, AppSettingService}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -18,7 +18,7 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   val appSettingService = new AppSettingService
 
-  val routes = appSettingService.addAppSetting ~ appSettingService.addSetting ~ appSettingService.getAppSettings ~ appSettingService.deleteSettings ~ appSettingService.getSettings ~ appSettingService.getLogLevel ~ appSettingService.updateLogLevel~appSettingService.index
+  val routes = appSettingService.appSettingServiceRoutes
   Http().bindAndHandle(routes, "localhost", 8000)
   logger.info(s"Server online at http://localhost:8000")
 

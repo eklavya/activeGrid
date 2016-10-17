@@ -3,7 +3,6 @@ package com.activegrid.models
 import org.apache.log4j._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.runtime.Nothing$
 
 /**
   * Created by nagulmeeras on 06/10/16.
