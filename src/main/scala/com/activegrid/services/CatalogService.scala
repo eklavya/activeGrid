@@ -14,8 +14,7 @@ class CatalogService(implicit val executionContext: ExecutionContext){
     val label: String = "ImageInfo"
 
     val nodesList = GraphDBExecutor.getNodesByLabel(label)
-    val imageInfo: ImageInfo = null
-    val imageInfoList = nodesList.map(node => imageInfo.fromNeo4jGraph(node.getId))
+    val imageInfoList = nodesList.map(node => ImageInfo.fromNeo4jGraph(Some(node.getId)).get)
 
     imageInfoList
 
@@ -41,13 +40,12 @@ class CatalogService(implicit val executionContext: ExecutionContext){
 
   def getInstanceFlavor(siteId: Long): Future[List[InstanceFlavor]] = Future {
 
-    val s : Site  = null
 
-    val site: Site  = s.fromNeo4jGraph(siteId)
+    val site  = Site.fromNeo4jGraph(Some(siteId)).get
 
     val listOfInstances = site.instances
 
-    listOfInstances.map(instance => InstanceFlavor(instance.instanceType, None, instance.memoryInfo.total,instance.rootDiskInfo.total))
+    listOfInstances.map(instance => InstanceFlavor(instance.instanceType.get, None, instance.memoryInfo.get.total,instance.rootDiskInfo.get.total))
 
   }
 

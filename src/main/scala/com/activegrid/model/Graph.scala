@@ -14,7 +14,7 @@ object Graph  {
 
     def toNeo4jGraph(entity: T): Option[Node]
 
-    def fromNeo4jGraph(nodeId: Long): T
+    def fromNeo4jGraph(id: Option[Long]): Option[T]
 
   }
 }

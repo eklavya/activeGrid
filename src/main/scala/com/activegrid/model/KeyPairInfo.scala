@@ -1,7 +1,6 @@
 package com.activegrid.model
 
 import com.activegrid.model.Graph.Neo4jRep
-import com.activegrid.model.KeyPairStatus.KeyPairStatus
 import org.neo4j.graphdb.Node
 
 /**
@@ -25,30 +24,35 @@ object KeyPairInfo{
         "status" -> entity.status.toString,
         "defaultUser" -> entity.defaultUser,
         "passPhrase" -> entity.passPhrase)
-
       val node = GraphDBExecutor.createGraphNodeWithPrimitives[KeyPairInfo](label, map)
-
       node
 
     }
 
-    override def fromNeo4jGraph(nodeId: Long): KeyPairInfo = {
-
-      val listOfKeys = List("keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
-      val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-
-      val keyName  = propertyValues.get("keyName").get.toString
-      val keyFingerprint = propertyValues.get("keyFingerprint").get.toString
-      val keyMaterial  = propertyValues.get("keyMaterial").get.toString
-      val filePath  = propertyValues.get("filePath").get.toString
-      val status: KeyPairStatus =  KeyPairStatus.withName(propertyValues.get("status").get.asInstanceOf[String])
-      val defaultUser  = propertyValues.get("defaultUser").get.toString
-      val passPhrase  = propertyValues.get("passPhrase").get.toString
-
-      KeyPairInfo(Some(nodeId), keyName,keyFingerprint,keyMaterial, filePath, status, defaultUser, passPhrase)
-
+    override def fromNeo4jGraph(id: Option[Long]): Option[KeyPairInfo] = {
+     KeyPairInfo.fromNeo4jGraph(id)
     }
 
+  }
+
+  def fromNeo4jGraph(id: Option[Long]): Option[KeyPairInfo] = {
+    id match {
+      case Some(nodeId) => {
+        val listOfKeys = List("keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val keyName = propertyValues.get("keyName").get.toString
+        val keyFingerprint = propertyValues.get("keyFingerprint").get.toString
+        val keyMaterial = propertyValues.get("keyMaterial").get.toString
+        val filePath = propertyValues.get("filePath").get.toString
+        //val status: KeyPairStatus =  KeyPairStatus.withName(propertyValues.get("status").get.asInstanceOf[String])
+        val status: KeyPairStatus = KeyPairStatus.toKeyPairStatus(propertyValues.get("status").get.asInstanceOf[String])
+        val defaultUser = propertyValues.get("defaultUser").get.toString
+        val passPhrase = propertyValues.get("passPhrase").get.toString
+
+        Some(KeyPairInfo(Some(nodeId), keyName, keyFingerprint, keyMaterial, filePath, status, defaultUser, passPhrase))
+      }
+      case None => None
+    }
   }
 
 }
