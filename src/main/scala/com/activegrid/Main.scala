@@ -11,9 +11,8 @@ import akka.http.scaladsl.model.headers.Date
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import com.activegrid.model.KeyPairStatus.KeyPairStatus
 import com.activegrid.model._
-import com.activegrid.services.CatalogService
+import com.activegrid.services.{CatalogService, TestService}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -92,10 +91,10 @@ object Main {
     implicit val storageInfoFormat = jsonFormat3(StorageInfo.apply)
     implicit val tupleFormat = jsonFormat3(Tuple.apply)
     implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
-      override def write (obj: KeyPairStatus): JsValue = JsString(obj.toString)
+      override def write (obj: KeyPairStatus): JsValue = JsString(obj.value.toString)
 
       override def read(json: JsValue): KeyPairStatus = json match {
-        case JsString(str) => KeyPairStatus.withName(str)
+        case JsString(str) => str
         case _ => throw new DeserializationException("Enum string expected")
       }
     }
@@ -164,7 +163,21 @@ object Main {
 
     }
 
-    val route = itemRoute ~ orderRoute ~ catalogRoutes
+    val testService = new TestService()
+    def testRoute =  path("getTest"/IntNumber){ n =>
+      get{
+        complete(testService.getTest(n))
+      }
+    } ~path("saveTestAll"){
+      put{ entity(as[Instance]){ test =>
+        //val cmpl = test.toGraphOfTestImplicit.toGraph(test)
+        val cmpl = testService.saveTestAll(test)
+        complete(cmpl)
+      }
+      }
+    }
+
+    val route = itemRoute ~ orderRoute ~ catalogRoutes ~ testRoute
 
     val bindingFuture = Http().bindAndHandle(route, "localhost", 9000)
     logger.info(s"Server online at http://localhost:9000")
