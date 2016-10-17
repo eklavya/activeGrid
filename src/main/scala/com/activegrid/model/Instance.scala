@@ -35,6 +35,10 @@ object Instance {
 
     Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser])
 
+  def apply(name: String): Instance =
+
+    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[Tuple], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser])
+
   implicit class InstanceImpl(instance: Instance) extends Neo4jRep[Instance] {
 
     override def toNeo4jGraph(entity: Instance): Option[Node] = {
