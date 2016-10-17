@@ -18,34 +18,32 @@ class NodeService (implicit val executionContext: ExecutionContext){
     logger.info(s"Received GET request for node - $nodeName")
 
     if (nodeName == "localhost") {
-
+      val instance = Instance(nodeName)
+      instance.toNeo4jGraph(instance)
     }
 
     val instanceNode = GraphDBExecutor.getNodeByProperty("Instance", "name", nodeName)
-
     val instance: Instance = null
-
     instanceNode match {
-
       case Some(node) => instance.fromNeo4jGraph(Some(node.getId)).get
-
       case None => {
-
         val name = "echo node"
         val tags: List[Tuple] = List(Tuple(None, "tag", "tag"))
         val processInfo = ProcessInfo(1, 1, "init")
         Instance(name, tags, Set(processInfo))
       }
-
     }
 
   }
 
-  def getAllNodes: List[Instance] = {
+  def getAllNodes: Future[Page[Instance]] = Future {
 
     logger.info ("Received GET request for all nodes")
+    val label: String = "Instance"
+    val nodesList = GraphDBExecutor.getNodesByLabel(label)
+    val instanceList = nodesList.map(node => Instance.fromNeo4jGraph(Some(node.getId)).get)
 
-    List.empty[Instance]
+    Page[Instance](instanceList)
   }
 
   def getTopology: Page[Int] = {
@@ -53,7 +51,6 @@ class NodeService (implicit val executionContext: ExecutionContext){
     logger.debug("received GET request for topology")
 
     Page[Int](1,2,3,List(4))
-
   }
 
 }
