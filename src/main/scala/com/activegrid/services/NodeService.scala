@@ -34,7 +34,6 @@ class NodeService (implicit val executionContext: ExecutionContext){
         val name = "echo node"
         val tags: List[Tuple] = List(Tuple(None, "tag", "tag"))
         val processInfo = ProcessInfo(1, 1, "init")
-        //Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set(processInfo), None, List.empty)
         Instance(name, tags, Set(processInfo))
       }
 
@@ -46,16 +45,14 @@ class NodeService (implicit val executionContext: ExecutionContext){
 
     logger.info ("Received GET request for all nodes")
 
-    List(null)
-
+    List.empty[Instance]
   }
 
   def getTopology: Page[Int] = {
 
     logger.debug("received GET request for topology")
 
-//    Page(null,null,null,null)
-Page[Int](1,2,3,List(4))
+    Page[Int](1,2,3,List(4))
 
   }
 
