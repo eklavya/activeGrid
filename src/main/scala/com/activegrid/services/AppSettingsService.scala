@@ -19,7 +19,6 @@ class AppSettingsService {
 
   implicit val appSettings = jsonFormat2(AppSettings)
 
-
   val postRQ = pathPrefix("config") {
     path("settings") {
       post {
@@ -27,7 +26,7 @@ class AppSettingsService {
           val save: Future[String] = persistanceMgr.addSettings(appSettings)
           onSuccess(save) {
             case success => complete(StatusCodes.OK, "Settings saved successfully")
-            case _ => complete(StatusCodes.BadRequest, "Saving operation failed.")
+            case fail => complete(StatusCodes.BadRequest, "Saving operation failed.")
           }
           /*onComplete(save) { maybeAuthSettings =>
             complete("Done")
