@@ -11,8 +11,8 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 class CatalogService(implicit val executionContext: ExecutionContext) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  val softwareLabel: String = "SoftwaresTest1"
-  val imageLabel: String = "ImagesTest1"
+  val softwareLabel: String = "SoftwaresTest2"
+  val imageLabel: String = "ImagesTest2"
 
   def buildSoftware(software: Software): Future[String] = Future {
     software.toNeo4jGraph(software)
@@ -31,16 +31,14 @@ class CatalogService(implicit val executionContext: ExecutionContext) {
 
   def getSoftwares(): Future[Page[Software]] = Future {
     val nodesList = GraphDBExecutor.getNodesByLabel(softwareLabel)
-    val software: Software = null
-    val softwaresList = nodesList.map(node => software.fromNeo4jGraph(node.getId).get)
+    val softwaresList = nodesList.map(node => Software.fromNeo4jGraph(node.getId))
 
     Page[Software](0, softwaresList.size, softwaresList.size, softwaresList)
   }
 
   def getImages(): Future[Page[ImageInfo]] = Future {
     val nodesList = GraphDBExecutor.getNodesByLabel(imageLabel)
-    val imageInfo: ImageInfo = null
-    val imageInfoList = nodesList.map(node => imageInfo.fromNeo4jGraph(node.getId).get)
+    val imageInfoList = nodesList.map(node => ImageInfo.fromNeo4jGraph(node.getId))
 
     Page[ImageInfo](0, imageInfoList.size, imageInfoList.size, imageInfoList)
   }
