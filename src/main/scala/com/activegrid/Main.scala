@@ -12,7 +12,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import com.activegrid.model._
-import com.activegrid.services.{CatalogService, TestService}
+import com.activegrid.services.{CatalogService, NodeService, TestService}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -177,7 +177,20 @@ object Main {
       }
     }
 
-    val route = itemRoute ~ orderRoute ~ catalogRoutes ~ testRoute
+    val nodeService = new NodeService()
+    def nodeRoute = pathPrefix("node"){
+      path(Segment){ name =>
+        get {
+          val nodeInstance = nodeService.getNode(name)
+          onComplete(nodeInstance){
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance with name $name; Failed with" + ex )
+          }
+        }
+      }
+    }
+
+    val route = itemRoute ~ orderRoute ~ catalogRoutes ~ nodeRoute ~ testRoute
 
     val bindingFuture = Http().bindAndHandle(route, "localhost", 9000)
     logger.info(s"Server online at http://localhost:9000")
