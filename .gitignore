@@ -1,8 +1,7 @@
-
 target/
-*.ipr
+.idea
 *.iws
-*.idea
+*.ipr
 src/main/scala-*
 project/*
 .metadata/

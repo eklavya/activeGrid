@@ -7,26 +7,29 @@ package com.activegrid.models
 
 import org.apache.log4j._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
-class LogConfigUpdater(implicit ex: ExecutionContext) {
+class LogConfigUpdater {
 
   val ROOT: String = "root"
 
-  def getLogger(logger: String): Logger = {
-    logger match {
-      case ROOT => getLogger(ROOT)
-      case _ => getLogger(logger)
+  def getLogger(loggerName: String): Logger = {
+    loggerName match {
+      case ROOT => Logger.getRootLogger
+      case _ => Logger.getLogger(loggerName)
     }
   }
 
-  def getLogLevel2(logger: String): Future[String] = Future {
-    val log: Logger = getLogger(logger)
-    if (log != null) log.getLevel.toString else null
+  def getLogLevel(loggerName: String): Future[String] = Future {
+    val logger: Logger = getLogger(loggerName)
+    if (logger != null)
+      logger.getLevel.toString
+    else null
   }
 
-  def setLogLevel(logger: String, tolevel: String): Future[String] = Future {
-    val log: Logger = getLogger(logger)
+  def setLogLevel(loggerName: String, tolevel: String): Future[String] = Future {
+    val log: Logger = getLogger(loggerName)
     if (log != null) {
       val level = Level.toLevel(tolevel)
       log.setLevel(level)
@@ -34,3 +37,5 @@ class LogConfigUpdater(implicit ex: ExecutionContext) {
     "success"
   }
 }
+
+

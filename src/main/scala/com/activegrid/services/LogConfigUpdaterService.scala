@@ -11,7 +11,7 @@ import scala.concurrent.Future
   */
 class LogConfigUpdaterService {
 
-  val cfgUpdater = new LogConfigUpdater;
+  val cfgUpdater = new LogConfigUpdater
 
   val updateRQ = pathPrefix("config") {
     path("logs" / "level") {
@@ -34,7 +34,7 @@ class LogConfigUpdaterService {
     path("logs" / "level") {
       get {
         entity(as[String]) { level =>
-          val save: Future[String] = cfgUpdater.getLogLevel2(level)
+          val save: Future[String] = cfgUpdater.getLogLevel(level)
           onSuccess(save) {
             case success => complete(StatusCodes.OK, success)
             case none => complete(StatusCodes.BadRequest, "Unable to fetch Log level")
