@@ -72,7 +72,7 @@ object ProcessInfo{
         val softwareVersion = propertyValues.get("softwareVersion").asInstanceOf[Option[String]]
 
         val relationship = "HAS_software"
-        val childNodeId = GraphDBExecutor.getChildNodeIdSoftware(nodeId, relationship)
+        val childNodeId = GraphDBExecutor.getChildNodeId(nodeId, relationship)
 
         val software: Option[Software] = Software.fromNeo4jGraph(childNodeId)
         Some(ProcessInfo(Some(nodeId), pid, parentPid, name, command, owner, residentBytes, software, softwareVersion))

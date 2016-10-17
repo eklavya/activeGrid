@@ -13,7 +13,6 @@ import scala.collection.JavaConversions._
 object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-
   val VID: String = "id"
   val NO_VAL : String = "VALUE_DOES_NOT_EXIST"
 
@@ -22,7 +21,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def createGraphNodeWithPrimitives[T <: BaseEntity ](label: String, map: Map[String, Any]): Option[Node] =
 
     withTx { neo =>
-
       val node = createNode(label)(neo)
 
       /*map.foreach { case (k, v) => {
@@ -34,46 +32,34 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
         }*/
 
       map.foreach { case(k,v) => node.setProperty(k,v) }
-
       logger.debug(s" new node of ${node.getLabels}, created with id ${node.getId}")
-
       node.setProperty(VID, node.getId)
 
       Some(node)
-
     }
 
 
   def setGraphProperties(node: Node, paramName: String, paramValue: Any) =
 
     withTx { neo =>
-
       node.setProperty(paramName, paramValue)
-
     }
 
   def getGraphProperties(nodeId: Long, listOfKeys: List[String]): Map[String, Any] =
 
     withTx { neo =>
-
       val node = getNodeById(nodeId)(neo)
-
 //      listOfKeys.map(key => (key, node.getProperty(key).asInstanceOf[Any])).toMap[String, Any]
-
       listOfKeys
         .map(key => (key, node.getProperty(key).asInstanceOf[Any])).toMap[String, Any]
         .filter{case (k,v) => v!= NO_VAL }
-
     }
 
   def setGraphRelationship(fromNode: Option[Node], toNode: Option[Node], relation: String) =
 
     withTx { neo =>
-
       val relType = DynamicRelationshipType.withName(relation)
-
       fromNode.get --> relType --> toNode.get
-
       /*start --> relType --> end <
        start.getSingleRelationship(relType, Direction.OUTGOING)*/
     }
@@ -87,24 +73,9 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       }
       catch {
         case ex: Exception => {
-          logger.debug(s"does not have relationship")
+          logger.debug(s"does not have relationship $relation")
           None
         }
-      }
-    }
-
-  }
-
-  def getChildNodeIdSoftware(parentNode: Long, relation: String): Option[Long] = withTx { neo =>
-
-    val node = getNodeById(parentNode)(neo)
-    try {
-      Some(node.getSingleRelationship(relation, Direction.OUTGOING).getEndNode.getId)
-    }
-    catch {
-      case ex: Exception => {
-        logger.debug(s"does not have relationship")
-        None
       }
     }
 
@@ -120,7 +91,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       }
       catch{
         case ex:Exception => {
-          logger.debug(s"does not have relationships")
+          logger.debug(s"does not have relationships $relation")
           List.empty[Long]
         }
       }
@@ -128,22 +99,18 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   }
 
-  def deleteEntity[T <: BaseEntity : Manifest](imageId: Long): Unit = {
-
-    withTx { neo =>
+  def deleteEntity[T <: BaseEntity : Manifest](imageId: Long) = withTx { neo =>
 
       val node = getNodeById(imageId)(neo)
-
       node.delete()
-
     }
-
-  }
 
   def getNodesByLabel(label: String): List[Node] = withTx { neo =>
 
-    getAllNodesWithLabel(label)(neo).toList
+    val list = getAllNodesWithLabel(label)(neo).toList
+    logger.debug(s"Size of nodes with label : $label : ${list.size}")
 
+    list
   }
 
   def getNodeByProperty(label: String, propertyName: String, propertyVal: Any): Option[Node] = withTx { neo =>
