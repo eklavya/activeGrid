@@ -57,7 +57,7 @@ object User {
   }
 
   def fromNeo4jGraph(nodeId: Long): User = {
-    val node = Neo4jRepository.findNodeById(nodeId).get
+    val node = Neo4jRepository.findNodeById(nodeId)
     val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
     val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
@@ -87,7 +87,7 @@ object UserUtils {
   val has_publicKeys = "HAS_publicKeys"
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Relationship = {
-    val userNode = Neo4jRepository.findNodeById(userId).get
+    val userNode = Neo4jRepository.findNodeById(userId)
     val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
     Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode.get)
   }

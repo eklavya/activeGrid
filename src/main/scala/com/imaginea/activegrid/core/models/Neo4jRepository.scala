@@ -29,12 +29,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getSingleNodeByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any): Option[Node] = withTx { implicit neo =>
     logger.debug(s"finding ${label}'s with property ${propertyKey} and value ${propertyValue}")
     val nodesIterator = findNodesByLabelAndProperty(label, propertyKey, propertyValue)
-    logger.debug(s"result size ${nodesIterator}  - ${nodesIterator.size}")
-    nodesIterator.size match {
-      case x if x > 0 => Some(nodesIterator.toList.head)
-      case _ => None
-    }
-
+    nodesIterator.headOption
   }
 
   /**
@@ -161,7 +156,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     * @param nodeId
     */
   def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
-    val node = findNodeById(nodeId).get
+    val node = findNodeById(nodeId)
     val relations = getRelationships(node, Direction.OUTGOING)
     logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
 
@@ -180,9 +175,9 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     * @param id
     * @return
     */
-  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
+  def findNodeById(id: Long): Node = withTx { implicit neo =>
     try {
-      Some(getNodeById(id))
+      getNodeById(id)
     } catch {
       case e: NotFoundException => {
         logger.warn(s"node with Id ${id} is not found", e)
@@ -191,16 +186,13 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     }
   }
 
-  def findNodeByLabelAndId(label: String, id: Long): Option[Node] = withTx { implicit neo =>
-    val maybeNode = findNodeById(id)
+  def findNodeByLabelAndId(label: String, id: Long): Node = withTx { implicit neo =>
+    val node = findNodeById(id)
 
-    maybeNode match {
-      case None => throw new Exception(s"node with Id ${id} is not found")
-      case Some(node) if node.hasLabel(label) => {
-        maybeNode
-      }
-      case _ => throw new Exception(s"node with Id ${id} and label ${label} is not found")
+    if (!node.hasLabel(label)) {
+      throw new Exception(s"No entity present with Id ${id} and type ${label}")
     }
+    node
   }
 
   /**

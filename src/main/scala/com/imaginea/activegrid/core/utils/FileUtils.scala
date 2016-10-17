@@ -12,6 +12,7 @@ object FileUtils {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def saveContentToFile(file: String, content: String): Unit = {
+    logger.debug(s"writing content to ${file}")
     val writer = new PrintWriter(new File(file), "UTF-8")
     try {
       writer.print(content)
@@ -28,4 +29,6 @@ object FileUtils {
       new File(dirName).mkdirs()
     }
   }
+
+  //TODO: add definition to change file permissions [600] for keys
 }

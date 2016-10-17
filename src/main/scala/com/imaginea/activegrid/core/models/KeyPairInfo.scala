@@ -12,7 +12,7 @@ case class KeyPairInfo(override val id: Option[Long]
                        , keyName: String
                        , keyFingerprint: Option[String]
                        , keyMaterial: String
-                       , filePath: String
+                       , filePath: Option[String]
                        , status: KeyPairStatus
                        , defaultUser: Option[String]
                        , passPhrase: Option[String]
@@ -20,7 +20,7 @@ case class KeyPairInfo(override val id: Option[Long]
 
 object KeyPairInfo {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  def apply(keyName: String, keyMaterial: String, filePath: String, status: KeyPairStatus): KeyPairInfo =
+  def apply(keyName: String, keyMaterial: String, filePath: Option[String], status: KeyPairStatus): KeyPairInfo =
     new KeyPairInfo(None, keyName, None, keyMaterial, filePath, status, None, None)
 
   implicit class RichKeyPairInfo(keyPairInfo: KeyPairInfo) extends Neo4jRep[KeyPairInfo] {
@@ -33,7 +33,7 @@ object KeyPairInfo {
         "keyName" -> entity.keyName,
         "keyFingerprint" -> entity.keyFingerprint.getOrElse(None),
         "keyMaterial" -> entity.keyMaterial,
-        "filePath" -> entity.filePath,
+        "filePath" -> entity.filePath.getOrElse(None),
         "status" -> entity.status.toString,
         "defaultUser" -> entity.defaultUser.getOrElse(None),
         "passPhrase" -> entity.passPhrase.getOrElse(None)
@@ -52,7 +52,7 @@ object KeyPairInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): KeyPairInfo = {
-    val node = Neo4jRepository.findNodeById(nodeId).get
+    val node = Neo4jRepository.findNodeById(nodeId)
     val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
 
     val keyPairInfo = KeyPairInfo(
@@ -60,7 +60,7 @@ object KeyPairInfo {
       map.get("keyName").get.asInstanceOf[String],
       ActiveGridUtils.getValueFromMapAs[String](map, "keyFingerprint"),
       map.get("keyMaterial").get.asInstanceOf[String],
-      map.get("filePath").get.asInstanceOf[String],
+      ActiveGridUtils.getValueFromMapAs[String](map, "filePath"),
       KeyPairStatus.toKeyPairStatus(map.get("status").get.asInstanceOf[String]),
       ActiveGridUtils.getValueFromMapAs[String](map, "defaultUser"),
       ActiveGridUtils.getValueFromMapAs[String](map, "passPhrase")
