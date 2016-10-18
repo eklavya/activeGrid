@@ -22,7 +22,7 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
 
   def getKeyPairs: Future[Page[KeyPairInfo]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
-    val listOfKeys = nodeList.map(node => KeyPairInfo.fromNeo4jGraph(Some(node.getId))).flatten
+    val listOfKeys = nodeList.flatMap(node => KeyPairInfo.fromNeo4jGraph(Some(node.getId)))
     Page[KeyPairInfo](0, listOfKeys.size, listOfKeys.size, listOfKeys)
   }
 

@@ -65,9 +65,9 @@ object User {
 
             val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
 
-            val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
+            val keyPairInfos = keyPairInfoNodes.flatMap(keyPairNode => {
               KeyPairInfo.fromNeo4jGraph(Some(keyPairNode.getId))
-            }).flatten
+            })
 
             val user = User(nodeId,
               map.get("username").get.asInstanceOf[String],

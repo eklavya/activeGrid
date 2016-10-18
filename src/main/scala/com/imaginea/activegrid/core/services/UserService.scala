@@ -17,7 +17,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
 
   def getUsers: Future[Page[User]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
-    val listOfUsers = nodeList.map(node => User.fromNeo4jGraph(Some(node.getId))).flatten
+    val listOfUsers = nodeList.flatMap(node => User.fromNeo4jGraph(Some(node.getId)))
 
     Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers)
   }
