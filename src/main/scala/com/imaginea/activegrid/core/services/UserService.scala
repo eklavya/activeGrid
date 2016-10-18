@@ -17,7 +17,7 @@ class UserService(implicit val executionContext: ExecutionContext) {
 
   def getUsers: Future[Page[User]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
-    val listOfUsers = nodeList.map(node => User.fromNeo4jGraph(node.getId))
+    val listOfUsers = nodeList.map(node => User.fromNeo4jGraph(Some(node.getId))).flatten
 
     Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers)
   }
@@ -26,13 +26,15 @@ class UserService(implicit val executionContext: ExecutionContext) {
     user.toNeo4jGraph(user)
   }
 
-  def getUser(userId: Long): Future[User] = Future {
-    User.fromNeo4jGraph(userId)
+  def getUser(userId: Long): Future[Option[User]] = Future {
+    User.fromNeo4jGraph(Some(userId))
   }
 
   def getKeys(userId: Long): Future[Page[KeyPairInfo]] = Future {
-    val keysList = User.fromNeo4jGraph(userId).publicKeys
-    Page(0, keysList.size, keysList.size, keysList)
+    User.fromNeo4jGraph(Some(userId)) match {
+      case Some(user) => Page[KeyPairInfo](user.publicKeys)
+      case None => Page[KeyPairInfo](List.empty[KeyPairInfo])
+    }
   }
 
 
@@ -44,23 +46,28 @@ class UserService(implicit val executionContext: ExecutionContext) {
 
     maybeNode match {
       case None => {
-        Page(0, 0, 0, List())
+        Page(List.empty[KeyPairInfo])
       }
       case Some(node) => {
-        val keysList = User.fromNeo4jGraph(node.getId).publicKeys
-        Page(0, keysList.size, keysList.size, keysList)
+        User.fromNeo4jGraph(Some(node.getId)) match {
+          case Some(user) => Page[KeyPairInfo](user.publicKeys)
+          case None => Page[KeyPairInfo](List.empty[KeyPairInfo])
+        }
       }
     }
-
   }
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    val keysList: List[KeyPairInfo] = User.fromNeo4jGraph(userId).publicKeys
-
-    keysList match {
-      case keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-      case _ :: keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-      case _ => None
+    User.fromNeo4jGraph(Some(userId)) match {
+      case Some(user) => {
+        val keysList: List[KeyPairInfo] = user.publicKeys
+        keysList match {
+          case keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
+          case _ :: keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
+          case _ => None
+        }
+      }
+      case None => None
     }
   }
 
@@ -102,20 +109,11 @@ class UserService(implicit val executionContext: ExecutionContext) {
     }
     }
 
-    logger.debug(s"result from map ${resultKeys}")
-
-    val userGraph = User.fromNeo4jGraph(userId)
-
     val keysList = resultKeys.toList
     Page(0, keysList.size, keysList.size, keysList)
   }
 
   def deleteUser(userId: Long): Future[Unit] = Future {
     Neo4jRepository.deleteEntity(userId)
-  }
-
-  def saveUserGroup(userGroup: UserGroup): Future[Option[String]] = Future {
-    userGroup.toNeo4jGraph(userGroup)
-    Some("Successfull")
   }
 }

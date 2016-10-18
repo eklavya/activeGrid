@@ -41,9 +41,6 @@ object Main extends App {
   implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
   implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
 
-  implicit val ResourceACLFormat = jsonFormat1(ResourceACL.apply)
-  implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
-
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
 
   val userService: UserService = new UserService
@@ -87,7 +84,12 @@ object Main extends App {
       }
     } ~ get {
       onComplete(userService.getUser(userId)) {
-        case util.Success(user) => complete(StatusCodes.OK, user)
+        case util.Success(mayBeUser) => {
+          mayBeUser match  {
+            case Some(user) => complete(StatusCodes.OK, user)
+            case None => complete(StatusCodes.BadRequest, s"Failed to get user with id ${userId}")
+          }
+        }
         case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get user, Message: ${ex.getMessage}")
       }
     } ~ delete {
@@ -116,15 +118,6 @@ object Main extends App {
           case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed save user, Message: ${ex.getMessage}")
         }
       }
-    } ~ pathPrefix("groups") {
-      post {
-        entity(as[UserGroup]) { userGroup =>
-          onSuccess(userService.saveUserGroup(userGroup)) {
-            case Some(response) => complete(StatusCodes.OK, response)
-            case None => complete(StatusCodes.BadRequest, "Unable save user group ")
-          }
-        }
-      }
     }
   }
 
@@ -134,7 +127,12 @@ object Main extends App {
       pathPrefix(LongNumber) { keyId =>
         get {
           onComplete(keyPairService.getKey(keyId)) {
-            case util.Success(key) => complete(StatusCodes.OK, key)
+            case util.Success(mayBekey) => {
+              mayBekey match {
+                case Some(key) => complete(StatusCodes.OK, key)
+                case None => complete(StatusCodes.BadRequest, s"failed to get key pair for id $keyId")
+              }
+            }
             case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get Key Pair, Message: ${ex.getMessage}")
           }
         } ~ delete {

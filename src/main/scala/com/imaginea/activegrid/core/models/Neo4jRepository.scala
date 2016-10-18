@@ -156,17 +156,25 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     * @param nodeId
     */
   def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
-    val node = findNodeById(nodeId)
-    val relations = getRelationships(node, Direction.OUTGOING)
-    logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
+    val mayBeNode = findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) => {
+        val relations = getRelationships(node, Direction.OUTGOING)
+        logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
 
-    relations.foreach(outRelation => {
-      logger.debug(s"deleting out relation ${outRelation}  -- ${outRelation.getType}")
-      outRelation.delete()
-    })
+        relations.foreach(outRelation => {
+          logger.debug(s"deleting out relation ${outRelation}  -- ${outRelation.getType}")
+          outRelation.delete()
+        })
 
-    logger.debug(s"finally deleting node ${node}")
-    node.delete
+        logger.debug(s"finally deleting node ${node}")
+        node.delete
+      }
+      case None => {
+        logger.warn(s"Node with id $nodeId doesnot exists")
+      }
+    }
+
   }
 
   /**
@@ -175,24 +183,24 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     * @param id
     * @return
     */
-  def findNodeById(id: Long): Node = withTx { implicit neo =>
+  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
     try {
-      getNodeById(id)
+      Some(getNodeById(id))
     } catch {
       case e: NotFoundException => {
         logger.warn(s"node with Id ${id} is not found", e)
-        throw e
+        None
       }
     }
   }
 
-  def findNodeByLabelAndId(label: String, id: Long): Node = withTx { implicit neo =>
-    val node = findNodeById(id)
+  def findNodeByLabelAndId(label: String, id: Long): Option[Node] = withTx { implicit neo =>
+    val mayBeNode = findNodeById(id)
 
-    if (!node.hasLabel(label)) {
-      throw new Exception(s"No entity present with Id ${id} and type ${label}")
+    mayBeNode match {
+      case Some(node)  => if (node.hasLabel(label)) mayBeNode else None
+      case None => None
     }
-    node
   }
 
   /**

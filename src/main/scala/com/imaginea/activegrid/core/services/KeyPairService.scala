@@ -22,13 +22,16 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
 
   def getKeyPairs: Future[Page[KeyPairInfo]] = Future {
     val nodeList = Neo4jRepository.getNodesByLabel(label)
-    val listOfKeys = nodeList.map(node => KeyPairInfo.fromNeo4jGraph(node.getId))
+    val listOfKeys = nodeList.map(node => KeyPairInfo.fromNeo4jGraph(Some(node.getId))).flatten
     Page[KeyPairInfo](0, listOfKeys.size, listOfKeys.size, listOfKeys)
   }
 
-  def getKey(keyId: Long): Future[KeyPairInfo] = Future {
-    val node = Neo4jRepository.findNodeByLabelAndId(label, keyId)
-    KeyPairInfo.fromNeo4jGraph(node.getId)
+  def getKey(keyId: Long): Future[Option[KeyPairInfo]] = Future {
+    val mayBeBode = Neo4jRepository.findNodeByLabelAndId(label, keyId)
+    mayBeBode match {
+      case Some(node) => KeyPairInfo.fromNeo4jGraph(Some(node.getId))
+      case None => None
+    }
   }
 
   def deleteKeyById(keyId: Long) = Future {
@@ -88,7 +91,7 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
   def getKeyPair(keyName: String): Option[KeyPairInfo] = {
     val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(label, "keyName", keyName)
     mayBeNode match {
-      case Some(node) => Some(KeyPairInfo.fromNeo4jGraph(node.getId))
+      case Some(node) => KeyPairInfo.fromNeo4jGraph(Some(node.getId))
       case None => None
     }
   }
@@ -104,9 +107,7 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
     }
     val mayBeNode = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
     mayBeNode match {
-      case Some(node) => Some{
-        keyPairInfo.fromNeo4jGraph(node.getId)
-      }
+      case Some(node) => KeyPairInfo.fromNeo4jGraph(Some(node.getId))
       case None => None
     }
   }
