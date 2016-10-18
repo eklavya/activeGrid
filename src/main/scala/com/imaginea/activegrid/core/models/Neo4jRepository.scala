@@ -57,17 +57,17 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
-    val map: scala.collection.mutable.Map[String, AnyRef] = scala.collection.mutable.Map()
-    keys.foreach(key => {
+    val map = keys.map(key => (key, {
       try {
         val value = node.getProperty(key)
         logger.debug(s" ($key) --> (${node.getProperty(key)}) ")
-        map += ((key, value))
+        value
       } catch {
         case ex: Throwable => logger.warn(s"failed to get values for the key $key")
+          None
       }
-    })
-    map.toMap
+    })).filter{case (k, v) => v != None}.toMap[String, Any]
+    map
   }
 
   def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>
