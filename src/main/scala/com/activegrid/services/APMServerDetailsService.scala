@@ -1,5 +1,6 @@
-package com.activegrid.models
+package com.activegrid.services
 
+import com.activegrid.models.{APMServerDetails, Site}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -8,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Created by nagulmeeras on 14/10/16.
   */
-class APMServerDetailsReposiory(implicit executionContext: ExecutionContext) {
+class APMServerDetailsService(implicit executionContext: ExecutionContext) {
   val logger = LoggerFactory.getLogger(getClass)
 
   def saveAPMServerDetails(serverDetails: APMServerDetails): Future[APMServerDetails] = Future {
@@ -35,7 +36,9 @@ class APMServerDetailsReposiory(implicit executionContext: ExecutionContext) {
     val site = Site.fromNeo4jGraph(siteId)
     val aPMServerDetails = getAPMServers()
     logger.info(s"All Sever details : $aPMServerDetails")
-    val list = aPMServerDetails.filter(server => server.monitoredSite.id == site.id)
+    val list = aPMServerDetails.filter(server => {
+      if (!server.monitoredSite.isEmpty) server.monitoredSite.get.id == site.id else false
+    })
     logger.info(s"Filtered Server details : $list")
     list.toList
   }
