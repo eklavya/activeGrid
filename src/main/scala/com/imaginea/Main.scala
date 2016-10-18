@@ -31,7 +31,7 @@ object Main extends App {
 
     override def read(json: JsValue): KeyPairStatus = json match {
       case JsString(str) => KeyPairStatus.toKeyPairStatus(str)
-      case _ => throw new DeserializationException("Enum string expected")
+      case _ => throw DeserializationException("Enum string expected")
     }
   }
 
@@ -51,16 +51,14 @@ object Main extends App {
         get {
           val key = userService.getKey(userId, keyId)
           onComplete(key) {
-            case util.Success(response) => {
+            case util.Success(response) =>
               response match {
                 case Some(keyPairInfo) => complete(StatusCodes.OK, keyPairInfo)
                 case None => complete(StatusCodes.BadRequest, "Unable to get the key")
               }
-            }
-            case util.Failure(ex) => {
+            case util.Failure(ex) =>
               logger.error(s"Unable to get the key, Reason: ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Unable to get the key, Reason: ${ex.getMessage}")
-            }
           }
 
         } ~ delete {
@@ -84,12 +82,11 @@ object Main extends App {
       }
     } ~ get {
       onComplete(userService.getUser(userId)) {
-        case util.Success(mayBeUser) => {
+        case util.Success(mayBeUser) =>
           mayBeUser match  {
             case Some(user) => complete(StatusCodes.OK, user)
-            case None => complete(StatusCodes.BadRequest, s"Failed to get user with id ${userId}")
+            case None => complete(StatusCodes.BadRequest, s"Failed to get user with id $userId")
           }
-        }
         case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get user, Message: ${ex.getMessage}")
       }
     } ~ delete {
@@ -127,12 +124,11 @@ object Main extends App {
       pathPrefix(LongNumber) { keyId =>
         get {
           onComplete(keyPairService.getKey(keyId)) {
-            case util.Success(mayBekey) => {
+            case util.Success(mayBekey) =>
               mayBekey match {
                 case Some(key) => complete(StatusCodes.OK, key)
                 case None => complete(StatusCodes.BadRequest, s"failed to get key pair for id $keyId")
               }
-            }
             case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get Key Pair, Message: ${ex.getMessage}")
           }
         } ~ delete {
