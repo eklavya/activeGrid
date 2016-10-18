@@ -1,119 +1,63 @@
 package com.activegrid.services
 
-
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.PathMatchers
-import com.activegrid.models.{AppSettingRepository, AppSettings, JsonSupport, LogLevelUpdater}
+import com.activegrid.models.AppSettings
+import com.activegrid.models.AppSettings.AppSettingsImpl
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
+
+/**
+  * Created by nagulmeeras on 27/09/16.
+  */
+
+class AppSettingService(implicit executionContext: ExecutionContext) {
+
+  val logger = LoggerFactory.getLogger(getClass)
 
 
-class AppSettingService(implicit executionContext: ExecutionContext) extends JsonSupport {
-
-  val appSettingRepository = new AppSettingRepository
-  val logLevelUpdater = new LogLevelUpdater
-  override val logger = LoggerFactory.getLogger(getClass)
-
-  val addAppSetting = post {
-    path("appsettings") {
-      entity(as[AppSettings]) {
-        appsetting => appSettingRepository.saveAppSettings(appsetting)
-          complete(StatusCodes.OK, "Done")
-      }
-    }
+  def saveAppSettings(appSettings: AppSettings): Future[Unit] = Future {
+    logger.info(s"Executing $getClass :: saveAppSettings ")
+    logger.info("AppSettings : " + appSettings)
+    appSettings.toNeo4jGraph()
   }
-  val getAppSettings = get {
-    path("config") {
-      val appSettings = appSettingRepository.getAppSettings()
-      onComplete(appSettings) {
-        case util.Success(response) => complete(StatusCodes.OK, response)
-        case util.Failure(exception) => {
-          logger.error(s"Unable to get App Settings")
-          complete(StatusCodes.BadRequest, "Unable to get App Settings")
-        }
-      }
 
-    }
+  def getAppSettings(): Future[AppSettings] = Future {
+    logger.info(s"Executing $getClass getAppSettings")
+    val nodeId = AppSettings.getAppSettingNode().getId
+    val appSettings = AppSettings.fromNeo4jGraph(nodeId)
+    if (appSettings == null)
+      throw new Exception("Unable to find App Settings")
+    else
+      appSettings
   }
-  val addSetting = post {
-    path(PathMatchers.separateOnSlashes("config/settings")) {
-      entity(as[Map[String, String]]) {
-        setting =>
-          val resp = appSettingRepository.saveSetting(setting)
-          onComplete(resp) {
-            case util.Success(response) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) => {
-              logger.error(s"Unable to save the settings $exception")
-              complete(StatusCodes.BadRequest, "Unable to save the settings")
-            }
-          }
-      }
+
+  def saveSetting(setting: Map[String, String]): Future[Unit] = Future {
+    logger.info(s"Executing $getClass ::saveSetting")
+    val appSettingsImpl = new AppSettingsImpl(AppSettings(Some(0), Map.empty, Map.empty))
+    try {
+      val appSettings = appSettingsImpl.updateAppSettings(setting, "Has_Settings")
+    } catch {
+      case exception: Exception => throw exception
     }
   }
 
-  val getSettings = path(PathMatchers.separateOnSlashes("config/settings")) {
-    get {
-      val appSettings = appSettingRepository.getSettings()
-      onComplete(appSettings) {
-        case util.Success(response) => complete(StatusCodes.OK, response)
-        case util.Failure(exception) => {
-          logger.error(s"Unable to fetch settings $exception")
-          complete(StatusCodes.BadRequest, "Unable to fetch the settings")
-        }
-      }
+  def getSettings(): Future[AppSettings] = {
+    logger.info(s"Executing $getClass ::getSettings")
+    val settings = getAppSettings()
+    settings
+  }
+
+  def deleteSettings(settingNames: List[String]): Future[Boolean] = Future {
+    logger.info("Executing deleteSettings")
+    val appSettingsImpl = new AppSettingsImpl(null)
+    try {
+      appSettingsImpl.deleteSettings(settingNames, "Has_Settings")
+      logger.info("Deleted settings")
+    } catch {
+      case exception: Exception => throw exception
     }
+    true
   }
 
-  val deleteSettings = path(PathMatchers.separateOnSlashes("config/settings")) {
-    delete {
-      entity(as[List[String]]) { list =>
-        val isDeleted = appSettingRepository.deleteSettings(list)
-        onComplete(isDeleted) {
-          case util.Success(response) => complete(StatusCodes.OK, "Done")
-          case util.Failure(exception) => {
-            logger.error(s"Unable to delete settings $exception")
-            complete(StatusCodes.BadRequest, "Unable to delete  settings")
-          }
-        }
-      }
-    }
-  }
-
-  val updateLogLevel = path(PathMatchers.separateOnSlashes("config/logs/level")) {
-    put {
-      entity(as[String]) {
-        level =>
-          val loglevel = logLevelUpdater.setLogLevel(logLevelUpdater.ROOT, level)
-          onComplete(loglevel) {
-            case util.Success(response) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) => {
-              logger.error(s"Unable to update log level $exception")
-              complete(StatusCodes.BadRequest, "Unable to update log level")
-            }
-          }
-
-      }
-    }
-  }
-  val getLogLevel = path(PathMatchers.separateOnSlashes("config/logs/level")) {
-    get {
-      val response = logLevelUpdater.getLogLevel(logLevelUpdater.ROOT)
-      onComplete(response) {
-        case util.Success(response) => complete(StatusCodes.OK, response)
-        case util.Failure(exception) => {
-          logger.error(s"Unable to get the log level $exception")
-          complete(StatusCodes.BadRequest, "Unable to get the log level")
-        }
-      }
-    }
-  }
-
-  val index = path("index") {
-    getFromResource("web/index.html")
-  }
-
-  val appSettingServiceRoutes = addAppSetting ~ addSetting ~ getAppSettings ~ deleteSettings ~ getSettings ~ getLogLevel ~ updateLogLevel ~ index
 
 }
