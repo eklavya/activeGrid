@@ -80,7 +80,7 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
 
     mayBeKeyPair match {
       case Some(keyPairInfo) =>
-        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.equals(None)) keyPairInfo.defaultUser else defaultUser, if (passPhase.equals(None)) keyPairInfo.passPhrase else passPhase)
+        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
       case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
     }
   }
