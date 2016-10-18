@@ -48,20 +48,20 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
         logger.debug(s" simple field")
         name match {
           case "userName" | "passPhase" => (name, value)
-          case _ => ("", "") // TODO: Need to change this line of code
+          case _ => (new String, new String)
         }
       } else {
         logger.debug(s"reading from the file $optionalFileName")
         (name, value)
       }
 
-    }).toMap[String, String]
+    }).filter{case (k, v) => !k.isEmpty}.toMap[String, String]
 
     val sshKeyContentInfo: SSHKeyContentInfo = SSHKeyContentInfo(dataMap)
     logger.debug(s"ssh info   - $sshKeyContentInfo")
     logger.debug(s"Data Map --- $dataMap")
     val addedKeyPairs: List[KeyPairInfo] = dataMap.map { case (keyName, keyMaterial) =>
-      if (!userNameLabel.equalsIgnoreCase(keyName) && !passPhaseLabel.equalsIgnoreCase(keyName) && !"".equalsIgnoreCase(keyName)) {
+      if (!userNameLabel.equalsIgnoreCase(keyName) && !passPhaseLabel.equalsIgnoreCase(keyName)) {
         val keyPairInfo = getOrCreateKeyPair(keyName, keyMaterial, None, UploadedKeyPair, dataMap.get(userNameLabel), dataMap.get(passPhaseLabel))
         val mayBeNode = saveKeyPair(keyPairInfo)
         mayBeNode match {
