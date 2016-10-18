@@ -96,11 +96,9 @@ object AppSettings {
         case exception: Exception => throw exception
       }
     }
-
   }
 
   implicit def createRelationShip(parentNode: Node, childNode: Node, relationship: String): Unit = {
-
     repo.withTx {
       neo =>
         parentNode.createRelationshipTo(childNode, new RelationshipType {

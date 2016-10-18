@@ -13,7 +13,7 @@ import scala.collection.mutable
 case class APMServerDetails(override val id: Option[Long],
                             name: String,
                             serverUrl: String,
-                            monitoredSite: Site,
+                            monitoredSite: Option[Site],
                             provider: APMProvider,
                             headers: Option[Map[String, String]]) extends BaseEntity
 
@@ -40,9 +40,11 @@ object APMServerDetails {
             aPMServerDetails.headers.get.foreach { case (key, value) => headersNode.setProperty(key, value) }
             createRelationShip(node, headersNode, apmServer_header_relation)
           }
-          val siteNode = aPMServerDetails.monitoredSite.toNeo4jGraph()
-          logger.info("Saved Site Details ")
-          createRelationShip(node, siteNode, apmServer_site_relation)
+          if (!aPMServerDetails.monitoredSite.isEmpty) {
+            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph()
+            logger.info("Saved Site Details ")
+            createRelationShip(node, siteNode, apmServer_site_relation)
+          }
           node
       }
     }
@@ -68,23 +70,20 @@ object APMServerDetails {
     try {
       neo4JRepository.withTx {
         neo =>
-
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           val itr = node.getRelationships.iterator
-          var siteEntity: Site = null
+          var siteEntity: Option[Site] = None
           val header: mutable.Map[String, String] = mutable.Map.empty[String, String]
           while (itr.hasNext) {
             val relationship = itr.next()
             relationship.getType.name match {
               case `apmServer_site_relation` =>
-                siteEntity = Site.fromNeo4jGraph(relationship.getEndNode.getId)
+                siteEntity = Some(Site.fromNeo4jGraph(relationship.getEndNode.getId))
 
               case `apmServer_header_relation` =>
                 relationship.getEndNode.getAllProperties.map { case (key, value) => header.put(key.toString, value.toString) }
             }
-
           }
-
           val aPMServerDetails1 = new APMServerDetails(Some(node.getId), node.getProperty("name").asInstanceOf[String], node.getProperty("serverUrl").asInstanceOf[String]
             , siteEntity, APMProvider.toProvider(node.getProperty("provider").asInstanceOf[String]), if (header.nonEmpty) Some(header.toMap) else None)
           aPMServerDetails1
