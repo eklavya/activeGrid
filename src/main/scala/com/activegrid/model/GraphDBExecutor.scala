@@ -116,7 +116,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getNodeByProperty(label: String, propertyName: String, propertyVal: Any): Option[Node] = withTx { neo =>
 
     val nodes = findNodesByLabelAndProperty(label, propertyName, propertyVal)(neo)
-    //Make sure null is returned in case there is no node
+    //Make sure None is returned in case there is no node
     Some(nodes.iterator.next())
 
   }

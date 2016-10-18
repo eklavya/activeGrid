@@ -3,9 +3,6 @@ package com.activegrid.model
 import com.activegrid.model.Graph.Neo4jRep
 import org.neo4j.graphdb.Node
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
-
 /**
   * Created by shareefn on 22/9/16.
   */
@@ -25,6 +22,31 @@ case class ImageInfo(override val id: Option[Long],
                      version  :String) extends BaseEntity
 
 object ImageInfo {
+
+  def fromNeo4jGraph(id: Option[Long]): Option[ImageInfo] = {
+    id match {
+      case Some(nodeId) =>
+        val listOfKeys = List("imageId", "state", "ownerId", "publicValue", "architecture", "imageType",
+          "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val imageId = propertyValues("imageId").toString
+        val state = propertyValues.get("state").asInstanceOf[Option[String]]
+        val ownerId = propertyValues("ownerId").toString
+        val publicValue = propertyValues("publicValue").toString.toBoolean
+        val architecture = propertyValues("architecture").toString
+        val imageType = propertyValues("imageType").toString
+        val platform = propertyValues("platform").toString
+        val imageOwnerAlias = propertyValues("imageOwnerAlias").toString
+        val name = propertyValues("name").toString
+        val description = propertyValues("description").toString
+        val rootDeviceType = propertyValues("rootDeviceType").toString
+        val rootDeviceName = propertyValues("rootDeviceType").toString
+        val version = propertyValues("version").toString
+        Some(ImageInfo(Some(nodeId), imageId, state, ownerId, publicValue, architecture, imageType, platform, imageOwnerAlias, name, description, rootDeviceType, rootDeviceName, version))
+
+      case None => None
+    }
+  }
 
   implicit class ImageInfoImpl(imageInfo: ImageInfo) extends Neo4jRep[ImageInfo] {
 
@@ -52,32 +74,6 @@ object ImageInfo {
       ImageInfo.fromNeo4jGraph(id)
     }
 
-  }
-
-  def fromNeo4jGraph(id: Option[Long]): Option[ImageInfo] = {
-    id match {
-      case Some(nodeId) => {
-        val listOfKeys = List("imageId", "state", "ownerId", "publicValue", "architecture", "imageType",
-          "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-        val imageId = propertyValues.get("imageId").get.toString
-        val state = propertyValues.get("state").asInstanceOf[Option[String]]
-        val ownerId = propertyValues.get("ownerId").get.toString
-        val publicValue = propertyValues.get("publicValue").get.toString.toBoolean
-        val architecture = propertyValues.get("architecture").get.toString
-        val imageType = propertyValues.get("imageType").get.toString
-        val platform = propertyValues.get("platform").get.toString
-        val imageOwnerAlias = propertyValues.get("imageOwnerAlias").get.toString
-        val name = propertyValues.get("name").get.toString
-        val description = propertyValues.get("description").get.toString
-        val rootDeviceType = propertyValues.get("rootDeviceType").get.toString
-        val rootDeviceName = propertyValues.get("rootDeviceType").get.toString
-        val version = propertyValues.get("version").get.toString
-
-        Some(ImageInfo(Some(nodeId), imageId, state, ownerId, publicValue, architecture, imageType, platform, imageOwnerAlias, name, description, rootDeviceType, rootDeviceName, version))
-      }
-      case None => None
-    }
   }
 
 }
