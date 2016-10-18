@@ -45,6 +45,13 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
     map.foreach { case (k, v) => {
       logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v")
+
+      v match {
+        case None => {
+          if (node.hasProperty(k)) node.removeProperty(k)
+        }
+        case _ => node.setProperty(k, v)
+      }
       node.setProperty(k, v)
     }
     }
