@@ -8,7 +8,6 @@ import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.collection.JavaConversions._
 
 /**
   * Created by babjik on 13/10/16.
@@ -52,25 +51,24 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
           case _ => ("", "") // TODO: Need to change this line of code
         }
       } else {
-        logger.debug(s"reading from the file ${optionalFileName}")
+        logger.debug(s"reading from the file $optionalFileName")
         (name, value)
       }
 
     }).toMap[String, String]
 
     val sshKeyContentInfo: SSHKeyContentInfo = SSHKeyContentInfo(dataMap)
-    logger.debug(s"ssh info   - ${sshKeyContentInfo}")
-    logger.debug(s"Data Map --- ${dataMap}")
-    val addedKeyPairs: List[KeyPairInfo] = dataMap.map { case (keyName, keyMaterial) => {
+    logger.debug(s"ssh info   - $sshKeyContentInfo")
+    logger.debug(s"Data Map --- $dataMap")
+    val addedKeyPairs: List[KeyPairInfo] = dataMap.map { case (keyName, keyMaterial) =>
       if (!userNameLabel.equalsIgnoreCase(keyName) && !passPhaseLabel.equalsIgnoreCase(keyName) && !"".equalsIgnoreCase(keyName)) {
         val keyPairInfo = getOrCreateKeyPair(keyName, keyMaterial, None, UploadedKeyPair, dataMap.get(userNameLabel), dataMap.get(passPhaseLabel))
         val mayBeNode = saveKeyPair(keyPairInfo)
         mayBeNode match {
-          case Some(keyPairInfo) => keyPairInfo
+          case Some(key) => key
           case _ => // do nothing
         }
       }
-    }
     }.toList.collect { case x: KeyPairInfo => x }
 
     Page[KeyPairInfo](addedKeyPairs)
@@ -82,7 +80,7 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
 
     mayBeKeyPair match {
       case Some(keyPairInfo) =>
-        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.equals(None)) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.equals(None)) keyPairInfo.defaultUser else defaultUser, if (passPhase.equals(None)) keyPairInfo.passPhrase else passPhase)
+        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.equals(None)) keyPairInfo.defaultUser else defaultUser, if (passPhase.equals(None)) keyPairInfo.passPhrase else passPhase)
       case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
     }
   }
@@ -115,5 +113,5 @@ class KeyPairService(implicit val executionContext: ExecutionContext) {
 
   def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
-  def getKeyFilePath(keyName: String) = s"${getKeyFilesDir}${keyName}.pem"
+  def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
 }

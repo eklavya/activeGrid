@@ -30,7 +30,7 @@ object User {
     val label = "User"
 
     override def toNeo4jGraph(entity: User): Option[Node] = {
-      logger.debug(s"toGraph for Image ${entity}")
+      logger.debug(s"toGraph for Image $entity")
       val map: Map[String, Any] = Map("username" -> entity.username,
         "password" -> entity.username,
         "email" -> entity.email,
@@ -58,9 +58,9 @@ object User {
 
   def fromNeo4jGraph(nodeId: Option[Long]): Option[User] = {
     nodeId match {
-      case Some(id) => {
+      case Some(id) =>
         Neo4jRepository.findNodeById(id) match {
-          case Some(node) => {
+          case Some(node) =>
             val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
             val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
@@ -70,24 +70,21 @@ object User {
             })
 
             val user = User(nodeId,
-              map.get("username").get.asInstanceOf[String],
-              map.get("password").get.asInstanceOf[String],
-              map.get("email").get.asInstanceOf[String],
-              map.get("uniqueId").get.asInstanceOf[String],
+              map("username").toString,
+              map("password").toString,
+              map("email").toString,
+              map("uniqueId").toString,
               keyPairInfos,
-              map.get("accountNonExpired").get.asInstanceOf[Boolean],
-              map.get("accountNonLocked").get.asInstanceOf[Boolean],
-              map.get("credentialsNonExpired").get.asInstanceOf[Boolean],
-              map.get("enabled").get.asInstanceOf[Boolean],
-              map.get("displayName").get.asInstanceOf[String])
+              map("accountNonExpired").asInstanceOf[Boolean],
+              map("accountNonLocked").asInstanceOf[Boolean],
+              map("credentialsNonExpired").asInstanceOf[Boolean],
+              map("enabled").asInstanceOf[Boolean],
+              map("displayName").toString)
 
-            logger.debug(s"user - ${user}")
+            logger.debug(s"user - $user")
             Some(user)
-          }
           case None => None
         }
-
-      }
       case None => None
     }
 
@@ -100,21 +97,20 @@ object UserUtils {
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Option[Relationship] = {
     Neo4jRepository.findNodeById(userId) match {
-      case Some(userNode) => {
+      case Some(userNode) =>
         val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
         Some(Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode.get))
-      }
       case None => None
     }
 
 
   }
 
-  def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
+  def getUserKeysDir: String = s"$Constants.getTempDirectoryLocation$Constants.FILE_SEPARATOR$Constants.USER_KEYS"
 
-  def getKeyDirPath(userId: Long): String = s"${getUserKeysDir}${Constants.FILE_SEPARATOR}${userId.toString}${Constants.FILE_SEPARATOR}"
+  def getKeyDirPath(userId: Long): String = s"$getUserKeysDir$Constants.FILE_SEPARATOR$userId.toString$Constants.FILE_SEPARATOR"
 
-  def getKeyFilePath(userId: Long, keyName: String): String = s"${getKeyDirPath(userId)}${keyName}.pub"
+  def getKeyFilePath(userId: Long, keyName: String): String = s"${getKeyDirPath(userId)}$keyName.pub"
 
 }
 
