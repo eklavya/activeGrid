@@ -11,24 +11,23 @@ class LogLevelUpdater(implicit executionContext: ExecutionContext) {
 
   val ROOT: String = "root"
 
-  def getLogger(logger: String): Logger = {
-    logger match {
+  def getLogger(loggerName: String): Logger = {
+    loggerName match {
       case ROOT => Logger.getRootLogger
-      case _ => Logger.getLogger(logger)
+      case _ => Logger.getLogger(loggerName)
     }
   }
 
-  def getLogLevel(logger: String): Future[Option[String]] = Future {
-    val log: Logger = getLogger(logger)
+  def getLogLevel(loggerName: String): Future[Option[String]] = Future {
+    val log: Logger = getLogger(loggerName)
     if (log != null) Some(log.getLevel.toString) else None
   }
 
-  def setLogLevel(logger: String, tolevel: String): Future[String] = Future {
-    val log: Logger = getLogger(logger)
+  def setLogLevel(loggerName: String, tolevel: String): Future[Unit] = Future {
+    val log: Logger = getLogger(loggerName)
     if (log != null) {
       val level = Level.toLevel(tolevel)
       log.setLevel(level)
     }
-    "Success"
   }
 }
