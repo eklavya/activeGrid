@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
  * Created by babjik on 22/9/16.
  */
 
+/*
 case class ImageInfo(override val id: Option[Long]
                      , imageId: Option[String] = None
                      , state: Option[String] = None
@@ -46,4 +47,4 @@ object ImageInfo {
     }
   }
 
-}
+}*/

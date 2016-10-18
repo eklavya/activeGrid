@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.services
 
+import com.imaginea.activegrid.core.discovery.models.Site
 import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.utils.FileUtils
 import com.typesafe.scalalogging.Logger
@@ -155,4 +156,44 @@ class UserService(implicit val executionContext: ExecutionContext) {
       Neo4jRepository.removeEntity[UserGroup](userGroupId)
     }
 
+  /*UserService Access CRUD functions*/
+  /*
+  * Returning the Future of Page Site Access
+  * Page content have empty list if no result found
+  */
+  def getSiteACL: Future[Page[SiteACL]] = Future {
+    import com.imaginea.activegrid.core.models.UserGroup.RichUserGroup
+
+    val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
+    val siteACL: SiteACL = null
+    val listOfUserGroups: List[SiteACL] =
+      nodeList.map {
+        node =>
+          siteACL.fromNeo4jGraph(node.getId)
+      }.flatten
+
+    Page[SiteACL](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups)
+  }
+
+  /*
+  * Id parameter is used to fetch the node
+  * Returning Option[UserGroup]
+  */
+  def getSite(id: Long): Future[Option[SiteACL]] = Future {
+    import com.imaginea.activegrid.core.models.SiteACL.RichSiteACL
+
+    val siteAcl: SiteACL = null;
+    siteAcl.fromNeo4jGraph(id)
+  }
+
+
+  /* Returning ResponseMessage type. It could be either FailureResponse or SuccessResponse
+  *  SuccessResponse holding the node id of the saved entity for the future reference
+  */
+  def saveSiteACL(siteACL: SiteACL): Future[ResponseMessage] = Future {
+    siteACL.toNeo4jGraph(siteACL) match {
+      case None => FailureResponse
+      case Some(node) => new SuccessResponse(node.getId.toString())
+    }
+  }
 }

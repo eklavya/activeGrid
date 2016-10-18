@@ -7,6 +7,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
+import com.imaginea.activegrid.core.discovery.models.{Instance, Site}
 import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.services.UserService
 import com.typesafe.config.ConfigFactory
@@ -51,8 +52,14 @@ object Main extends App {
   implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
   implicit val ResponseUserGroupFormat = jsonFormat(SuccessResponse, "id")
-  
+
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
+
+
+  implicit val InstanceFormat = jsonFormat(Instance.apply,"id" ,"instanceId","name","state","platform","architecture","publicDnsName")
+  implicit val SiteFormat = jsonFormat(Site.apply,"id" ,"siteName","siteName")
+  implicit val SiteACLFormat = jsonFormat(SiteACL.apply,"id" ,"name","site","instances","groups")
+  implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
 
   val userService: UserService = new UserService
 
@@ -94,6 +101,44 @@ object Main extends App {
           }
       }
   } ~
+    pathPrefix("users") {
+      path("access" / LongNumber) { id =>
+        get {
+          //Handling Future of Option[UserGroup]
+          logger.debug("Get user access by id")
+          onSuccess(userService.getSite(id)) {
+            case None => complete(StatusCodes.NoContent, None)
+            case Some(group) => complete(StatusCodes.OK, group)
+          }
+        } /*~
+          delete {
+            //Handling Future of Unit
+            logger.debug("Delete UserGroup by id")
+            onComplete(userService.deleteUserGroup(id)) {
+              case Success(result) => complete(StatusCodes.OK, "Successfully deleted")
+              case Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to delete, Exception: ${ex.getMessage}")
+            }
+          }*/
+      } ~
+        path("access") {
+          get {
+            //Handling Future of Page[UserGroup]
+            logger.debug("Fetch all groups")
+            complete(userService.getSiteACL)
+          } ~
+            post {
+              //Handling Future of sealed ResponseMessage type
+              entity(as[SiteACL]) { siteAcl => {
+                logger.debug("Create SiteACL" + siteAcl)
+                onSuccess(userService.saveSiteACL(siteAcl)) {
+                  case FailureResponse => complete(StatusCodes.BadRequest, None)
+                  case resp: SuccessResponse => complete(StatusCodes.OK, resp)
+                }
+              }
+              }
+            }
+        }
+    } ~
     pathPrefix("users" / LongNumber) { userId =>
     pathPrefix("keys") {
       pathPrefix(LongNumber) { keyId =>

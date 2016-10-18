@@ -29,7 +29,7 @@ object UserGroup {
 
     override def toNeo4jGraph(userGroup: UserGroup): Option[Node] = {
 
-      logger.debug(s"UserGroupProxy Node saved into db - ${userGroup}")
+      logger.debug(s"UserGroup Node saved into db - ${userGroup}")
       val map = Map("name" -> userGroup.name)
 
       val userGroupNode = Neo4jRepository.saveEntity[UserGroup](UserGroup.label, userGroup.id, map)
