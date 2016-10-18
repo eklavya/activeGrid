@@ -160,7 +160,6 @@ object Main {
       }
     } ~path("saveTestAll"){
       put{ entity(as[Instance]){ test =>
-        //val cmpl = test.toGraphOfTestImplicit.toGraph(test)
         val cmpl = testService.saveTestAll(test)
         complete(cmpl)
       }
@@ -173,6 +172,14 @@ object Main {
         get{
           val listOfAllInstanceNodes = nodeService.getAllNodes
           onComplete(listOfAllInstanceNodes){
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex )
+          }
+        }
+      } ~ path("topology"){
+        get{
+          val topology = nodeService.getTopology
+          onComplete(topology){
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
             case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex )
           }

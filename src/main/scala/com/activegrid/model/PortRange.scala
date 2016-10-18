@@ -10,6 +10,20 @@ case class PortRange(override val id: Option[Long],fromPort: Int, toPort: Int)  
 
 object PortRange{
 
+  def fromNeo4jGraph(id: Option[Long]): Option[PortRange] = {
+    id match {
+      case Some(nodeId) =>
+        val listOfKeys = List("fromPort", "toPort")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val fromPort: Int = propertyValues("fromPort").toString.toInt
+        val toPort: Int = propertyValues("toPort").toString.toInt
+
+        Some(PortRange(Some(nodeId), fromPort, toPort))
+
+      case None => None
+    }
+  }
+
   implicit class PortRangeImpl(portRange: PortRange) extends Neo4jRep[PortRange]{
 
     override def toNeo4jGraph(entity: PortRange): Option[Node] = {
@@ -24,20 +38,6 @@ object PortRange{
       PortRange.fromNeo4jGraph(id)
     }
 
-  }
-
-  def fromNeo4jGraph(id: Option[Long]): Option[PortRange] = {
-    id match {
-      case Some(nodeId) => {
-        val listOfKeys = List("fromPort", "toPort")
-        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-        val fromPort: Int = propertyValues.get("fromPort").get.toString.toInt
-        val toPort: Int = propertyValues.get("toPort").get.toString.toInt
-
-        Some(PortRange(Some(nodeId), fromPort, toPort))
-      }
-      case None => None
-    }
   }
 
 }

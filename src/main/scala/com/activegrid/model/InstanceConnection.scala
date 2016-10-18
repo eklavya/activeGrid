@@ -12,6 +12,24 @@ case class InstanceConnection(override val id: Option[Long],sourceNodeId: String
 
 object InstanceConnection{
 
+  def fromNeo4jGraph(id: Option[Long]): Option[InstanceConnection] = {
+    id match {
+      case Some(nodeId) =>
+        val listOfKeys = List("sourceNodeId", "targetNodeId")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val sourceNodeId = propertyValues("sourceNodeId").toString
+        val targetNodeId = propertyValues("targetNodeId").toString
+        val relationship = "HAS_portRange"
+        val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship)
+        val portRanges: List[PortRange] = childNodeIds.map { childId =>
+          PortRange.fromNeo4jGraph(Some(childId)).get
+        }
+        Some(InstanceConnection(Some(nodeId), sourceNodeId, targetNodeId, portRanges))
+
+      case None => None
+    }
+  }
+
   implicit class InstanceConnectionImpl(instanceConnection: InstanceConnection) extends Neo4jRep[InstanceConnection]{
 
     override def toNeo4jGraph(entity: InstanceConnection): Option[Node] = {
@@ -32,26 +50,6 @@ object InstanceConnection{
       InstanceConnection.fromNeo4jGraph(id)
     }
 
-  }
-
-  def fromNeo4jGraph(id: Option[Long]): Option[InstanceConnection] = {
-    id match {
-      case Some(nodeId) => {
-        val listOfKeys = List("sourceNodeId", "targetNodeId")
-        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-        val sourceNodeId = propertyValues.get("sourceNodeId").get.toString
-        val targetNodeId = propertyValues.get("targetNodeId").get.toString
-        val relationship = "HAS_portRange"
-        val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship)
-        val portRanges: List[PortRange] = childNodeIds.map { childId =>
-          val port: PortRange = null
-          port.fromNeo4jGraph(Some(childId)).get
-        }
-
-        Some(InstanceConnection(Some(nodeId), sourceNodeId, targetNodeId, portRanges))
-      }
-      case None => None
-    }
   }
 
 }
