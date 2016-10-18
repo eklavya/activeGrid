@@ -1,6 +1,6 @@
 package com.activegrid.model
 
-import com.fasterxml.jackson.annotation.{JsonIgnoreProperties, JsonInclude}
+import com.activegrid.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -8,16 +8,14 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sampathr on 22/9/16.
   */
-@JsonIgnoreProperties(ignoreUnknown = true)
 case class Software(override val id: Option[Long],
-                    @JsonInclude(JsonInclude.Include.NON_NULL) version: String,
-                    @JsonInclude(JsonInclude.Include.NON_NULL) name: String,
-                    @JsonInclude(JsonInclude.Include.NON_NULL) provider: String,
-                    @JsonInclude(JsonInclude.Include.NON_NULL) downloadURL: String,
-                    @JsonInclude(JsonInclude.Include.NON_NULL) port: String,
-                    @JsonInclude(JsonInclude.Include.NON_NULL) processNames: List[String],
-                    @JsonInclude(JsonInclude.Include.NON_NULL) discoverApplications: Boolean) extends BaseEntity
-
+                    version: Option[String],
+                    name: String,
+                    provider: String,
+                    downloadURL: Option[String],
+                    port: String,
+                    processNames: List[String],
+                    discoverApplications: Boolean) extends BaseEntity
 
 object Software {
 
@@ -27,10 +25,10 @@ object Software {
 
     override def toNeo4jGraph(software: Software): Option[Node] = {
       logger.debug(s"In toGraph for Software: ${software}")
-      val map = Map("version" -> software.version,
+      val map = Map("version" -> software.version.getOrElse(None),
         "name" -> software.name,
         "provider" -> software.provider,
-        "downloadURL" -> software.downloadURL,
+        "downloadURL" -> software.downloadURL.getOrElse(None),
         "port" -> software.port,
         "processNames" -> software.processNames.toArray,
         "discoverApplications" -> software.discoverApplications)
@@ -49,10 +47,10 @@ object Software {
     val node = GraphDBExecutor.findNodeById(nodeId)
     val map = GraphDBExecutor.getProperties(node, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
     val software = Software(Some(nodeId),
-      map.get("version").get.asInstanceOf[String],
+      ActiveGridUtils.getValueFromMapAs[String](map, "version"),
       map.get("name").get.asInstanceOf[String],
       map.get("provider").get.asInstanceOf[String],
-      map.get("downloadURL").get.asInstanceOf[String],
+      ActiveGridUtils.getValueFromMapAs[String](map, "downloadURL"),
       map.get("port").get.asInstanceOf[String],
       map.get("processNames").get.asInstanceOf[Array[String]].toList,
       map.get("discoverApplications").get.asInstanceOf[Boolean])
