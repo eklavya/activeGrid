@@ -11,6 +11,19 @@ case class InstanceUser(override val id: Option[Long],userName: String, publicKe
 
 object InstanceUser{
 
+  def fromNeo4jGraph(id: Option[Long]): Option[InstanceUser] = {
+    id match {
+      case Some(nodeId) =>
+        val listOfKeys = List("userName", "publicKeys")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val userName = propertyValues("userName").toString
+        val publicKeys = propertyValues("publicKeys").asInstanceOf[Array[String]].toList
+        Some(InstanceUser(Some(nodeId), userName, publicKeys))
+
+      case None => None
+    }
+  }
+
   implicit class InstanceUserImpl(instanceUser: InstanceUser) extends Neo4jRep[InstanceUser]{
 
     override def toNeo4jGraph(entity: InstanceUser): Option[Node] = {
@@ -26,20 +39,6 @@ object InstanceUser{
       InstanceUser.fromNeo4jGraph(id)
     }
 
-  }
-
-  def fromNeo4jGraph(id: Option[Long]): Option[InstanceUser] = {
-    id match {
-      case Some(nodeId) => {
-        val listOfKeys = List("userName", "publicKeys")
-        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-        val userName = propertyValues.get("userName").get.toString
-        val publicKeys = propertyValues.get("publicKeys").get.asInstanceOf[Array[String]].toList
-
-        Some(InstanceUser(Some(nodeId), userName, publicKeys))
-      }
-      case None => None
-    }
   }
 
 }
