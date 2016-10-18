@@ -70,11 +70,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     map.toMap
   }
 
-  def getEntity[T <: BaseEntity : Manifest](label: String, propertyName: String, propertyValue: Any): T = withTx { neo =>
-    val nodes = findNodesByLabelAndProperty(label, propertyName, propertyValue)(neo)
-    nodes.map(_.toCC[T].get).toList.head
-  }
-
   def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>
 
     // get realtion with parent  (incoming relations)
