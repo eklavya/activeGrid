@@ -21,6 +21,32 @@ object ProcessInfo{
   def apply(pid: Int, parentPid: Int, name: String) : ProcessInfo =
     ProcessInfo(None, 1, 1, "init", None, None, None, None, None)
 
+  def fromNeo4jGraph(id: Option[Long]): Option[ProcessInfo] = {
+
+    id match {
+
+      case Some(nodeId) =>
+        val listOfKeys = List("pid", "parentPid", "name", "command", "owner", "residentBytes", "softwareVersion")
+
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val pid = propertyValues("pid").toString.toInt
+        val parentPid = propertyValues("parentPid").toString.toInt
+        val name = propertyValues("name").toString
+        val command = propertyValues.get("command").asInstanceOf[Option[String]]
+        val owner = propertyValues.get("owner").asInstanceOf[Option[String]]
+        val residentBytes = propertyValues.get("residentBytes").asInstanceOf[Option[Long]]
+        val softwareVersion = propertyValues.get("softwareVersion").asInstanceOf[Option[String]]
+
+        val relationship = "HAS_software"
+        val childNodeId = GraphDBExecutor.getChildNodeId(nodeId, relationship)
+
+        val software: Option[Software] = Software.fromNeo4jGraph(childNodeId)
+        Some(ProcessInfo(Some(nodeId), pid, parentPid, name, command, owner, residentBytes, software, softwareVersion))
+
+      case None => None
+    }
+  }
+
   implicit class ProcessInfoImpl(processInfo: ProcessInfo) extends Neo4jRep[ProcessInfo] {
 
     override def toNeo4jGraph(entity: ProcessInfo): Option[Node] = {
@@ -38,12 +64,12 @@ object ProcessInfo{
       val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[ProcessInfo](label, mapPrimitives)
 
       entity.software match {
-        case Some(soft) => {
+        case Some(soft) =>
           val node2: Option[Node] = soft.toNeo4jGraph(soft)
           val relationship = "HAS_software"
           GraphDBExecutor.setGraphRelationship(node, node2, relationship)
           node
-        }
+
         case None => node
       }
 
@@ -53,33 +79,6 @@ object ProcessInfo{
       ProcessInfo.fromNeo4jGraph(id)
     }
 
-  }
-
-  def fromNeo4jGraph(id: Option[Long]): Option[ProcessInfo] = {
-
-    id match {
-
-      case Some(nodeId) => {
-        val listOfKeys = List("pid", "parentPid", "name", "command", "owner", "residentBytes", "softwareVersion")
-
-        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-        val pid = propertyValues.get("pid").get.toString.toInt
-        val parentPid = propertyValues.get("parentPid").get.toString.toInt
-        val name = propertyValues.get("name").get.toString
-        val command = propertyValues.get("command").asInstanceOf[Option[String]]
-        val owner = propertyValues.get("owner").asInstanceOf[Option[String]]
-        val residentBytes = propertyValues.get("residentBytes").asInstanceOf[Option[Long]]
-        val softwareVersion = propertyValues.get("softwareVersion").asInstanceOf[Option[String]]
-
-        val relationship = "HAS_software"
-        val childNodeId = GraphDBExecutor.getChildNodeId(nodeId, relationship)
-
-        val software: Option[Software] = Software.fromNeo4jGraph(childNodeId)
-        Some(ProcessInfo(Some(nodeId), pid, parentPid, name, command, owner, residentBytes, software, softwareVersion))
-      }
-      case None => None
-
-    }
   }
 
 }

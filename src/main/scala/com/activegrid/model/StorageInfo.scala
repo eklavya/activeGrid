@@ -10,6 +10,19 @@ case class StorageInfo(override val id: Option[Long], used: Double, total: Doubl
 
 object StorageInfo {
 
+  def fromNeo4jGraph(id: Option[Long]): Option[StorageInfo] = {
+    id match {
+      case Some(nodeId) =>
+        val listOfKeys = List("used", "total")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val used: Double = propertyValues("used").toString.toDouble
+        val total: Double = propertyValues("total").toString.toDouble
+        Some(StorageInfo(Some(nodeId), used, total))
+
+      case None => None
+    }
+  }
+
   implicit class StorageInfoImpl(storageInfo: StorageInfo) extends Neo4jRep[StorageInfo] {
 
     override def toNeo4jGraph(entity: StorageInfo): Option[Node] = {
@@ -24,20 +37,6 @@ object StorageInfo {
       StorageInfo.fromNeo4jGraph(id)
     }
 
-  }
-
-  def fromNeo4jGraph(id: Option[Long]): Option[StorageInfo] = {
-    id match {
-      case Some(nodeId) => {
-        val listOfKeys = List("used", "total")
-        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-        val used: Double = propertyValues.get("used").get.toString.toDouble
-        val total: Double = propertyValues.get("total").get.toString.toDouble
-
-        Some(StorageInfo(Some(nodeId), used, total))
-      }
-      case None => None
-    }
   }
 
 }
