@@ -10,6 +10,24 @@ case class SSHAccessInfo(override val id: Option[Long],keyPair : KeyPairInfo, us
 
 object SSHAccessInfo {
 
+  def fromNeo4jGraph(id: Option[Long]): Option[SSHAccessInfo] = {
+
+    id match {
+      case Some(nodeId) =>
+        val listOfKeys = List("userName", "port")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val userName = propertyValues("userName").toString
+        val port = propertyValues("port").toString.toInt
+        val relationship = "HAS_keyPair"
+        val childNodeId = GraphDBExecutor.getChildNodeId(nodeId, relationship)
+        val keyPairInfo: KeyPairInfo = KeyPairInfo.fromNeo4jGraph(childNodeId).get
+
+        Some(SSHAccessInfo(Some(nodeId), keyPairInfo, userName, port))
+
+      case None => None
+    }
+  }
+
   implicit class SSHAccessInfoImpl(sshAccessInfo: SSHAccessInfo) extends Neo4jRep[SSHAccessInfo] {
 
     override def toNeo4jGraph(entity: SSHAccessInfo): Option[Node] = {
@@ -29,24 +47,6 @@ object SSHAccessInfo {
       SSHAccessInfo.fromNeo4jGraph(id)
     }
 
-  }
-
-  def fromNeo4jGraph(id: Option[Long]): Option[SSHAccessInfo] = {
-
-    id match {
-      case Some(nodeId) => {
-        val listOfKeys = List("userName", "port")
-        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-        val userName = propertyValues.get("userName").get.toString
-        val port = propertyValues.get("port").get.toString.toInt
-        val relationship = "HAS_keyPair"
-        val childNodeId = GraphDBExecutor.getChildNodeId(nodeId, relationship)
-        val keyPairInfo: KeyPairInfo = KeyPairInfo.fromNeo4jGraph(childNodeId).get
-
-        Some(SSHAccessInfo(Some(nodeId), keyPairInfo, userName, port))
-      }
-      case None => None
-    }
   }
 }
 

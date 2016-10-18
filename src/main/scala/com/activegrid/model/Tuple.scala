@@ -7,9 +7,23 @@ import org.neo4j.graphdb.Node
   * Created by shareefn on 7/10/16.
   */
 
-case class Tuple(override val id: Option[Long],key: String, value: String)  extends BaseEntity
+case class Tuple(override val id: Option[Long], key: String, value: String) extends BaseEntity
 
-object  Tuple {
+object Tuple {
+
+  def fromNeo4jGraph(id: Option[Long]): Option[Tuple] = {
+
+    id match {
+      case Some(nodeId) =>
+        val listOfKeys = List("key", "value")
+        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+        val key = propertyValues("key").toString
+        val value = propertyValues("value").toString
+        Some(Tuple(Some(nodeId), key, value))
+
+      case None => None
+    }
+  }
 
   implicit class TupleImpl(tuple: Tuple) extends Neo4jRep[Tuple] {
 
@@ -26,20 +40,5 @@ object  Tuple {
       Tuple.fromNeo4jGraph(id)
     }
 
-  }
-
-  def fromNeo4jGraph(id: Option[Long]): Option[Tuple] = {
-
-    id match {
-      case Some(nodeId) => {
-        val listOfKeys = List("key", "value")
-        val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-        val key = propertyValues.get("key").get.toString
-        val value = propertyValues.get("value").get.toString
-
-        Some(Tuple(Some(nodeId), key, value))
-      }
-      case None => None
-    }
   }
 }
