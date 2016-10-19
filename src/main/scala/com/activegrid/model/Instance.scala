@@ -80,36 +80,36 @@ object Instance {
         val relationship_tuple = "HAS_tuple"
         val childNodeIds_tuple: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_tuple)
 
-        val tags: List[Tuple] = childNodeIds_tuple.map { childId =>
-          Tuple.fromNeo4jGraph(Some(childId)).get
+        val tags: List[Tuple] = childNodeIds_tuple.flatMap { childId =>
+          Tuple.fromNeo4jGraph(Some(childId))
         }
 
         val relationship_inst1 = "HAS_instanceConnection1"
         val childNodeIds_inst1: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_inst1)
 
-        val liveConnections: List[InstanceConnection] = childNodeIds_inst1.map { childId =>
-          InstanceConnection.fromNeo4jGraph(Some(childId)).get
+        val liveConnections: List[InstanceConnection] = childNodeIds_inst1.flatMap { childId =>
+          InstanceConnection.fromNeo4jGraph(Some(childId))
         }
 
         val relationship_inst2 = "HAS_instanceConnection2"
         val childNodeIds_inst2: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_inst2)
 
-        val estimatedConnections: List[InstanceConnection] = childNodeIds_inst2.map { childId =>
-          InstanceConnection.fromNeo4jGraph(Some(childId)).get
+        val estimatedConnections: List[InstanceConnection] = childNodeIds_inst2.flatMap { childId =>
+          InstanceConnection.fromNeo4jGraph(Some(childId))
         }
 
         val relationship_user = "HAS_instanceUser"
         val childNodeIds_user: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_user)
 
-        val existingUsers: List[InstanceUser] = childNodeIds_user.map { childId =>
-          InstanceUser.fromNeo4jGraph(Some(childId)).get
+        val existingUsers: List[InstanceUser] = childNodeIds_user.flatMap { childId =>
+          InstanceUser.fromNeo4jGraph(Some(childId))
         }
 
         val relationship_process = "HAS_processInfo"
         val childNodeIds_process: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_process)
 
-        val processes: Set[ProcessInfo] = childNodeIds_process.map { childId =>
-          ProcessInfo.fromNeo4jGraph(Some(childId)).get
+        val processes: Set[ProcessInfo] = childNodeIds_process.flatMap { childId =>
+          ProcessInfo.fromNeo4jGraph(Some(childId))
         }.toSet
 
         Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo,
@@ -122,7 +122,7 @@ object Instance {
 
   implicit class InstanceImpl(instance: Instance) extends Neo4jRep[Instance] {
 
-    override def toNeo4jGraph(entity: Instance): Option[Node] = {
+    override def toNeo4jGraph(entity: Instance): Node = {
 
       val logger = Logger(LoggerFactory.getLogger(getClass.getName))
       val label = "Instance"
@@ -136,30 +136,7 @@ object Instance {
         "publicDnsName" -> entity.publicDnsName.getOrElse(GraphDBExecutor.NO_VAL),
         "launchTime" -> entity.launchTime.getOrElse(GraphDBExecutor.NO_VAL))
 
-      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[Instance](label, mapPrimitives)
-
-      //TO BE DONE
-      /*    val dateNode: Option[Node] = entity.launchTime.toGraph(entity.launchTime)
-            val relationship_date = "HAS_date"
-            GraphDBExecutor.setGraphRelationship(node,dateNode,relationship_date)
-      */
-//14th Oct
-      /*
-      val memoryInfoNode: Option[Node] = entity.memoryInfo.toNeo4jGraph(entity.memoryInfo)
-      val relationship_storage1 = "HAS_storageInfo1"
-      GraphDBExecutor.setGraphRelationship(node, memoryInfoNode, relationship_storage1)
-
-      val rootDiskInfoNode: Option[Node] = entity.rootDiskInfo.toNeo4jGraph(entity.rootDiskInfo)
-      val relationship_storage2 = "HAS_storageInfo2"
-      GraphDBExecutor.setGraphRelationship(node, rootDiskInfoNode, relationship_storage2)
-
-      val sshAccessInfoNode: Option[Node] = entity.sshAccessInfo.toNeo4jGraph(entity.sshAccessInfo)
-      val relationship_ssh = "HAS_sshAccessInfo"
-      GraphDBExecutor.setGraphRelationship(node, sshAccessInfoNode, relationship_ssh)
-
-      val imageInfoNode: Option[Node] = entity.image.toNeo4jGraph(entity.image)
-      val relationship_image = "HAS_imageInfo"
-      GraphDBExecutor.setGraphRelationship(node, imageInfoNode, relationship_image)*/
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[Instance](label, mapPrimitives)
 
       entity.memoryInfo match {
         case Some(mInfo) =>

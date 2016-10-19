@@ -1,6 +1,5 @@
 package com.activegrid.model
 
-import com.activegrid.model.Graph.Neo4jRep
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb.{Direction, DynamicRelationshipType, Node}
@@ -18,7 +17,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def neo4jStoreDir = "./graphdb/activegrid/test"
 
-  def createGraphNodeWithPrimitives[T <: BaseEntity ](label: String, map: Map[String, Any]): Option[Node] =
+  def createGraphNodeWithPrimitives[T <: BaseEntity ](label: String, map: Map[String, Any]): Node =
 
     withTx { neo =>
       val node = createNode(label)(neo)
@@ -35,7 +34,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       logger.debug(s" new node of ${node.getLabels}, created with id ${node.getId}")
       node.setProperty(VID, node.getId)
 
-      Some(node)
+      node
     }
 
 
@@ -55,11 +54,12 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
         .filter{case (k,v) => v!= NO_VAL }
     }
 
-  def setGraphRelationship(fromNode: Option[Node], toNode: Option[Node], relation: String) =
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String) =
 
     withTx { neo =>
       val relType = DynamicRelationshipType.withName(relation)
-      fromNode.get --> relType --> toNode.get
+      logger.debug(s"setting relationhip : $relation")
+      fromNode --> relType --> toNode
       /*start --> relType --> end <
        start.getSingleRelationship(relType, Direction.OUTGOING)*/
     }
@@ -81,17 +81,18 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   }
 
-
-  def getChildNodeIds(parentNode: Long, relation: String): List[Long] = {
+  def getChildNodeIds(parentNodeId: Long, relation: String): List[Long] = {
 
     withTx { neo =>
-      val node = getNodeById(parentNode)(neo)
       try {
-        node.getRelationships(relation, Direction.OUTGOING).map(rel => rel.getEndNode.getId).toList
+        val node = getNodeById(parentNodeId)(neo)
+        val list = node.getRelationships(relation, Direction.OUTGOING).map(rel => rel.getEndNode.getId).toList
+        logger.debug(s"$list")
+        list
       }
       catch{
         case ex:Exception => {
-          logger.debug(s"does not have relationships $relation")
+          logger.debug(s"does not have node with NodeId $parentNodeId")
           List.empty[Long]
         }
       }

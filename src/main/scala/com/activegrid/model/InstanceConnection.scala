@@ -21,8 +21,8 @@ object InstanceConnection{
         val targetNodeId = propertyValues("targetNodeId").toString
         val relationship = "HAS_portRange"
         val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship)
-        val portRanges: List[PortRange] = childNodeIds.map { childId =>
-          PortRange.fromNeo4jGraph(Some(childId)).get
+        val portRanges: List[PortRange] = childNodeIds.flatMap { childId =>
+          PortRange.fromNeo4jGraph(Some(childId))
         }
         Some(InstanceConnection(Some(nodeId), sourceNodeId, targetNodeId, portRanges))
 
@@ -32,11 +32,11 @@ object InstanceConnection{
 
   implicit class InstanceConnectionImpl(instanceConnection: InstanceConnection) extends Neo4jRep[InstanceConnection]{
 
-    override def toNeo4jGraph(entity: InstanceConnection): Option[Node] = {
+    override def toNeo4jGraph(entity: InstanceConnection): Node = {
 
       val label = "InstanceConnection"
       val mapPrimitives  = Map("sourceNodeId" -> entity.sourceNodeId, "targetNodeId" -> entity.targetNodeId)
-      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[InstanceConnection](label, mapPrimitives)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[InstanceConnection](label, mapPrimitives)
       val relationship = "HAS_portRange"
       entity.portRanges.foreach{portRange =>
         val portRangeNode = portRange.toNeo4jGraph(portRange)
