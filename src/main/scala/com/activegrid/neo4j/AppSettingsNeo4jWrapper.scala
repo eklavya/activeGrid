@@ -3,7 +3,7 @@ package com.activegrid.neo4j
 import com.activegrid.entities.AppSettings
 import com.activegrid.utils.Utils
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.Relationship
+import org.neo4j.graphdb.{Node, PropertyContainer, Relationship}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -18,8 +18,7 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
   val util = new Utils();
   val logger = Logger(LoggerFactory.getLogger(getClass.getName));
 
-
-  override def toGraph(entity: AppSettings): Unit = {
+  override def toGraph(entity: AppSettings): Option[Node] = {
     withTx {
       neo => {
         val generalSettings = createNode(lables.get("GS").toString)(neo)
@@ -29,10 +28,9 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
         val appSettings = createNode(lables.get("AS").toString)(neo)
         appSettings --> lables.get("HGS").toString --> generalSettings
         appSettings --> lables.get("HAS").toString --> authSettings
-
+        Some(appSettings)
       }
     }
-
   }
 
   override def fromGraph(nodeId: Long): AppSettings = {
@@ -65,6 +63,7 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
   }
 
   def updateSettings(settingsMap: Map[String, String], relationName: String): String = {
+    val msg = new StringBuilder
     withTx {
       neo => {
         var genaralSettings = Map.empty[String, String];
@@ -81,13 +80,17 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
               if (relation.getType.name.equalsIgnoreCase(relationName)) {
                 val node = relation.getEndNode;
                 settingsMap.foreach {
-                  case (k, v) => node.setProperty(k, v.toString)
+                  case (k, v) => val res = node.setProperty(k, v.toString)
+                    if (res.asInstanceOf[PropertyContainer].hasProperty(k))
+                      msg.append("success")
+                    else
+                      msg.append("fail")
                 }
               }
             }
           }
         }
-        "success"
+        msg.toString()
       }
     }
   }
