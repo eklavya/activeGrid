@@ -36,7 +36,7 @@ class LogConfigUpdater {
       log.setLevel(level)
       "success"
     }
-    else{
+    else {
       "fail"
     }
 

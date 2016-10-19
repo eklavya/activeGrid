@@ -16,9 +16,9 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
 
   val lables: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings", "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
   val util = new Utils();
-  val logger = Logger(LoggerFactory.getLogger(getClass.getName));
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  override def  toGraph(entity: AppSettings): Option[Node] = {
+  override def toGraph(entity: AppSettings): Option[Node] = {
     try {
       withTx {
         neo => {
@@ -34,7 +34,7 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
       }
     }
     catch {
-      case ex:Exception => logger.error(ex.getMessage)
+      case ex: Exception => logger.error(ex.getMessage, ex)
     }
     None
   }
@@ -55,14 +55,14 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
                 logger.info("Processing " + relation.getType.name())
                 if (relation.getType.name.equalsIgnoreCase(lables("HAS").toString)) {
                   logger.info("Processing " + relation.getType.name())
-                  relation.getEndNode.getAllProperties.asScala.foreach{
-                    case(k,v) => genaralSettings += (k -> v.toString)
+                  relation.getEndNode.getAllProperties.asScala.foreach {
+                    case (k, v) => authSettings += (k -> v.toString)
                   }
                 }
                 if (relation.getType.name.equalsIgnoreCase(lables("HGS").toString)) {
                   logger.info("Processing " + relation.getType.name())
-                  relation.getEndNode.getAllProperties.asScala.foreach{
-                    case(k,v) => authSettings += (k -> v.toString)
+                  relation.getEndNode.getAllProperties.asScala.foreach {
+                    case (k, v) => genaralSettings += (k -> v.toString)
                   }
                 }
               }
@@ -73,8 +73,10 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
       }
     }
     catch {
-      case ex:Exception => logger.error(ex.getMessage)
+      case ex: Exception => logger.error("Error in executing the file", ex)
     }
+    logger.info(genaralSettings.toMap.toString())
+    logger.info(authSettings.toMap.toString())
     AppSettings(genaralSettings.toMap, authSettings.toMap)
   }
 
@@ -117,11 +119,11 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
     }
     else {
       "SUCCESS"
-  }
+    }
 
   }
 
-  def deleteSetting(settingsMap: Map[String, String], relationName: String): String = {
+  def deleteSetting(settingsToDelete: Map[String, String], relationName: String): String = {
     val msg = new StringBuilder;
     try {
       withTx {
@@ -130,15 +132,19 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
           withTx { neo =>
             val settingNodes = getAllNodesWithLabel(lables.get("AS").toString)(neo)
             for (n <- settingNodes) {
-              logger.info(n.getAllProperties.toString)
+              logger.info(s"${n.getAllProperties}")
               val iterator = n.getRelationships().iterator()
               while (iterator.hasNext) {
                 val relation: Relationship = iterator.next
-                logger.info("Processing " + relation.getType.name())
                 if (relation.getType.name.equalsIgnoreCase(relationName)) {
                   val node = relation.getEndNode;
-                  settingsMap.foreach {
-                    case (k, v) => if(node.removeProperty(k) == null) throw new IllegalArgumentException("Trying to delete null ")
+                  logger.info(settingsToDelete.toString())
+                  logger.info(s" properties ${node.getAllProperties}")
+                  settingsToDelete.foreach {
+                    case (k, v) => logger.info(s"Delete ${k} and ${v}")
+                      logger.info("Is property existed..." + node.hasProperty(k.toString.trim).toString)
+                      node.removeProperty(k)
+
                   }
                 }
               }
@@ -148,9 +154,9 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
       }
     }
     catch {
-      case iae: IllegalArgumentException => logger.error(iae.getMessage)
+      case iae: IllegalArgumentException => logger.error(iae.getMessage, iae)
         msg.append("failed")
-      case ex: Exception => logger.error(ex.getMessage)
+      case ex: Exception => logger.error(ex.getMessage, ex)
         msg.append("failed")
     }
     if (msg.toString().contains("failed"))
