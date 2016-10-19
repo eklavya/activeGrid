@@ -25,7 +25,8 @@ class LogConfigUpdater {
     val logger: Logger = getLogger(loggerName)
     if (logger != null)
       logger.getLevel.toString
-    else null
+    else
+      null
   }
 
   def setLogLevel(loggerName: String, tolevel: String): Future[String] = Future {
@@ -33,8 +34,12 @@ class LogConfigUpdater {
     if (log != null) {
       val level = Level.toLevel(tolevel)
       log.setLevel(level)
+      "success"
     }
-    "success"
+    else{
+      "fail"
+    }
+
   }
 }
 
