@@ -12,9 +12,6 @@ import scala.collection.JavaConversions._
   */
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  // constants
-  val V_ID = "id"
-  val CLASS = "@Class"
 
   def neo4jStoreDir = "./graphdb/activegriddb"
 
@@ -26,18 +23,13 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Node = withTx { implicit neo =>
     val node = getOrSaveEntity(label, id)
-    map.foreach { case (k, v) =>
-      logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v")
-      v match {
-        case None => if (node.hasProperty(k)) node.removeProperty(k)
-        case _ => node.setProperty(k, v)
+    map.foreach { case (key, value) =>
+      logger.debug(s"Setting property to $label[${node.getId}]  $key -> $value")
+      value match {
+        case None => if (node.hasProperty(key)) node.removeProperty(key)
+        case _ => node.setProperty(key, value)
       }
     }
-
-    // setting Id and class Name as attributes
-    node.setProperty(V_ID, node.getId)
-    node.setProperty(CLASS, label)
-
     node
   }
 
@@ -58,14 +50,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
     val map = keys.map(key => (key, {
-      try {
-        val value = node.getProperty(key)
-        logger.debug(s" ($key) --> (${node.getProperty(key)}) ")
-        value
-      } catch {
-        case ex: Throwable => logger.warn(s"failed to get values for the key $key")
-          None
-      }
+      if (node.hasProperty(key)) node.getProperty(key) else None
     })).filter{case (k, v) => v != None}.toMap[String, Any]
     map
   }

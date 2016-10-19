@@ -62,7 +62,7 @@ object Main extends App {
               }
             case util.Failure(ex) =>
               logger.error(s"Unable to get the key, Reason: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Unable to get the key, Reason: ${ex.getMessage}")
+              complete(StatusCodes.BadRequest, s"Unable to get the key")
           }
 
         } ~ delete {
@@ -72,7 +72,9 @@ object Main extends App {
           }
           onComplete(resposne) {
             case util.Success(result) => complete(StatusCodes.OK, "Deleted Successfully")
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed delete, Message: ${ex.getMessage}")
+            case util.Failure(ex) =>
+              logger.error(s"Failed delete, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to delete")
           }
         }
       } ~ get {
@@ -84,7 +86,9 @@ object Main extends App {
         }
         onComplete(result) {
           case util.Success(page) => complete(StatusCodes.OK, page)
-          case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed get Users, Message: ${ex.getMessage}")
+          case util.Failure(ex) =>
+            logger.error(s"Failed get Users, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed get Users")
         }
       } ~ post {
         entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
@@ -107,7 +111,9 @@ object Main extends App {
           }
           onComplete(result) {
             case util.Success(page) => complete(StatusCodes.OK, page)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to add keys, Message: ${ex.getMessage}")
+            case util.Failure(ex) =>
+              logger.error(s"Failed to add keys, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to add keys")
           }
         }
       }
@@ -121,7 +127,9 @@ object Main extends App {
             case Some(user) => complete(StatusCodes.OK, user)
             case None => complete(StatusCodes.BadRequest, s"Failed to get user with id $userId")
           }
-        case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get user, Message: ${ex.getMessage}")
+        case util.Failure(ex) =>
+          logger.error(s"Failed to get user, Message: ${ex.getMessage}", ex)
+          complete(StatusCodes.BadRequest, s"Failed to get user, Message: ${ex.getMessage}")
       }
     } ~ delete {
       val result = Future {
@@ -129,7 +137,9 @@ object Main extends App {
       }
       onComplete(result) {
         case util.Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
-        case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to delete user, Message: ${ex.getMessage}")
+        case util.Failure(ex) =>
+          logger.error(s"Failed to delete user, Message: ${ex.getMessage}", ex)
+          complete(StatusCodes.BadRequest, s"Failed to delete user, Message: ${ex.getMessage}")
       }
     }
   } ~ pathPrefix("users") {
@@ -152,7 +162,9 @@ object Main extends App {
         }
         onComplete(result) {
           case util.Success(page) => complete(StatusCodes.OK, page)
-          case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get keys, Message: ${ex.getMessage}")
+          case util.Failure(ex) =>
+            logger.error(s"Failed to get keys, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed to get keys")
         }
       }
     } ~ get {
@@ -164,7 +176,9 @@ object Main extends App {
       }
       onComplete(result) {
         case util.Success(page) => complete(StatusCodes.OK, page)
-        case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get users, Message: ${ex.getMessage}")
+        case util.Failure(ex) =>
+          logger.error(s"Failed to get users, Message: ${ex.getMessage}", ex)
+          complete(StatusCodes.BadRequest, s"Failed to get users")
       }
     } ~ post {
       entity(as[User]) { user =>
@@ -173,7 +187,9 @@ object Main extends App {
         }
         onComplete(result) {
           case util.Success(status) => complete(StatusCodes.OK, "Successfully saved user")
-          case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed save user, Message: ${ex.getMessage}")
+          case util.Failure(ex) =>
+            logger.error(s"Failed save user, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed save user")
         }
       }
     }
@@ -192,7 +208,9 @@ object Main extends App {
                 case Some(key) => complete(StatusCodes.OK, key)
                 case None => complete(StatusCodes.BadRequest, s"failed to get key pair for id $keyId")
               }
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get Key Pair, Message: ${ex.getMessage}")
+            case util.Failure(ex) =>
+              logger.error(s"Failed to get Key Pair, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to get Key Pair")
           }
         } ~ delete {
           val result = Future {
@@ -200,7 +218,9 @@ object Main extends App {
           }
           onComplete(result) {
             case util.Success(key) => complete(StatusCodes.OK, "Deleted Successfully")
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to delete Key Pair, Message: ${ex.getMessage}")
+            case util.Failure(ex) =>
+              logger.error(s"Failed to delete Key Pair, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to delete Key Pair")
           }
         }
       } ~ get {
@@ -212,7 +232,9 @@ object Main extends App {
         }
         onComplete(result) {
           case util.Success(page) => complete(StatusCodes.OK, page)
-          case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to get Keys, Message: ${ex.getMessage}")
+          case util.Failure(ex) =>
+            logger.error(s"Failed to get Keys, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed to get Keys")
         }
       } ~ put {
           entity(as[Multipart.FormData]) { formData =>
@@ -257,7 +279,9 @@ object Main extends App {
             }
             onComplete(result) {
               case util.Success(page) => complete(StatusCodes.OK, page)
-              case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Failed to update Keys, Message: ${ex.getMessage}")
+              case util.Failure(ex) =>
+                logger.error(s"Failed to update Keys, Message: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Failed to update Keys")
             }
           }
       }
@@ -283,7 +307,7 @@ object Main extends App {
   }
 
   def getOrCreateKeyPair(keyName: String, keyMaterial: String, keyFilePath: Option[String], status: KeyPairStatus, defaultUser: Option[String], passPhase: Option[String]): KeyPairInfo = {
-    val mayBeKeyPair = getKeyPair(keyName)
+    val mayBeKeyPair = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
 
     mayBeKeyPair match {
       case Some(keyPairInfo) =>
@@ -309,11 +333,4 @@ object Main extends App {
 
   def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
 
-  def getKeyPair(keyName: String): Option[KeyPairInfo] = {
-    val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName)
-    mayBeNode match {
-      case Some(node) => KeyPairInfo.fromNeo4jGraph(node.getId)
-      case None => None
-    }
-  }
 }
