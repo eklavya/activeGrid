@@ -21,15 +21,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
     withTx { neo =>
       val node = createNode(label)(neo)
-
-      /*map.foreach { case (k, v) => {
-        v match {
-          case "DOES_NOT_EXIST" => logger.debug(s"$v property is null")
-          case _ => node.setProperty(k, v)
-        }
-        }
-        }*/
-
       map.foreach { case(k,v) => node.setProperty(k,v) }
       logger.debug(s" new node of ${node.getLabels}, created with id ${node.getId}")
       node.setProperty(VID, node.getId)
@@ -48,7 +39,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
     withTx { neo =>
       val node = getNodeById(nodeId)(neo)
-//      listOfKeys.map(key => (key, node.getProperty(key).asInstanceOf[Any])).toMap[String, Any]
       listOfKeys
         .map(key => (key, node.getProperty(key).asInstanceOf[Any])).toMap[String, Any]
         .filter{case (k,v) => v!= NO_VAL }
@@ -72,10 +62,9 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
         Some(node.getSingleRelationship(relation, Direction.OUTGOING).getEndNode.getId)
       }
       catch {
-        case ex: Exception => {
+        case ex: Exception =>
           logger.debug(s"does not have relationship $relation")
           None
-        }
       }
     }
 
@@ -91,10 +80,9 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
         list
       }
       catch{
-        case ex:Exception => {
+        case ex:Exception =>
           logger.debug(s"does not have node with NodeId $parentNodeId")
           List.empty[Long]
-        }
       }
     }
 
@@ -117,7 +105,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getNodeByProperty(label: String, propertyName: String, propertyVal: Any): Option[Node] = withTx { neo =>
 
     val nodes = findNodesByLabelAndProperty(label, propertyName, propertyVal)(neo)
-    //Make sure None is returned in case there is no node
     Some(nodes.iterator.next())
 
   }
