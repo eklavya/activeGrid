@@ -2,7 +2,7 @@ package com.activegrid.model
 
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 /**
@@ -14,17 +14,30 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def neo4jStoreDir = "./graphdb/activegrid"
 
-  def findNodeById(id: Long): Node = withTx { neo =>
-    getNodeById(id)(neo)
+  def findNodeById(id: Long): Option[Node] = withTx { neo =>
+    try {
+      Some(getNodeById(id)(neo))
+    } catch {
+      case e: NotFoundException =>
+        logger.warn(s"node with Id $id is not found", e)
+        None
+    }
   }
 
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
-    val map: scala.collection.mutable.Map[String, AnyRef] = scala.collection.mutable.Map()
-    keys.foreach(key => {
-      map += ((key, node.getProperty(key)))
-    })
-    map.toMap
+    val map = keys.map(key => (key, {
+      try {
+        val value = node.getProperty(key)
+        logger.debug(s" ($key) --> (${node.getProperty(key)}) ")
+        value
+      } catch {
+        case ex: Throwable => logger.warn(s"failed to get values for the key $key")
+          None
+      }
+    })).filter { case (k, v) => v != None }.toMap[String, Any]
+    map
   }
+
 
   def saveEntity[T <: BaseEntity](label: String, map: Map[String, Any]): Node = withTx { implicit neo =>
     val node = createNode(label)
@@ -36,7 +49,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
           if (node.hasProperty(k)) node.removeProperty(k)
         case _ => node.setProperty(k, v)
       }
-      node.setProperty(k, v)
     }
     node.setProperty(V_ID, node.getId)
     node

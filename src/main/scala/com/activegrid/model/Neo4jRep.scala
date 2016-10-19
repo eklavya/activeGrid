@@ -11,7 +11,3 @@ trait Neo4jRep[T] {
 
   def fromNeo4jGraph(nodeId: Long): Option[T]
 }
-
-
-
-

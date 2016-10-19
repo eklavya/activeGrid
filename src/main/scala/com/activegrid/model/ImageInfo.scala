@@ -1,27 +1,25 @@
 package com.activegrid.model
 
-import com.fasterxml.jackson.annotation.{JsonIgnoreProperties, JsonInclude}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by shareefn on 22/9/16.
+  * Created by sampathr on 22/9/16.
   */
-@JsonIgnoreProperties(ignoreUnknown = true)
 case class ImageInfo(override val id: Option[Long],
-                     @JsonInclude(JsonInclude.Include.NON_NULL) state: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) ownerId: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) publicValue: Boolean,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) architecture: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) imageType: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) platform: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) imageOwnerAlias: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) name: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) description: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) rootDeviceType: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) rootDeviceName: String,
-                     @JsonInclude(JsonInclude.Include.NON_NULL) version: String) extends BaseEntity
+                     state: String,
+                     ownerId: String,
+                     publicValue: Boolean,
+                     architecture: String,
+                     imageType: String,
+                     platform: String,
+                     imageOwnerAlias: String,
+                     name: String,
+                     description: String,
+                     rootDeviceType: String,
+                     rootDeviceName: String,
+                     version: String) extends BaseEntity
 
 object ImageInfo {
 
@@ -29,7 +27,7 @@ object ImageInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImagesTest2"
 
-    override def toNeo4jGraph(imageInfo: ImageInfo): Node = {
+    override def toNeo4jGraph(imageInfo: ImageInfo): Option[Node] = {
       logger.debug(s"In toGraph for Image Info: $imageInfo")
       val map = Map("state" -> imageInfo.state,
         "ownerId" -> imageInfo.ownerId,
@@ -46,7 +44,7 @@ object ImageInfo {
       )
 
       val imageInfoNode = GraphDBExecutor.saveEntity[ImageInfo](label, map)
-      imageInfoNode
+      Some(imageInfoNode)
     }
 
 
@@ -60,8 +58,8 @@ object ImageInfo {
   def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
     try {
       val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-      val imageInfo = ImageInfo(Some(node.getId),
+      val map = GraphDBExecutor.getProperties(node.get, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+      val imageInfo = ImageInfo(Some(node.get.getId),
         map("state").asInstanceOf[String],
         map("ownerId").asInstanceOf[String],
         map("publicValue").asInstanceOf[Boolean],
