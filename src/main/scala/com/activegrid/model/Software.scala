@@ -49,12 +49,12 @@ object Software {
       val map = GraphDBExecutor.getProperties(node, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
       val software = Software(Some(nodeId),
         ActiveGridUtils.getValueFromMapAs[String](map, "version"),
-        map.get("name").get.asInstanceOf[String],
-        map.get("provider").get.asInstanceOf[String],
+        map("name").asInstanceOf[String],
+        map("provider").asInstanceOf[String],
         ActiveGridUtils.getValueFromMapAs[String](map, "downloadURL"),
-        map.get("port").get.asInstanceOf[String],
-        map.get("processNames").get.asInstanceOf[Array[String]].toList,
-        map.get("discoverApplications").get.asInstanceOf[Boolean])
+        map("port").asInstanceOf[String],
+        map("processNames").asInstanceOf[Array[String]].toList,
+        map("discoverApplications").asInstanceOf[Boolean])
       Some(software)
     } catch {
       case nfe: NotFoundException => None
