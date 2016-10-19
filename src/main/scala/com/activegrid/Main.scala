@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.concurrent.Future
 
-
 object Main extends App with JsonSupport {
 
   override val logger = LoggerFactory.getLogger(getClass.getName)
@@ -28,40 +27,32 @@ object Main extends App with JsonSupport {
       entity(as[AppSettings]) {
         appsetting =>
           onComplete(Future {
-            appsetting.toNeo4jGraph()
+            appsetting.toNeo4jGraph
           }) {
             case util.Success(response) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) => {
-              logger.error(s"Unable to save App Settings $exception")
+            case util.Failure(exception) =>
+              logger.error(s"Unable to save App Settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save App Settings")
-            }
           }
       }
     }
   } ~ get {
     path("config") {
-      val nodeId = AppSettings.getAppSettingNode() match {
-        case Some(node) => Some(node.getId)
-        case None => None
-      }
       val appSettings = Future {
-        AppSettings.fromNeo4jGraph(nodeId)
+        AppSettings.getAppSettingNode.flatMap(node => AppSettings.fromNeo4jGraph(node.getId))
       }
       onComplete(appSettings) {
-        case util.Success(response) => {
+        case util.Success(response) =>
           response match {
-            case Some(appSettings) => complete(StatusCodes.OK, appSettings)
-            case None => complete(StatusCodes.OK, "Unable to get the App Settings")
+            case Some(appsettings) => complete(StatusCodes.OK, appsettings)
+            case None => complete(StatusCodes.BadRequest, "Unable to get the App Settings")
           }
-        }
-        case util.Failure(exception) => {
-          logger.error(s"Unable to get App Settings")
+        case util.Failure(exception) =>
+          logger.error(s"Unable to get App Settings ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable to get App Settings")
-        }
       }
-
     }
-  } ~ post {
+  } ~ put {
     path(PathMatchers.separateOnSlashes("config/settings")) {
       entity(as[Map[String, String]]) {
         setting =>
@@ -69,29 +60,38 @@ object Main extends App with JsonSupport {
             AppSettings.updateAppSettings(setting, "Has_Settings")
           }
           onComplete(response) {
-            case util.Success(response) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) => {
-              logger.error(s"Unable to save the settings $exception")
+            case util.Success(responseMessage) => complete(StatusCodes.OK, "Done")
+            case util.Failure(exception) =>
+              logger.error(s"Unable to save the settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save the settings")
-            }
+          }
+      }
+    }
+  } ~ put {
+    path(PathMatchers.separateOnSlashes("config/settings/auth")) {
+      entity(as[Map[String, String]]) {
+        setting =>
+          val response = Future {
+            AppSettings.updateAppSettings(setting, "Has_AuthSettings")
+          }
+          onComplete(response) {
+            case util.Success(responseMessage) => complete(StatusCodes.OK, "Done")
+            case util.Failure(exception) =>
+              logger.error(s"Unable to save the Auth settings ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to save the Auth settings")
           }
       }
     }
   } ~ path(PathMatchers.separateOnSlashes("config/settings")) {
     get {
-      val nodeId = AppSettings.getAppSettingNode() match {
-        case Some(node) => Some(node.getId)
-        case None => None
-      }
       val appSettings = Future {
-        AppSettings.fromNeo4jGraph(nodeId)
+        AppSettings.getAppSettingNode.flatMap(node => AppSettings.fromNeo4jGraph(node.getId))
       }
       onComplete(appSettings) {
         case util.Success(response) => complete(StatusCodes.OK, response)
-        case util.Failure(exception) => {
-          logger.error(s"Unable to fetch settings $exception")
+        case util.Failure(exception) =>
+          logger.error(s"Unable to fetch settings ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable to fetch the settings")
-        }
       }
     }
   } ~ path(PathMatchers.separateOnSlashes("config/settings")) {
@@ -102,10 +102,9 @@ object Main extends App with JsonSupport {
         }
         onComplete(isDeleted) {
           case util.Success(response) => complete(StatusCodes.OK, "Done")
-          case util.Failure(exception) => {
-            logger.error(s"Unable to delete settings $exception")
+          case util.Failure(exception) =>
+            logger.error(s"Unable to delete settings ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to delete  settings")
-          }
         }
       }
     }
@@ -115,23 +114,20 @@ object Main extends App with JsonSupport {
         level =>
           onComplete(logLevelUpdater.setLogLevel(logLevelUpdater.ROOT, level)) {
             case util.Success(response) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) => {
-              logger.error(s"Unable to update log level $exception")
+            case util.Failure(exception) =>
+              logger.error(s"Unable to update log level ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to update log level")
-            }
           }
-
       }
     }
   } ~ path(PathMatchers.separateOnSlashes("config/logs/level")) {
     get {
       val response = logLevelUpdater.getLogLevel(logLevelUpdater.ROOT)
       onComplete(response) {
-        case util.Success(response) => complete(StatusCodes.OK, response)
-        case util.Failure(exception) => {
-          logger.error(s"Unable to get the log level $exception")
+        case util.Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+        case util.Failure(exception) =>
+          logger.error(s"Unable to get the log level ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable to get the log level")
-        }
       }
     }
   }
@@ -140,82 +136,65 @@ object Main extends App with JsonSupport {
     post {
       entity(as[APMServerDetails]) { apmServerDetails =>
         logger.debug(s"Executing $getClass :: saveAPMServerDetails")
-        val serverDetailsEnity = apmServerDetails.toNeo4jGraph()
+
         val serverDetails = Future {
-          serverDetailsEnity match {
-            case Some(serverDetailsEntity) => {
-              apmServerDetails.fromNeo4jGraph(Some(serverDetailsEnity.get.getId))
-            }
-            case None => None
-          }
+          val serverDetailsEnity = apmServerDetails.toNeo4jGraph
+          apmServerDetails.fromNeo4jGraph(serverDetailsEnity.getId)
         }
         onComplete(serverDetails) {
-          case util.Success(response) => {
+          case util.Success(response) =>
             response match {
               case Some(details) => complete(StatusCodes.OK, response)
-              case None => complete(StatusCodes.OK, "Unable to Save Server Details")
+              case None => complete(StatusCodes.BadRequest, "Unable to Save Server Details")
             }
-          }
-          case util.Failure(exception) => {
-            logger.error(s"Unable to save the APM Server Details $exception")
+          case util.Failure(exception) =>
+            logger.error(s"Unable to save the APM Server Details ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to save the Server details")
-          }
         }
       }
     }
   } ~ path(PathMatchers.separateOnSlashes("apm")) {
     get {
       val serverDetailsList = Future {
-        getAPMServers().toList
+        getAPMServers.toList
       }
       onComplete(serverDetailsList) {
         case util.Success(response) => complete(StatusCodes.OK, response)
-        case util.Failure(exception) => {
-          logger.error(s"Unable get the APM Server Details $exception")
+        case util.Failure(exception) =>
+          logger.error(s"Unable get the APM Server Details ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable get the APM server details")
-        }
       }
     }
   } ~ path("apm" / LongNumber / "url") {
     serverId =>
       get {
         logger.info(s"getting into request context : $serverId")
-
-        val serverDetails = APMServerDetails.fromNeo4jGraph(Some(serverId))
         val serverDetailsList = Future {
-          serverDetails match {
-            case Some(serverDetails) => Some(serverDetails.serverUrl)
-            case None => None
-          }
+          APMServerDetails.fromNeo4jGraph(serverId).flatMap(serverDetails => Some(serverDetails.serverUrl))
         }
         onComplete(serverDetailsList) {
-          case util.Success(response) => {
+          case util.Success(response) =>
             response match {
               case Some(detailsList) => complete(StatusCodes.OK, detailsList)
               case None => complete(StatusCodes.BadRequest, s"Unable to get URL with given ID : $serverId")
             }
-          }
-          case util.Failure(exception) => {
-            logger.error(s"Unable to get the APM Server Url $exception")
+          case util.Failure(exception) =>
+            logger.error(s"Unable to get the APM Server Url ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to get the APM Server Url")
-          }
         }
       }
   } ~ path("apm" / IntNumber) {
     siteId => get {
-      val site = Site.fromNeo4jGraph(Some(siteId))
+
       val serverDetails = Future {
-        site match {
-          case Some(site) => {
-            val aPMServerDetails = getAPMServers()
-            logger.info(s"All Sever details : $aPMServerDetails")
-            val list = aPMServerDetails.filter(server => {
-              if (!server.monitoredSite.isEmpty) server.monitoredSite.get.id == site.id else false
-            })
-            logger.info(s"Filtered Server details : $list")
-            Some(list.toList)
-          }
-          case None => None
+        Site.fromNeo4jGraph(siteId).flatMap { site =>
+          val aPMServerDetails = getAPMServers
+          logger.info(s"All Sever details : $aPMServerDetails")
+          val list = aPMServerDetails.filter(server => {
+            if (!server.monitoredSite.isEmpty) server.monitoredSite.get.id == site.id else false
+          })
+          logger.info(s"Filtered Server details : $list")
+          Some(list.toList)
         }
       }
       onComplete(serverDetails) {
@@ -225,8 +204,8 @@ object Main extends App with JsonSupport {
             case None => complete(StatusCodes.BadRequest, s"Unable to get APMServer Details with given Site ID : $siteId")
           }
         case util.Failure(exception) =>
-          logger.error(s"Unable to get the APM Server Details : ${exception.getMessage}")
-          complete(StatusCodes.BadRequest, exception.getMessage)
+          logger.error(s"Unable to get the APM Server Details : $exception")
+          complete(StatusCodes.BadRequest, s"Unable to get the APM Server Details with Site Id :$siteId")
       }
     }
   }
@@ -235,19 +214,18 @@ object Main extends App with JsonSupport {
   Http().bindAndHandle(routes, "localhost", 8000)
   logger.info(s"Server online at http://localhost:8000")
 
-  def getAPMServers(): mutable.MutableList[APMServerDetails] = {
+  def getAPMServers: mutable.MutableList[APMServerDetails] = {
     logger.debug(s"Executing $getClass :: getAPMServers")
-    val nodes = APMServerDetails.getAllEntities()
+    val nodes = APMServerDetails.getAllEntities
     logger.debug(s"Getting all entities and size is :${nodes.size}")
     val list = mutable.MutableList.empty[APMServerDetails]
     nodes.foreach {
       node =>
-        val aPMServerDetails = APMServerDetails.fromNeo4jGraph(Some(node.getId))
+        val aPMServerDetails = APMServerDetails.fromNeo4jGraph(node.getId)
         aPMServerDetails match {
           case Some(serverDetails) => list.+=(serverDetails)
-          case _ => logger.info(s"Node not found with ID: ${node.getId}")
+          case _ => logger.warn(s"Node not found with ID: ${node.getId}")
         }
-
     }
     logger.debug(s"Reurning list of APM Servers $list")
     list

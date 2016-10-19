@@ -22,9 +22,7 @@ case object APPDYNAMICS extends APMProvider {
 }
 
 case object APMProvider {
-
   def toProvider(provider: String): APMProvider = {
-    println(provider)
     provider match {
       case "GRAPHITE" => GRAPHITE
       case "NEWRELIC" => NEWRELIC
