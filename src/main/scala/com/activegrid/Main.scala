@@ -43,7 +43,7 @@ object Main {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
             case Failure(exception) =>
               logger.error(s"Unable to Retrieve ImageInfo List. Failed with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, s"Unable to Retrieve ImageInfo List. Failed with : ${exception.getMessage}")
+              complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List.")
           }
         }
       } ~ path("images") {
@@ -57,7 +57,7 @@ object Main {
               case Success(successResponse) => complete(StatusCodes.OK, successResponse)
               case Failure(exception) =>
                 logger.error(s"Unable to Save Image. Failed with : ${exception.getMessage}", exception)
-                complete(StatusCodes.BadRequest, s"Unable to Save Image. Failed with : ${exception.getMessage}")
+                complete(StatusCodes.BadRequest, "Unable to Save Image.")
             }
           }
         }
@@ -65,14 +65,13 @@ object Main {
         delete {
           val deleteImages = Future {
             GraphDBExecutor.deleteEntity[ImageInfo](imageId)
-            "Successfully deleted ImageInfo"
           }
 
           onComplete(deleteImages) {
-            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Success(successResponse) => complete(StatusCodes.OK, "Successfully deleted ImageInfo")
             case Failure(exception) =>
               logger.error(s"Unable to Delete Image. Failed with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, s"Unable to Delete Image. Failed with : ${exception.getMessage}")
+              complete(StatusCodes.BadRequest, "Unable to Delete Image.")
           }
         }
       } ~ path("softwares") {
@@ -86,7 +85,7 @@ object Main {
               case Success(successResponse) => complete(StatusCodes.OK, successResponse)
               case Failure(exception) =>
                 logger.error(s"Unable to Save Software. Failed with : ${exception.getMessage}", exception)
-                complete(StatusCodes.BadRequest, s"Unable to Save Software. Failed with : ${exception.getMessage}")
+                complete(StatusCodes.BadRequest, "Unable to Save Software.")
             }
           }
         }
@@ -101,7 +100,7 @@ object Main {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
             case Failure(exception) =>
               logger.error(s"Unable to Delete Software. Failed with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, s"Unable to Delete Software. Failed with : ${exception.getMessage}")
+              complete(StatusCodes.BadRequest, "Unable to Delete Software.")
           }
         }
       } ~ path("softwares") {
@@ -119,7 +118,7 @@ object Main {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
             case Failure(exception) =>
               logger.error(s"Unable to Retrieve Softwares List. Failed with :  ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, s"Unable to Retrieve Softwares List. Failed with : ${exception.getMessage}")
+              complete(StatusCodes.BadRequest, "Unable to Retrieve Softwares List.")
           }
         }
       }

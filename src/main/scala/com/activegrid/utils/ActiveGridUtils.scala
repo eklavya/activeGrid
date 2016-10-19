@@ -8,10 +8,8 @@ import org.slf4j.LoggerFactory
   */
 object ActiveGridUtils {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  def getValueFromMapAs[T](map: Map[String, Any], key:String): Option[T] = {
-    map.get(key) match {
-      case Some(x) => Some(x.asInstanceOf[T])
-      case None => None
-    }
+
+  def getValueFromMapAs[T](map: Map[String, Any], key: String): Option[T] = {
+    map.get(key).map(_.asInstanceOf[T])
   }
 }
