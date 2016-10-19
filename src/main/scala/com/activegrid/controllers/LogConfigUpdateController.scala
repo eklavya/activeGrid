@@ -1,4 +1,4 @@
-package com.activegrid.services
+package com.activegrid.controllers
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
@@ -9,7 +9,7 @@ import scala.concurrent.Future
 /**
   * Created by sivag on 7/10/16.
   */
-class LogConfigUpdaterService {
+class LogConfigUpdateController {
 
   val cfgUpdater = new LogConfigUpdater
 
@@ -18,13 +18,11 @@ class LogConfigUpdaterService {
       put {
         entity(as[String]) { level =>
           val save: Future[String] = cfgUpdater.setLogLevel(cfgUpdater.ROOT, level)
-          onSuccess(save) {
+          onComplete(save) {
             case success => complete(StatusCodes.OK, success)
-            case none => complete(StatusCodes.BadRequest, "Unable to update")
+            case _ => complete(StatusCodes.Accepted, "Unable to update")
           }
-          /* onComplete(save) { maybeAuthSettings =>
-             complete("Done")
-           }*/
+
         }
       }
     }
@@ -35,13 +33,11 @@ class LogConfigUpdaterService {
       get {
         entity(as[String]) { level =>
           val save: Future[String] = cfgUpdater.getLogLevel(level)
-          onSuccess(save) {
+          onComplete(save) {
             case success => complete(StatusCodes.OK, success)
-            case none => complete(StatusCodes.BadRequest, "Unable to fetch Log level")
+            case _ => complete(StatusCodes.Accepted, "Unable to fetch Log level")
           }
-          /*          onComplete(save) { maybeAuthSettings =>
-                      complete("Done")
-                    }*/
+
         }
       }
     }
