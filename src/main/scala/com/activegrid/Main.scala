@@ -111,6 +111,8 @@ object Main {
             val nodesList = GraphDBExecutor.getNodesByLabel(softwareLabel)
             val softwaresList = nodesList.map(node => Software.fromNeo4jGraph(node.getId))
 
+
+
             Page[Software](0, softwaresList.size, softwaresList.size, softwaresList)
           }
           onComplete(getSoftwares) {
