@@ -11,14 +11,13 @@ import scala.concurrent.Future
 /**
   * Created by sivag on 26/9/16.
   */
-class AppSettingImpl {
+class AppSettingWrapper {
 
-  val appSettingWrapper = new AppSettingsNeo4jWrapper;
-
+  val appSettingWrapper = new AppSettingsNeo4jWrapper
 
   def addSettings(appSettings: AppSettings): Future[String] = Future {
-    val node = appSettingWrapper.toGraph(appSettings)
-    node match {
+    val maybeNode = appSettingWrapper.toGraph(appSettings)
+    maybeNode match {
       case Some(node) => "success"
       case _ => "fail"
     }

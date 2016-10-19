@@ -11,6 +11,13 @@ class Utils {
     }
   }
 
+  /**
+    *
+    */
+  def validdateInput: Unit = {
+
+  }
+
   /*  def javaMapToScalaImutableMap(node:Node): Map[String,String] = {
       val dummyMap   = scala.collection.mutable.HashMap.empty[String,String].empty
       val extraNodeIterator = node.getPropertyKeys.iterator();
