@@ -62,18 +62,18 @@ object ImageInfo {
       val node = GraphDBExecutor.findNodeById(nodeId)
       val map = GraphDBExecutor.getProperties(node, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
       val imageInfo = ImageInfo(Some(node.getId),
-        map.get("state").get.asInstanceOf[String],
-        map.get("ownerId").get.asInstanceOf[String],
-        map.get("publicValue").get.asInstanceOf[Boolean],
-        map.get("architecture").get.asInstanceOf[String],
-        map.get("imageType").get.asInstanceOf[String],
-        map.get("platform").get.asInstanceOf[String],
-        map.get("imageOwnerAlias").get.asInstanceOf[String],
-        map.get("name").get.asInstanceOf[String],
-        map.get("description").get.asInstanceOf[String],
-        map.get("rootDeviceType").get.asInstanceOf[String],
-        map.get("rootDeviceName").get.asInstanceOf[String],
-        map.get("version").get.asInstanceOf[String])
+        map("state").asInstanceOf[String],
+        map("ownerId").asInstanceOf[String],
+        map("publicValue").asInstanceOf[Boolean],
+        map("architecture").asInstanceOf[String],
+        map("imageType").asInstanceOf[String],
+        map("platform").asInstanceOf[String],
+        map("imageOwnerAlias").asInstanceOf[String],
+        map("name").asInstanceOf[String],
+        map("description").asInstanceOf[String],
+        map("rootDeviceType").asInstanceOf[String],
+        map("rootDeviceName").asInstanceOf[String],
+        map("version").asInstanceOf[String])
       Some(imageInfo)
     } catch {
       case nfe: NotFoundException => None
