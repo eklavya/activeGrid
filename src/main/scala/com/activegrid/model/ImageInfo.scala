@@ -1,7 +1,7 @@
 package com.activegrid.model
 
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.{Node, NotFoundException}
+import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
@@ -56,6 +56,8 @@ object ImageInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
+
+    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
       val node = GraphDBExecutor.findNodeById(nodeId)
       val map = GraphDBExecutor.getProperties(node.get, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
@@ -74,9 +76,14 @@ object ImageInfo {
         map("version").asInstanceOf[String])
       Some(imageInfo)
     } catch {
-      case nfe: NotFoundException => None
-      case exception: Exception => throw new Exception("Unable to get the Entity")
+      case nse: NoSuchElementException =>
+        logger.warn(nse.getMessage, nse)
+        None
+
+      case ex: Exception =>
+        logger.warn(ex.getMessage, ex)
+        None
+
     }
   }
-
 }
