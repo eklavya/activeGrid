@@ -21,5 +21,4 @@ object Main extends App {
 
   Http().bindAndHandle(handler = endPoints, interface = "localhost", port = 5000)
 
-
 }

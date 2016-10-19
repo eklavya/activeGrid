@@ -5,7 +5,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import com.activegrid.entities.AppSettings
-import com.activegrid.models.AppSettingImpl
+import com.activegrid.models.AppSettingWrapper
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -20,7 +20,7 @@ import scala.concurrent.Future
 
 class AppSettingsController {
 
-  val persistanceMgr = new AppSettingImpl
+  val appSettingsWrapper = new AppSettingWrapper
   implicit val appSettings = jsonFormat2(AppSettings)
   val logger = Logger(LoggerFactory.getLogger(getClass.getName));
 
@@ -28,10 +28,12 @@ class AppSettingsController {
     path("settings") {
       post {
         entity(as[AppSettings]) { appSettings =>
-          val save: Future[String] = persistanceMgr.addSettings(appSettings)
-          onComplete(save) {
-            case util.Success(save) =>  complete(StatusCodes.OK, "Settings saved successfully")
-            case util.Failure(save) => complete("Error while saving settings")
+          val maybeAdded: Future[String] = appSettingsWrapper.addSettings(appSettings)
+          onComplete(maybeAdded) {
+            case util.Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
+            case util.Failure(ex) =>
+              logger.error("Error while save settings", ex)
+              complete("Error while saving settings")
           }
 
         }
@@ -44,10 +46,12 @@ class AppSettingsController {
     path("settings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val save: Future[String] = persistanceMgr.updateSettings(appSettings)
-          onComplete(save) {
+          val maybeUpdated: Future[String] = appSettingsWrapper.updateSettings(appSettings)
+          onComplete(maybeUpdated) {
             case util.Success(save) => complete(StatusCodes.OK, "Settings updated successfully")
-            case util.Failure(save) => complete(StatusCodes.BadRequest,"Failed to update settings")
+            case util.Failure(ex) =>
+              logger.error("Failed to update settings", ex)
+              complete(StatusCodes.BadRequest, "Failed to update settings")
           }
         }
       }
@@ -58,10 +62,12 @@ class AppSettingsController {
     path("authsettings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val save: Future[String] = persistanceMgr.updateAuthSettings(appSettings)
-          onComplete(save) {
+          val maybeUpdated: Future[String] = appSettingsWrapper.updateAuthSettings(appSettings)
+          onComplete(maybeUpdated) {
             case util.Success(save) => complete(StatusCodes.OK, "Authsettings updated successfully")
-            case util.Failure(save) => complete(StatusCodes.BadRequest, "Authsetting updation  failed.")
+            case util.Failure(ex) =>
+              logger.error("Failed to update settings", ex)
+              complete(StatusCodes.BadRequest, "Authsetting updation  failed.")
           }
         }
       }
@@ -72,10 +78,12 @@ class AppSettingsController {
     path("settings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val save: Future[String] = persistanceMgr.deleteSettings(appSettings)
-          onComplete(save) {
+          val maybeDeleted: Future[String] = appSettingsWrapper.deleteSettings(appSettings)
+          onComplete(maybeDeleted) {
             case util.Success(save) => complete(StatusCodes.OK, "Settings deleted successfully")
-            case util.Failure(save) => complete(StatusCodes.BadRequest, "Delete operation failed.")
+            case util.Failure(ex) =>
+              logger.error("Delete operation failed", ex)
+              complete(StatusCodes.BadRequest, "Delete operation failed.")
           }
         }
       }
@@ -84,7 +92,12 @@ class AppSettingsController {
   val getRQ = pathPrefix("config") {
     path("settings") {
       get {
-        complete(persistanceMgr.getSettings())
+        val allSettings: Future[AppSettings] = appSettingsWrapper.getSettings()
+        onComplete(allSettings) {
+          case util.Success(settings) => complete("Success", settings)
+          case util.Failure(ex) => logger.error("Failed to get settings", ex)
+            complete("Failed to get settings")
+        }
       }
     }
   }
@@ -92,10 +105,12 @@ class AppSettingsController {
     path("authsettings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val save: Future[String] = persistanceMgr.deleteAuthSettings(appSettings)
-          onComplete(save) {
-            case util.Success(save) => complete(StatusCodes.OK, "Operation succesfull")
-            case util.Failure(save) => complete(StatusCodes.BadRequest, "Delete operation failed.")
+          val maybeDelete: Future[String] = appSettingsWrapper.deleteAuthSettings(appSettings)
+          onComplete(maybeDelete) {
+            case util.Success(save) => complete(StatusCodes.OK, "Deleted  succesfully")
+            case util.Failure(ex) =>
+              logger.error("Delete operation failed", ex)
+              complete(StatusCodes.BadRequest, "Delete operation failed.")
           }
         }
       }
