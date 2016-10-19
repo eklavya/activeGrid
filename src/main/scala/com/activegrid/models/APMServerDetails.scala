@@ -27,7 +27,7 @@ object APMServerDetails {
 
   implicit class APMServerDetailImpl(aPMServerDetails: APMServerDetails) extends Neo4jRep[APMServerDetails] {
 
-    override def toNeo4jGraph(): Node = {
+    override def toNeo4jGraph(): Option[Node] = {
       logger.debug(s"Executing $getClass ::toNeo4jGraph ")
       neo4JRepository.withTx {
         neo =>
@@ -43,13 +43,16 @@ object APMServerDetails {
           if (!aPMServerDetails.monitoredSite.isEmpty) {
             val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph()
             logger.info("Saved Site Details ")
-            createRelationShip(node, siteNode, apmServer_site_relation)
+            siteNode match {
+              case Some(sitenode) => createRelationShip(node, sitenode, apmServer_site_relation)
+              case _ => logger.info("Unable to create relationship between APMServerDetails and Site")
+            }
           }
-          node
+          Some(node)
       }
     }
 
-    override def fromNeo4jGraph(nodeId: Long): APMServerDetails = {
+    override def fromNeo4jGraph(nodeId: Option[Long]): Option[APMServerDetails] = {
       logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
       APMServerDetails.fromNeo4jGraph(nodeId)
     }
@@ -65,33 +68,38 @@ object APMServerDetails {
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): APMServerDetails = {
+  def fromNeo4jGraph(nodeId: Option[Long]): Option[APMServerDetails] = {
     logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
-    try {
-      neo4JRepository.withTx {
-        neo =>
-          val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
-          val itr = node.getRelationships.iterator
-          var siteEntity: Option[Site] = None
-          val header: mutable.Map[String, String] = mutable.Map.empty[String, String]
-          while (itr.hasNext) {
-            val relationship = itr.next()
-            relationship.getType.name match {
-              case `apmServer_site_relation` =>
-                siteEntity = Some(Site.fromNeo4jGraph(relationship.getEndNode.getId))
 
-              case `apmServer_header_relation` =>
-                relationship.getEndNode.getAllProperties.map { case (key, value) => header.put(key.toString, value.toString) }
+    neo4JRepository.withTx {
+      neo =>
+        nodeId match {
+          case Some(nodeId) => {
+            try {
+              val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
+              val itr = node.getRelationships.iterator
+              var siteEntity: Option[Site] = None
+              val header: mutable.Map[String, String] = mutable.Map.empty[String, String]
+              while (itr.hasNext) {
+                val relationship = itr.next()
+                relationship.getType.name match {
+                  case `apmServer_site_relation` =>
+                    siteEntity = Site.fromNeo4jGraph(Some(relationship.getEndNode.getId))
+
+                  case `apmServer_header_relation` =>
+                    relationship.getEndNode.getAllProperties.map { case (key, value) => header.put(key.toString, value.toString) }
+                }
+              }
+              val aPMServerDetails1 = new APMServerDetails(Some(node.getId), node.getProperty("name").asInstanceOf[String], node.getProperty("serverUrl").asInstanceOf[String]
+                , siteEntity, APMProvider.toProvider(node.getProperty("provider").asInstanceOf[String]), if (header.nonEmpty) Some(header.toMap) else None)
+              Some(aPMServerDetails1)
+            } catch {
+              case nfe: NotFoundException => None
+              case exception: Exception => throw new Exception("Unable to get the Entity")
             }
           }
-          val aPMServerDetails1 = new APMServerDetails(Some(node.getId), node.getProperty("name").asInstanceOf[String], node.getProperty("serverUrl").asInstanceOf[String]
-            , siteEntity, APMProvider.toProvider(node.getProperty("provider").asInstanceOf[String]), if (header.nonEmpty) Some(header.toMap) else None)
-          aPMServerDetails1
-      }
-    }
-    catch {
-      case nfe: NotFoundException => throw new Exception(s"APM Server Details entity with $nodeId is Not Found")
-      case exception: Exception => throw new Exception("Neo4j Exception")
+          case None => None
+        }
     }
   }
 
