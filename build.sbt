@@ -13,7 +13,6 @@ libraryDependencies ++= {
   val neo4jScalaVersion = "0.3.3"
   Seq(
     "com.typesafe.akka" %% "akka-http-core" % AkkaVersion,
-    "com.typesafe.akka" %% "akka-http-jackson-experimental" % AkkaVersion,
     "com.typesafe.akka" %% "akka-http-spray-json-experimental" % AkkaVersion,
     "ch.qos.logback"    %  "logback-classic" % "1.1.2",
     "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
