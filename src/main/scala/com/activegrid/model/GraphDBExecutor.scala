@@ -14,13 +14,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def neo4jStoreDir = "./graphdb/activegrid"
 
-  def persistEntity[T <: BaseEntity : Manifest](entity: T, label: String): Option[T] = {
-    withTx { neo =>
-      val node = createNode(entity, label)(neo)
-    }
-    return Some(entity)
-  }
-
   def findNodeById(id: Long): Node = withTx { neo =>
     getNodeById(id)(neo)
   }
@@ -33,41 +26,26 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     map.toMap
   }
 
-  def createGraphNode[T <: BaseEntity : Manifest](entity: T, label: String): Option[Node] =
-    withTx { neo =>
-      val node = createNode(label)(neo)
-      node.setProperty("", "")
-      Some(node)
-    }
-
-  def saveEntity[T <: BaseEntity](label: String, map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
+  def saveEntity[T <: BaseEntity](label: String, map: Map[String, Any]): Node = withTx { implicit neo =>
     val node = createNode(label)
-
-    map.foreach { case (k, v) => {
+    map.foreach { case (k, v) =>
       logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v")
 
       v match {
-        case None => {
+        case None =>
           if (node.hasProperty(k)) node.removeProperty(k)
-        }
         case _ => node.setProperty(k, v)
       }
       node.setProperty(k, v)
     }
-    }
     node.setProperty(V_ID, node.getId)
-    Some(node)
+    node
   }
 
   def getNodesByLabel(label: String): List[Node] = withTx { neo =>
-    getAllNodesWithLabel(label)(neo).toList
-  }
-
-  def getEntities[T: Manifest](label: String): Option[List[T]] = {
-    withTx { neo =>
-      val nodes = getAllNodesWithLabel(label)(neo)
-      Some(nodes.map(_.toCC[T].get).toList)
-    }
+    val nodesList = getAllNodesWithLabel(label)(neo).toList
+    logger.debug(s"Number of nodes Fetched with : $label : ${nodesList.size}")
+    nodesList
   }
 
   def deleteEntity[T <: BaseEntity : Manifest](id: Long): Unit = {
@@ -76,18 +54,4 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       node.delete()
     }
   }
-
-  def getEntity[T <: BaseEntity : Manifest](id: Long): Option[T] = {
-    withTx { neo =>
-      val node = getNodeById(id)(neo)
-      node.toCC[T]
-    }
-  }
-
-  def createEmptyGraphNode[T <: BaseEntity : Manifest](label: String, map: Map[String, Any]): Option[Node] =
-    withTx { neo =>
-      val node = createNode(label)(neo)
-      map.foreach { case (k, v) => node.setProperty(k, v) }
-      Some(node)
-    }
 }

@@ -2,7 +2,7 @@ package com.activegrid.model
 
 import com.activegrid.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 /**
@@ -23,8 +23,8 @@ object Software {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "SoftwaresTest2"
 
-    override def toNeo4jGraph(software: Software): Option[Node] = {
-      logger.debug(s"In toGraph for Software: ${software}")
+    override def toNeo4jGraph(software: Software): Node = {
+      logger.debug(s"In toGraph for Software: $software")
       val map = Map("version" -> software.version.getOrElse(None),
         "name" -> software.name,
         "provider" -> software.provider,
@@ -37,25 +37,29 @@ object Software {
       softwareNode
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Software = {
+    override def fromNeo4jGraph(nodeId: Long): Option[Software] = {
       Software.fromNeo4jGraph(nodeId)
     }
 
   }
 
-  def fromNeo4jGraph(nodeId: Long): Software = {
-    val node = GraphDBExecutor.findNodeById(nodeId)
-    val map = GraphDBExecutor.getProperties(node, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
-    val software = Software(Some(nodeId),
-      ActiveGridUtils.getValueFromMapAs[String](map, "version"),
-      map.get("name").get.asInstanceOf[String],
-      map.get("provider").get.asInstanceOf[String],
-      ActiveGridUtils.getValueFromMapAs[String](map, "downloadURL"),
-      map.get("port").get.asInstanceOf[String],
-      map.get("processNames").get.asInstanceOf[Array[String]].toList,
-      map.get("discoverApplications").get.asInstanceOf[Boolean])
-    software
-
+  def fromNeo4jGraph(nodeId: Long): Option[Software] = {
+    try {
+      val node = GraphDBExecutor.findNodeById(nodeId)
+      val map = GraphDBExecutor.getProperties(node, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+      val software = Software(Some(nodeId),
+        ActiveGridUtils.getValueFromMapAs[String](map, "version"),
+        map.get("name").get.asInstanceOf[String],
+        map.get("provider").get.asInstanceOf[String],
+        ActiveGridUtils.getValueFromMapAs[String](map, "downloadURL"),
+        map.get("port").get.asInstanceOf[String],
+        map.get("processNames").get.asInstanceOf[Array[String]].toList,
+        map.get("discoverApplications").get.asInstanceOf[Boolean])
+      Some(software)
+    } catch {
+      case nfe: NotFoundException => None
+      case exception: Exception => throw new Exception("Unable to get the Entity")
+    }
   }
 
 }
