@@ -6,7 +6,6 @@ import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
-<<<<<<< HEAD
   * Created by babjik on 26/9/16.
   */
 case class User(override val id: Option[Long]
@@ -28,7 +27,7 @@ object User {
   implicit class RichUser(user: User) extends Neo4jRep[User] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-    override def toNeo4jGraph(entity: User): Option[Node] = {
+    override def toNeo4jGraph(entity: User): Node = {
       logger.debug(s"toGraph for User ${entity}")
       val map = Map("username" -> entity.username,
         "password" -> entity.username,
@@ -41,16 +40,14 @@ object User {
         "displayName" -> entity.displayName)
 
       val node = Neo4jRepository.saveEntity[User](label, entity.id, map)
-      logger.debug(s"node - ${node.get}")
+      logger.debug(s"node - ${node}")
 
-      //publicKeys: List[KeyPairInfo]
-      //Relation HAS_publicKeys
-      entity.publicKeys.foreach(publicKey => UserUtils.addKeyPair(node.get.getId, publicKey))
+      entity.publicKeys.foreach(publicKey => UserUtils.addKeyPair(node.getId, publicKey))
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[User] = {
-      val node = Neo4jRepository.findNodeById(nodeId).get
+    override def fromNeo4jGraph(nodeId: Long): User = {
+      val node = Neo4jRepository.findNodeById(nodeId)
       val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
       val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
@@ -58,7 +55,7 @@ object User {
 
       val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
         keyPairInfo.fromNeo4jGraph(keyPairNode.getId)
-      }).flatten.toList
+      })
 
       val user = User(Some(node.getId),
         map.get("username").get.asInstanceOf[String],
@@ -73,7 +70,7 @@ object User {
         map.get("displayName").get.asInstanceOf[String])
 
       logger.debug(s"user - ${user}")
-      Some(user)
+      user
     }
   }
 
@@ -84,9 +81,9 @@ object UserUtils {
   val has_publicKeys = "HAS_publicKeys"
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Relationship = {
-    val userNode = Neo4jRepository.findNodeById(userId).get
+    val userNode = Neo4jRepository.findNodeById(userId)
     val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
-    Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode.get)
+    Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode)
   }
 
   def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"

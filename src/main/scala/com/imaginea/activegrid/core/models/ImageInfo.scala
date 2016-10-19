@@ -30,19 +30,21 @@ object ImageInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImageInfo"
 
-    override def toNeo4jGraph(entity: ImageInfo): Option[Node] = {
+    override def toNeo4jGraph(entity: ImageInfo): Node = {
       logger.debug(s"toGraph for Image ${imageInfo}")
       // TODO: Image fields
-      val map: Map[String, Any] = Map()
+      val map = Map("imageId" -> entity.imageId.getOrElse("")
+        , "state" -> entity.state.getOrElse("")
+        , "ownerId" -> entity.ownerId.getOrElse(""))
       val node = Neo4jRepository.saveEntity[ImageInfo](label, entity.id, map)
 
-      logger.debug(s"node - ${node.get}")
+      logger.debug(s"node - ${node}")
       node
     }
 
     //TODO : Change the Empty string
-    override def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
-      Some(ImageInfo(id = None, publicValue = false))
+    override def fromNeo4jGraph(nodeId: Long): ImageInfo = {
+      ImageInfo(id = None, publicValue = false)
     }
   }
 

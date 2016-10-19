@@ -38,7 +38,7 @@ object KeyPairInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "KeyPairInfo"
 
-    override def toNeo4jGraph(entity: KeyPairInfo): Option[Node] = {
+    override def toNeo4jGraph(entity: KeyPairInfo): Node = {
       logger.debug(s"toGraph for KeyPairInfo ${entity}")
       val map: Map[String, Any] = Map(
         "keyName" -> entity.keyName,
@@ -52,12 +52,12 @@ object KeyPairInfo {
 
       val node = Neo4jRepository.saveEntity[KeyPairInfo](label, entity.id, map)
 
-      logger.debug(s"node - ${node.get}")
+      logger.debug(s"node - ${node}")
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[KeyPairInfo] = {
-      val node = Neo4jRepository.findNodeById(nodeId).get
+    override def fromNeo4jGraph(nodeId: Long): KeyPairInfo = {
+      val node = Neo4jRepository.findNodeById(nodeId)
       val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
 
       val keyPairInfo = KeyPairInfo(
@@ -71,7 +71,7 @@ object KeyPairInfo {
         Some(map.get("passPhrase").get.asInstanceOf[String])
       )
       logger.debug(s"Key pair info - ${keyPairInfo}")
-      Some(keyPairInfo)
+      keyPairInfo
     }
   }
 
