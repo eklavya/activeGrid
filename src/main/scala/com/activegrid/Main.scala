@@ -118,7 +118,9 @@ object Main {
           }
           onComplete(listOfImages) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List; Failed with " + ex)
+            case util.Failure(ex) =>
+              logger.error(s"Unable to Retrieve ImageInfo List; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List")
           }
         }
       } ~ path("images") {
@@ -130,7 +132,9 @@ object Main {
             }
             onComplete(buildImage) {
               case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-              case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Save Image; Failed with " + ex)
+              case util.Failure(ex) =>
+                logger.error(s"Unable to Save Image; Failed with ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, "Unable to Save Image")
             }
           }
         }
@@ -142,7 +146,9 @@ object Main {
           }
           onComplete(deleteImages) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Delete Image; Failed with " + ex)
+            case util.Failure(ex) =>
+              logger.error(s"Unable to Delete Image; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to Delete Image")
           }
 
         }
@@ -163,11 +169,12 @@ object Main {
           }
           onComplete(listOfInstanceFlavors) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to get List; Failed with " + ex)
+            case util.Failure(ex) =>
+              logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to get List of Instance Flavors")
           }
         }
       }
-
     }
 
     def nodeRoute = pathPrefix("node") {
@@ -182,7 +189,9 @@ object Main {
           }
           onComplete(listOfAllInstanceNodes) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex)
+            case util.Failure(ex) =>
+              logger.error(s"Unable to get Instance nodes; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Unable to get Instance nodes")
           }
         }
       } ~ path("topology") {
@@ -193,7 +202,9 @@ object Main {
           }
           onComplete(topology) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex)
+            case util.Failure(ex) =>
+              logger.error(s"Unable to get Instance nodes; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Unable to get Instance nodes")
           }
         }
       } ~ path(Segment) { name =>
@@ -216,7 +227,9 @@ object Main {
           }
           onComplete(nodeInstance) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance with name $name; Failed with " + ex)
+            case util.Failure(ex) =>
+              logger.error(s"Unable to get Instance with name $name; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Unable to get Instance with name $name")
           }
         }
       }
