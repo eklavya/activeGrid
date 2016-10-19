@@ -27,7 +27,7 @@ object Tuple {
 
   implicit class TupleImpl(tuple: Tuple) extends Neo4jRep[Tuple] {
 
-    override def toNeo4jGraph(entity: Tuple): Option[Node] = {
+    override def toNeo4jGraph(entity: Tuple): Node = {
 
       val label = "Tuple"
       val mapPrimitives = Map("key" -> entity.key, "value" -> entity.value)
