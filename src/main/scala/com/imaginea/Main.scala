@@ -220,8 +220,9 @@ object Main extends App {
       } ~ get {
         val result = Future {
           val nodeList = Neo4jRepository.getNodesByLabel("KeyPairInfo")
+          logger.debug(s"nodeList $nodeList")
           val listOfKeys = nodeList.flatMap(node => KeyPairInfo.fromNeo4jGraph(Some(node.getId)))
-          Page[KeyPairInfo](0, listOfKeys.size, listOfKeys.size, listOfKeys)
+          Page[KeyPairInfo](listOfKeys)
         }
         onComplete(result) {
           case util.Success(page) => complete(StatusCodes.OK, page)
