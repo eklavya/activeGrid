@@ -25,7 +25,7 @@ object StorageInfo {
 
   implicit class StorageInfoImpl(storageInfo: StorageInfo) extends Neo4jRep[StorageInfo] {
 
-    override def toNeo4jGraph(entity: StorageInfo): Option[Node] = {
+    override def toNeo4jGraph(entity: StorageInfo): Node = {
       val label = "StorageInfo"
       val mapPrimitives = Map("used" -> entity.used, "total" -> entity.total)
       val node = GraphDBExecutor.createGraphNodeWithPrimitives[StorageInfo](label, mapPrimitives)

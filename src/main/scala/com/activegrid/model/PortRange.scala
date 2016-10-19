@@ -26,7 +26,7 @@ object PortRange{
 
   implicit class PortRangeImpl(portRange: PortRange) extends Neo4jRep[PortRange]{
 
-    override def toNeo4jGraph(entity: PortRange): Option[Node] = {
+    override def toNeo4jGraph(entity: PortRange): Node = {
       val label  = "PortRange"
       val mapPrimitives  = Map("fromPort" -> entity.fromPort, "toPort" -> entity.toPort)
       val node = GraphDBExecutor.createGraphNodeWithPrimitives[PortRange](label, mapPrimitives)

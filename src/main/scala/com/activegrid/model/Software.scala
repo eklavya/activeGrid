@@ -34,7 +34,7 @@ object Software{
 
   implicit class SoftwareImpl(software: Software) extends Neo4jRep[Software]{
 
-    override def toNeo4jGraph(entity: Software): Option[Node] = {
+    override def toNeo4jGraph(entity: Software): Node = {
       val label  = "Software"
       val mapPrimitives = Map( "version"     -> entity.version,
         "name"        -> entity.name,
@@ -43,7 +43,7 @@ object Software{
         "port"        -> entity.port,
         "processNames"-> entity.processNames.toArray,
         "discoverApplications" -> entity.discoverApplications)
-      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[Software](label, mapPrimitives)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[Software](label, mapPrimitives)
 
       node
     }
