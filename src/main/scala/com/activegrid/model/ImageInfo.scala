@@ -42,6 +42,7 @@ object ImageInfo {
         val rootDeviceType = propertyValues("rootDeviceType").toString
         val rootDeviceName = propertyValues("rootDeviceType").toString
         val version = propertyValues("version").toString
+
         Some(ImageInfo(Some(nodeId), imageId, state, ownerId, publicValue, architecture, imageType, platform, imageOwnerAlias, name, description, rootDeviceType, rootDeviceName, version))
 
       case None => None
@@ -50,7 +51,7 @@ object ImageInfo {
 
   implicit class ImageInfoImpl(imageInfo: ImageInfo) extends Neo4jRep[ImageInfo] {
 
-    override def toNeo4jGraph(entity: ImageInfo): Option[Node] = {
+    override def toNeo4jGraph(entity: ImageInfo): Node = {
       val label = "ImageInfo"
       val mapPrimitives = Map("imageId" -> entity.imageId,
         "state" -> entity.state.getOrElse(GraphDBExecutor.NO_VAL),

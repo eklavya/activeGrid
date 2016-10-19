@@ -12,7 +12,7 @@ object Graph  {
 
   trait Neo4jRep[T] {
 
-    def toNeo4jGraph(entity: T): Option[Node]
+    def toNeo4jGraph(entity: T): Node
 
     def fromNeo4jGraph(id: Option[Long]): Option[T]
 

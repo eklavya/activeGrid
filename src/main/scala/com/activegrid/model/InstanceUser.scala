@@ -26,11 +26,11 @@ object InstanceUser{
 
   implicit class InstanceUserImpl(instanceUser: InstanceUser) extends Neo4jRep[InstanceUser]{
 
-    override def toNeo4jGraph(entity: InstanceUser): Option[Node] = {
+    override def toNeo4jGraph(entity: InstanceUser): Node = {
 
       val label = "InstanceUser"
       val mapPrimitives  = Map("userName" -> entity.userName, "publicKeys" -> entity.publicKeys.toArray)
-      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[InstanceUser](label, mapPrimitives)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[InstanceUser](label, mapPrimitives)
 
       node
     }
