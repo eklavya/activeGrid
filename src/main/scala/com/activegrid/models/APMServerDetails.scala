@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-
 /**
   * Created by nagulmeeras on 14/10/16.
   */
@@ -27,7 +26,7 @@ object APMServerDetails {
 
   implicit class APMServerDetailImpl(aPMServerDetails: APMServerDetails) extends Neo4jRep[APMServerDetails] {
 
-    override def toNeo4jGraph(): Option[Node] = {
+    override def toNeo4jGraph: Node = {
       logger.debug(s"Executing $getClass ::toNeo4jGraph ")
       neo4JRepository.withTx {
         neo =>
@@ -41,24 +40,20 @@ object APMServerDetails {
             createRelationShip(node, headersNode, apmServer_header_relation)
           }
           if (!aPMServerDetails.monitoredSite.isEmpty) {
-            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph()
-            logger.info("Saved Site Details ")
-            siteNode match {
-              case Some(sitenode) => createRelationShip(node, sitenode, apmServer_site_relation)
-              case _ => logger.info("Unable to create relationship between APMServerDetails and Site")
-            }
+            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph
+            createRelationShip(node, siteNode, apmServer_site_relation)
           }
-          Some(node)
+          node
       }
     }
 
-    override def fromNeo4jGraph(nodeId: Option[Long]): Option[APMServerDetails] = {
+    override def fromNeo4jGraph(nodeId: Long): Option[APMServerDetails] = {
       logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
       APMServerDetails.fromNeo4jGraph(nodeId)
     }
 
     def createRelationShip(parentNode: Node, childNode: Node, relationship: String): Unit = {
-
+      logger.debug(s"Executing $getClass :: createRelationShip")
       neo4JRepository.withTx {
         neo =>
           parentNode.createRelationshipTo(childNode, new RelationshipType {
@@ -68,42 +63,42 @@ object APMServerDetails {
     }
   }
 
-  def fromNeo4jGraph(nodeId: Option[Long]): Option[APMServerDetails] = {
+  def fromNeo4jGraph(nodeId: Long): Option[APMServerDetails] = {
     logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
-
     neo4JRepository.withTx {
       neo =>
-        nodeId match {
-          case Some(nodeId) => {
-            try {
-              val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
-              val itr = node.getRelationships.iterator
-              var siteEntity: Option[Site] = None
-              val header: mutable.Map[String, String] = mutable.Map.empty[String, String]
-              while (itr.hasNext) {
-                val relationship = itr.next()
-                relationship.getType.name match {
-                  case `apmServer_site_relation` =>
-                    siteEntity = Site.fromNeo4jGraph(Some(relationship.getEndNode.getId))
+        try {
+          val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
+          if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
+            val itr = node.getRelationships.iterator
+            var siteEntity: Option[Site] = None
+            val header: mutable.Map[String, String] = mutable.Map.empty[String, String]
+            while (itr.hasNext) {
+              val relationship = itr.next()
+              relationship.getType.name match {
+                case `apmServer_site_relation` =>
+                  siteEntity = Site.fromNeo4jGraph(relationship.getEndNode.getId)
 
-                  case `apmServer_header_relation` =>
-                    relationship.getEndNode.getAllProperties.map { case (key, value) => header.put(key.toString, value.toString) }
-                }
+                case `apmServer_header_relation` =>
+                  relationship.getEndNode.getAllProperties.map { case (key, value) => header.put(key.toString, value.toString) }
               }
-              val aPMServerDetails1 = new APMServerDetails(Some(node.getId), node.getProperty("name").asInstanceOf[String], node.getProperty("serverUrl").asInstanceOf[String]
-                , siteEntity, APMProvider.toProvider(node.getProperty("provider").asInstanceOf[String]), if (header.nonEmpty) Some(header.toMap) else None)
-              Some(aPMServerDetails1)
-            } catch {
-              case nfe: NotFoundException => None
-              case exception: Exception => throw new Exception("Unable to get the Entity")
             }
+            val aPMServerDetails1 = new APMServerDetails(Some(node.getId), node.getProperty("name").asInstanceOf[String], node.getProperty("serverUrl").asInstanceOf[String]
+              , siteEntity, APMProvider.toProvider(node.getProperty("provider").asInstanceOf[String]), if (header.nonEmpty) Some(header.toMap) else None)
+            Some(aPMServerDetails1)
+          } else {
+            logger.warn(s"Node is not found with ID:$nodeId and Label : $apmServerDetailsLabel")
+            None
           }
-          case None => None
+        } catch {
+          case nfe: NotFoundException =>
+            logger.warn(nfe.getMessage, nfe)
+            None
         }
     }
   }
 
-  def getAllEntities(): List[Node] = {
+  def getAllEntities: List[Node] = {
     logger.debug(s"Executing $getClass ::getAllEntities ")
     neo4JRepository.withTx {
       neo =>
