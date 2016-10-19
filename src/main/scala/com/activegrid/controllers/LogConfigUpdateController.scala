@@ -17,10 +17,10 @@ class LogConfigUpdateController {
     path("logs" / "level") {
       put {
         entity(as[String]) { level =>
-          val save: Future[String] = cfgUpdater.setLogLevel(cfgUpdater.ROOT, level)
-          onComplete(save) {
-            case success => complete(StatusCodes.OK, success)
-            case _ => complete(StatusCodes.Accepted, "Unable to update")
+          val saved: Future[String] = cfgUpdater.setLogLevel(cfgUpdater.ROOT, level)
+          onComplete(saved) {
+            case util.Success(saved) =>  complete(StatusCodes.OK, "Settings saved successfully")
+            case util.Failure(saved) => complete("ERROR  WHILE UPDATING LOG LEVEL")
           }
 
         }
@@ -32,10 +32,10 @@ class LogConfigUpdateController {
     path("logs" / "level") {
       get {
         entity(as[String]) { level =>
-          val save: Future[String] = cfgUpdater.getLogLevel(level)
-          onComplete(save) {
-            case success => complete(StatusCodes.OK, success)
-            case _ => complete(StatusCodes.Accepted, "Unable to fetch Log level")
+          val loglevel: Future[String] = cfgUpdater.getLogLevel(level)
+          onComplete(loglevel) {
+            case util.Success(loglevel) =>  complete(StatusCodes.OK, "Settings saved successfully")
+            case util.Failure(loglevel) => complete("ERROR  WHILE GETTING LOG SETTINGS")
           }
 
         }
@@ -43,7 +43,6 @@ class LogConfigUpdateController {
     }
 
   }
-
   val routes = updateRQ ~ getRQ
 
 
