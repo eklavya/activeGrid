@@ -25,19 +25,19 @@ class AppSettingImpl {
   }
 
   def updateSettings(settingsMap: Map[String, String]): Future[String] = Future {
-    appSettingWrapper.updateSettings(settingsMap, appSettingWrapper.lables.get("HGS").toString)
+    appSettingWrapper.updateSettings(settingsMap, appSettingWrapper.lables("HGS").toString)
   }
 
   def updateAuthSettings(settingsMap: Map[String, String]): Future[String] = Future {
-    appSettingWrapper.updateSettings(settingsMap, appSettingWrapper.lables.get("HAS").toString)
+    appSettingWrapper.updateSettings(settingsMap, appSettingWrapper.lables("HAS").toString)
   }
 
   def deleteSettings(settingsMap: Map[String, String]): Future[String] = Future {
-    appSettingWrapper.deleteSetting(settingsMap, appSettingWrapper.lables.get("HGS").toString)
+    appSettingWrapper.deleteSetting(settingsMap, appSettingWrapper.lables("HGS").toString)
   }
 
   def deleteAuthSettings(settingsMap: Map[String, String]): Future[String] = Future {
-    appSettingWrapper.deleteSetting(settingsMap, appSettingWrapper.lables.get("HAS").toString)
+    appSettingWrapper.deleteSetting(settingsMap, appSettingWrapper.lables("HAS").toString)
   }
 
   def getSettings(): Future[AppSettings] = Future {
