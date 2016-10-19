@@ -40,6 +40,7 @@ object Main {
   final case class Item(name: String, id: Long)
 
   final case class Order(items: List[Item])
+
   // formats for unmarshalling and marshalling
 
   /*
@@ -48,6 +49,7 @@ object Main {
   implicit val itemFormat = jsonFormat2(Item)
 
   implicit val orderFormat = jsonFormat1(Order)
+
   // (fake) async database query api
   def fetchItem(itemId: Long): Future[Option[Item]] = Future(Some(Item("item", itemId)))
 
@@ -62,7 +64,7 @@ object Main {
 
         onSuccess(maybeItem) {
           case Some(item) => complete(item)
-          case None       => complete(StatusCodes.NotFound)
+          case None => complete(StatusCodes.NotFound)
         }
       }
     }
@@ -78,18 +80,18 @@ object Main {
       }
     }
 
-    implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id","imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+    implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
     implicit val PageImgFormat = jsonFormat4(Page[ImageInfo])
     implicit val InstanceFlavorFormat = jsonFormat4(InstanceFlavor.apply)
     implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
     implicit val storageInfoFormat = jsonFormat3(StorageInfo.apply)
-    implicit val tupleFormat = jsonFormat3(Tuple.apply)
+    implicit val KeyValueInfoFormat = jsonFormat3(KeyValueInfo.apply)
     implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
-      override def write (obj: KeyPairStatus): JsValue = JsString(obj.value.toString)
+      override def write(obj: KeyPairStatus): JsValue = JsString(obj.value.toString)
 
       override def read(json: JsValue): KeyPairStatus = json match {
         case JsString(str) => str
-        case _ => throw  DeserializationException("Enum string expected")
+        case _ => throw DeserializationException("Enum string expected")
       }
     }
     implicit val keyPairInfoFormat = jsonFormat8(KeyPairInfo.apply)
@@ -103,21 +105,21 @@ object Main {
     implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
     implicit val SiteFormat = jsonFormat2(Site.apply)
 
-    val catalogRoute  = pathPrefix("catalog") {
+    val catalogRoute = pathPrefix("catalog") {
 
-      path("images"/"view") {
+      path("images" / "view") {
         get {
-          val listOfImages : Future[Page[ImageInfo]] = Future{
+          val listOfImages: Future[Page[ImageInfo]] = Future {
             val label: String = "ImageInfo"
             val nodesList = GraphDBExecutor.getNodesByLabel(label)
-            val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(Some(node.getId)))
+            val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
 
             Page[ImageInfo](imageInfoList)
           }
           onComplete(listOfImages) {
-             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-             case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List; Failed with " + ex)
-           }
+            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List; Failed with " + ex)
+          }
         }
       } ~ path("images") {
         put {
@@ -128,7 +130,7 @@ object Main {
             }
             onComplete(buildImage) {
               case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-              case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Save Image; Failed with " + ex )
+              case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Save Image; Failed with " + ex)
             }
           }
         }
@@ -140,14 +142,14 @@ object Main {
           }
           onComplete(deleteImages) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Delete Image; Failed with " + ex )
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, "Unable to Delete Image; Failed with " + ex)
           }
 
         }
-      } ~ path("instanceTypes"/IntNumber) { siteId =>
+      } ~ path("instanceTypes" / IntNumber) { siteId =>
         get {
           val listOfInstanceFlavors = Future {
-            val mayBeSite = Site.fromNeo4jGraph(Some(siteId))
+            val mayBeSite = Site.fromNeo4jGraph(siteId)
             mayBeSite match {
               case Some(site) =>
                 val listOfInstances = site.instances
@@ -168,33 +170,33 @@ object Main {
 
     }
 
-    def nodeRoute = pathPrefix("node"){
-      path("list"){
-        get{
+    def nodeRoute = pathPrefix("node") {
+      path("list") {
+        get {
           val listOfAllInstanceNodes = Future {
-            logger.info ("Received GET request for all nodes")
+            logger.info("Received GET request for all nodes")
             val label: String = "Instance"
             val nodesList = GraphDBExecutor.getNodesByLabel(label)
-            val instanceList = nodesList.flatMap(node => Instance.fromNeo4jGraph(Some(node.getId)))
+            val instanceList = nodesList.flatMap(node => Instance.fromNeo4jGraph(node.getId))
             Page[Instance](instanceList)
           }
-          onComplete(listOfAllInstanceNodes){
+          onComplete(listOfAllInstanceNodes) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex )
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex)
           }
         }
-      } ~ path("topology"){
-        get{
+      } ~ path("topology") {
+        get {
           val topology = Future {
             logger.debug("received GET request for topology")
             Page[Instance](List.empty[Instance])
           }
-          onComplete(topology){
+          onComplete(topology) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex )
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance nodes; Failed with " + ex)
           }
         }
-      } ~ path(Segment){ name =>
+      } ~ path(Segment) { name =>
         get {
           val nodeInstance = Future {
             logger.info(s"Received GET request for node - $name")
@@ -204,18 +206,17 @@ object Main {
             }
             val instanceNode = GraphDBExecutor.getNodeByProperty("Instance", "name", name)
             instanceNode match {
-              case Some(node) => Instance.fromNeo4jGraph(Some(node.getId)).get
+              case Some(node) => Instance.fromNeo4jGraph(node.getId).get
               case None =>
                 val name = "echo node"
-                val tags: List[Tuple] = List(Tuple(None, "tag", "tag"))
+                val tags: List[KeyValueInfo] = List(KeyValueInfo(None, "tag", "tag"))
                 val processInfo = ProcessInfo(1, 1, "init")
                 Instance(name, tags, Set(processInfo))
-
             }
           }
-          onComplete(nodeInstance){
+          onComplete(nodeInstance) {
             case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance with name $name; Failed with " + ex )
+            case util.Failure(ex) => complete(StatusCodes.BadRequest, s"Unable to get Instance with name $name; Failed with " + ex)
           }
         }
       }
