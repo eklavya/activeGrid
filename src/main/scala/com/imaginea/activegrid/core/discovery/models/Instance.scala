@@ -47,7 +47,7 @@ object Instance {
 
 
 
-    override def toNeo4jGraph(instance: Instance): Option[Node] = {
+    override def toNeo4jGraph(instance: Instance): Node = {
 
       logger.debug(s"Instance Node saved into db - ${instance}")
       val map = Map("instanceId" -> instance.instanceId
@@ -59,52 +59,17 @@ object Instance {
 
       val instanceNode = Neo4jRepository.saveEntity[UserGroup](label, instance.id, map)
 
-      //map function is used to extract the option value
-      //Iterating the users and linking to the UserGroup
-      //logger.debug(s"Instances has relation with Site ${instance.siteName}")
-
-      /*for {
-        instance <- site.instances
-        userNode <- instance.toNeo4jGraph(user)} {
-        Neo4jRepository.createRelation(has_users, ugn, userNode)
-      }
-
-      //map function is used to extract the option value
-      //Iterating the access and linking to the UserGroup
-      logger.debug(s"UserGroupProxy has relation with ResourceACL ${userGroup.accesses}")
-      for {accesses <- userGroup.accesses
-           resource <- accesses
-           ugn <- userGroupNode
-           resourceNode <- resource.toNeo4jGraph(resource)} {
-        Neo4jRepository.createRelation(has_resourceAccess, ugn, resourceNode)
-      }*/
-
       instanceNode
     }
 
 
-    override def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
-      val nodeOption = Neo4jRepository.findNodeById(nodeId)
+    override def fromNeo4jGraph(nodeId: Long): Instance = {
+      val node = Neo4jRepository.findNodeById(nodeId)
 
-      nodeOption.map(node => {
         logger.debug(s" UserGroupProxy ${node}")
 
         val instanceMap = Neo4jRepository.getProperties(node, "instanceId","name","state","platform","architecture","publicDnsName")
 
-        /*val userNodes = Neo4jRepository.getNodesWithRelation(node, has_users)
-        val users: Set[User] = userNodes.map(child => {
-          logger.debug(s" UserGroup -> User node ${child}")
-          val user: User = null
-          user.fromNeo4jGraph(child.getId)
-        }).flatten.toSet
-
-        val accessNodes = Neo4jRepository.getNodesWithRelation(node, has_resourceAccess)
-        val resources = accessNodes.map(child => {
-          logger.debug(s" UserGroup -> Resource node ${child}")
-          val resource: ResourceACL = null
-          resource.fromNeo4jGraph(child.getId)
-        }).flatten.toSet
-        */
         val instance = Instance(
           id = Some(node.getId),
           instanceId = instanceMap.get("instanceId").get.asInstanceOf[String],
@@ -116,7 +81,6 @@ object Instance {
         )
         logger.debug(s"InstanceMap - ${instanceMap}")
         instance
-      })
     }
   }
 }

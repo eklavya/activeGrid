@@ -1,7 +1,9 @@
 package com.imaginea.activegrid.core.models
 
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{NotFoundException, Node}
 import org.slf4j.LoggerFactory
 
 
@@ -15,7 +17,9 @@ case class UserGroup(override val id: Option[Long]
 
 
 sealed trait ResponseMessage
+
 case class SuccessResponse(id: String) extends ResponseMessage
+
 object FailureResponse extends ResponseMessage
 
 object UserGroup {
@@ -24,63 +28,60 @@ object UserGroup {
   implicit class RichUserGroup(userGroup: UserGroup) extends Neo4jRep[UserGroup] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-    val has_users = "HAS_users"
-    val has_resourceAccess = "HAS_resourceAccess"
+    val hasUsers = "HAS_users"
+    val hasResourceAccess = "HAS_resourceAccess"
 
-    override def toNeo4jGraph(userGroup: UserGroup): Option[Node] = {
+    override def toNeo4jGraph(userGroup: UserGroup): Node = {
 
       logger.debug(s"UserGroup Node saved into db - ${userGroup}")
       val map = Map("name" -> userGroup.name)
-
       val userGroupNode = Neo4jRepository.saveEntity[UserGroup](UserGroup.label, userGroup.id, map)
 
       //val node = Neo4jRepository.saveEntity[KeyPairInfo](ResourceACLProtocol.label, userGroup.id, map)
 
-      //map function is used to extract the option value
       //Iterating the users and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with Users ${userGroup.users}")
       for {users <- userGroup.users
            user <- users
-           ugn <- userGroupNode
-           userNode <- user.toNeo4jGraph(user)} {
-        Neo4jRepository.createRelation(has_users, ugn, userNode)
+      } {
+        val userNode = user.toNeo4jGraph(user)
+        Neo4jRepository.createRelation(hasUsers, userGroupNode, userNode)
       }
 
-      //map function is used to extract the option value
       //Iterating the access and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with ResourceACL ${userGroup.accesses}")
       for {accesses <- userGroup.accesses
            resource <- accesses
-           ugn <- userGroupNode
-           resourceNode <- resource.toNeo4jGraph(resource)} {
-        Neo4jRepository.createRelation(has_resourceAccess, ugn, resourceNode)
+      } {
+        val resourceNode = resource.toNeo4jGraph(resource)
+        Neo4jRepository.createRelation(hasResourceAccess, userGroupNode, resourceNode)
       }
-
       userGroupNode
     }
 
-
-    override def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
-      val nodeOption = Neo4jRepository.findNodeById(nodeId)
-
-      nodeOption.map(node => {
+    override def fromNeo4jGraph(nodeId: Long): UserGroup = {
+      try {
+        //findNodeById will fetch any node with the specified id
+        val node = Neo4jRepository.findNodeById(nodeId)
         logger.debug(s" UserGroupProxy ${node}")
 
+        // Fetching the UserGroup specific properties from the fetched node
+        // Failure case can be mapped as No data found
         val userGroupMap = Neo4jRepository.getProperties(node, "name")
 
-        val userNodes = Neo4jRepository.getNodesWithRelation(node, has_users)
-        val users: Set[User] = userNodes.map(child => {
+        val userNodes = Neo4jRepository.getNodesWithRelation(node, hasUsers)
+        val users = userNodes.map(child => {
           logger.debug(s" UserGroup -> User node ${child}")
           val user: User = null
           user.fromNeo4jGraph(child.getId)
-        }).flatten.toSet
+        }).toSet
 
-        val accessNodes = Neo4jRepository.getNodesWithRelation(node, has_resourceAccess)
+        val accessNodes = Neo4jRepository.getNodesWithRelation(node, hasResourceAccess)
         val resources = accessNodes.map(child => {
           logger.debug(s" UserGroup -> Resource node ${child}")
           val resource: ResourceACL = null
           resource.fromNeo4jGraph(child.getId)
-        }).flatten.toSet
+        }).toSet
 
         val userGroup = UserGroup(
           id = Some(node.getId),
@@ -90,7 +91,20 @@ object UserGroup {
         )
         logger.debug(s"UserGroup - ${userGroup}")
         userGroup
-      })
+      }
+      catch {
+        case ex: NodePropertyUnavailable => {
+          //Handling Exception: NODE has no property with propertyKey="name"
+          logger.error(ex.getMessage)
+          throw new NoDataFound(ex.getMessage)
+        }
+        case x: NotFoundException =>
+          throw new NoDataFound("Entity not found")
+        case ex: Exception => {
+          logger.error(ex.getMessage)
+          throw ex
+        }
+      }
     }
   }
 

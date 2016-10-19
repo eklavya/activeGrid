@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 
 
-import com.imaginea.activegrid.core.services.UserService
+import com.imaginea.activegrid.core.controller.UserServiceController
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -27,7 +27,7 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
-  val userService: UserService = new UserService
+  val userService: UserServiceController = new UserServiceController
 
   val route: Route = userService.userRoute
 

@@ -1,4 +1,4 @@
-package com.imaginea.activegrid.core.services
+package com.imaginea.activegrid.core.controller
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext
 /**
  * Created by babjik on 22/9/16.
  */
-class CatalogService(implicit val executionContext: ExecutionContext) {
+class CatalogServiceController(implicit val executionContext: ExecutionContext) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   /*  val imageRepository: ImageInfoRepository = new ImageInfoRepository
