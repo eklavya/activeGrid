@@ -17,8 +17,11 @@ class AppSettingImpl {
 
 
   def addSettings(appSettings: AppSettings): Future[String] = Future {
-    appSettingWrapper.toGraph(appSettings)
-    "success"
+    val node = appSettingWrapper.toGraph(appSettings)
+    node match {
+      case Some(node) => "success"
+      case _ => "fail"
+    }
   }
 
   def updateSettings(settingsMap: Map[String, String]): Future[String] = Future {

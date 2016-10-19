@@ -1,4 +1,4 @@
-package com.activegrid.services
+package com.activegrid.controllers
 
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -12,8 +12,11 @@ import scala.concurrent.Future
 
 /**
   * Created by sivag on 26/9/16.
+  * //StatusCode = Accepted (202), denotes request accepted but failed to do perform required operation.
   */
-class AppSettingsService {
+
+
+class AppSettingsController {
 
   val persistanceMgr = new AppSettingImpl
 
@@ -24,13 +27,11 @@ class AppSettingsService {
       post {
         entity(as[AppSettings]) { appSettings =>
           val save: Future[String] = persistanceMgr.addSettings(appSettings)
-          onSuccess(save) {
+          onComplete(save) {
             case success => complete(StatusCodes.OK, "Settings saved successfully")
-            case fail => complete(StatusCodes.BadRequest, "Saving operation failed.")
+            case _ => complete(StatusCodes.Accepted, "Saving operation failed.")
           }
-          /*onComplete(save) { maybeAuthSettings =>
-            complete("Done")
-          }*/
+
         }
       }
     }
@@ -42,13 +43,10 @@ class AppSettingsService {
       put {
         entity(as[Map[String, String]]) { appSettings =>
           val save: Future[String] = persistanceMgr.updateSettings(appSettings)
-          onSuccess(save) {
+          onComplete(save) {
             case success => complete(StatusCodes.OK, "Settings updated successfully")
-            case fail => complete(StatusCodes.BadRequest, "Update operation failed.")
+            case _ => complete(StatusCodes.Accepted, "Update operation failed.")
           }
-          /*onComplete(save) { maybeAuthSettings =>
-            complete(save)
-          }*/
         }
       }
     }
@@ -59,33 +57,24 @@ class AppSettingsService {
       put {
         entity(as[Map[String, String]]) { appSettings =>
           val save: Future[String] = persistanceMgr.updateAuthSettings(appSettings)
-          onSuccess(save) {
+          onComplete(save) {
             case success => complete(StatusCodes.OK, "Authsettings updated successfully")
-            case fail => complete(StatusCodes.BadRequest, "Authsetting updation  failed.")
+            case _ => complete(StatusCodes.Accepted, "Authsetting updation  failed.")
           }
-          /*onComplete(save) { maybeAuthSettings =>
-            complete(save)
-          }*/
-
         }
       }
     }
 
   }
-
-
   val deleteRQ = pathPrefix("config") {
     path("settings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
           val save: Future[String] = persistanceMgr.deleteSettings(appSettings)
-          onSuccess(save) {
+          onComplete(save) {
             case success => complete(StatusCodes.OK, "Settings updated successfully")
-            case fail => complete(StatusCodes.BadRequest, "Delete operation failed.")
+            case _ => complete(StatusCodes.Accepted, "Delete operation failed.")
           }
-          /* onComplete(save) { maybeAuthSettings =>
-             complete(save)
-           }*/
         }
       }
     }
@@ -102,13 +91,10 @@ class AppSettingsService {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
           val save: Future[String] = persistanceMgr.deleteAuthSettings(appSettings)
-          onSuccess(save) {
+          onComplete(save) {
             case success => complete(StatusCodes.OK, "Operation succesfull")
-            case fail => complete(StatusCodes.BadRequest, "Delete operation failed.")
+            case _ => complete(StatusCodes.Accepted, "Delete operation failed.")
           }
-          /* onComplete(save) { maybeAuthSettings =>
-             complete(save)
-           }*/
         }
       }
     }
