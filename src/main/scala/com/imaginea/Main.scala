@@ -68,17 +68,7 @@ object Main extends App {
         } ~ delete {
           val resposne = Future {
             logger.debug(s"Deleting Key[$keyId] of User[$userId] ")
-            val key = getKeyById(userId, keyId)
-
-            key match {
-              case Some(keyPairInfo) =>
-                val status = Neo4jRepository.deleteChildNode(keyId)
-                status match {
-                  case Some(false) | None => throw new Exception(s"No key pair found with id $keyId")
-                  case Some(true) => // do nothing
-                }
-              case None => throw new Exception(s"No key pair found with id $keyId")
-            }
+            getKeyById(userId, keyId).flatMap(key => {Neo4jRepository.deleteChildNode(keyId)})
           }
           onComplete(resposne) {
             case util.Success(result) => complete(StatusCodes.OK, "Deleted Successfully")
@@ -87,7 +77,7 @@ object Main extends App {
         }
       } ~ get {
         val result = Future {
-          User.fromNeo4jGraph(Some(userId)) match {
+          User.fromNeo4jGraph(userId) match {
             case Some(user) => Page[KeyPairInfo](user.publicKeys)
             case None => Page[KeyPairInfo](List.empty[KeyPairInfo])
           }
@@ -123,7 +113,7 @@ object Main extends App {
       }
     } ~ get {
       val result = Future {
-        User.fromNeo4jGraph(Some(userId))
+        User.fromNeo4jGraph(userId)
       }
       onComplete(result) {
         case util.Success(mayBeUser) =>
@@ -154,7 +144,7 @@ object Main extends App {
           maybeNode match {
             case None => Page(List.empty[KeyPairInfo])
             case Some(node) =>
-              User.fromNeo4jGraph(Some(node.getId)) match {
+              User.fromNeo4jGraph(node.getId) match {
                 case Some(user) => Page[KeyPairInfo](user.publicKeys)
                 case None => Page[KeyPairInfo](List.empty[KeyPairInfo])
               }
@@ -168,7 +158,7 @@ object Main extends App {
     } ~ get {
       val result = Future {
         val nodeList = Neo4jRepository.getNodesByLabel("User")
-        val listOfUsers = nodeList.flatMap(node => User.fromNeo4jGraph(Some(node.getId)))
+        val listOfUsers = nodeList.flatMap(node => User.fromNeo4jGraph(node.getId))
 
         Page[User](listOfUsers)
       }
@@ -194,11 +184,7 @@ object Main extends App {
       pathPrefix(LongNumber) { keyId =>
         get {
           val result = Future {
-            val mayBeBode = Neo4jRepository.findNodeByLabelAndId("KeyPairInfo", keyId)
-            mayBeBode match {
-              case Some(node) => KeyPairInfo.fromNeo4jGraph(Some(node.getId))
-              case None => None
-            }
+            Neo4jRepository.findNodeByLabelAndId("KeyPairInfo", keyId).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
           }
           onComplete(result) {
             case util.Success(mayBekey) =>
@@ -221,7 +207,7 @@ object Main extends App {
         val result = Future {
           val nodeList = Neo4jRepository.getNodesByLabel("KeyPairInfo")
           logger.debug(s"nodeList $nodeList")
-          val listOfKeys = nodeList.flatMap(node => KeyPairInfo.fromNeo4jGraph(Some(node.getId)))
+          val listOfKeys = nodeList.flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
           Page[KeyPairInfo](listOfKeys)
         }
         onComplete(result) {
@@ -284,7 +270,7 @@ object Main extends App {
 
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    User.fromNeo4jGraph(Some(userId)) match {
+    User.fromNeo4jGraph(userId) match {
       case Some(user) =>
         val keysList: List[KeyPairInfo] = user.publicKeys
         keysList match {
@@ -315,11 +301,8 @@ object Main extends App {
     } catch {
       case e: Throwable => logger.error(e.getMessage, e)
     }
-    val mayBeNode = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
-    mayBeNode match {
-      case Some(node) => KeyPairInfo.fromNeo4jGraph(Some(node.getId))
-      case None => None
-    }
+    val node = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
+    KeyPairInfo.fromNeo4jGraph(node.getId)
   }
 
   def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
@@ -329,7 +312,7 @@ object Main extends App {
   def getKeyPair(keyName: String): Option[KeyPairInfo] = {
     val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName)
     mayBeNode match {
-      case Some(node) => KeyPairInfo.fromNeo4jGraph(Some(node.getId))
+      case Some(node) => KeyPairInfo.fromNeo4jGraph(node.getId)
       case None => None
     }
   }

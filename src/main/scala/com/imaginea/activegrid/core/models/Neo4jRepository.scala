@@ -24,7 +24,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     nodesIterator.headOption
   }
 
-  def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Option[Node] = withTx { implicit neo =>
+  def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Node = withTx { implicit neo =>
     val node = getOrSaveEntity(label, id)
     map.foreach { case (k, v) =>
       logger.debug(s"Setting property to $label[${node.getId}]  $k -> $v")
@@ -38,7 +38,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     node.setProperty(V_ID, node.getId)
     node.setProperty(CLASS, label)
 
-    Some(node)
+    node
   }
 
   def getOrSaveEntity(label: String, id: Option[Long]): Node = withTx { implicit neo =>
