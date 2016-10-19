@@ -34,7 +34,7 @@ object KeyPairInfo{
 
     val label = "KeyPairInfo"
 
-    override def toNeo4jGraph(entity: KeyPairInfo): Option[Node] = {
+    override def toNeo4jGraph(entity: KeyPairInfo): Node = {
 
       val map = Map(
         "keyName" -> entity.keyName,

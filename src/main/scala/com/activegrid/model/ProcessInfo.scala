@@ -41,6 +41,7 @@ object ProcessInfo{
         val childNodeId = GraphDBExecutor.getChildNodeId(nodeId, relationship)
 
         val software: Option[Software] = Software.fromNeo4jGraph(childNodeId)
+
         Some(ProcessInfo(Some(nodeId), pid, parentPid, name, command, owner, residentBytes, software, softwareVersion))
 
       case None => None
@@ -49,7 +50,7 @@ object ProcessInfo{
 
   implicit class ProcessInfoImpl(processInfo: ProcessInfo) extends Neo4jRep[ProcessInfo] {
 
-    override def toNeo4jGraph(entity: ProcessInfo): Option[Node] = {
+    override def toNeo4jGraph(entity: ProcessInfo): Node = {
 
       val label = "ProcessInfo"
 
@@ -61,11 +62,11 @@ object ProcessInfo{
         "residentBytes" -> entity.residentBytes.getOrElse(GraphDBExecutor.NO_VAL),
         "softwareVersion" -> entity.softwareVersion.getOrElse(GraphDBExecutor.NO_VAL))
 
-      val node: Option[Node] = GraphDBExecutor.createGraphNodeWithPrimitives[ProcessInfo](label, mapPrimitives)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[ProcessInfo](label, mapPrimitives)
 
       entity.software match {
         case Some(soft) =>
-          val node2: Option[Node] = soft.toNeo4jGraph(soft)
+          val node2 = soft.toNeo4jGraph(soft)
           val relationship = "HAS_software"
           GraphDBExecutor.setGraphRelationship(node, node2, relationship)
           node

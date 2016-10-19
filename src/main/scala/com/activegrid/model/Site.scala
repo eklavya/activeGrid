@@ -1,8 +1,5 @@
 package com.activegrid.model
 
-
-import java.util.Date
-
 import com.activegrid.model.Graph.Neo4jRep
 import org.neo4j.graphdb.Node
 
@@ -17,7 +14,7 @@ object Site {
 
   implicit class SiteImpl(site: Site) extends Neo4jRep[Site] {
 
-    override def toNeo4jGraph(entity: Site): Option[Node] = {
+    override def toNeo4jGraph(entity: Site):Node = {
 
       val label = "Site"
       val node = GraphDBExecutor.createGraphNodeWithPrimitives[Site](label, Map.empty)
@@ -40,14 +37,15 @@ object Site {
   def fromNeo4jGraph(id: Option[Long]): Option[Site] = {
 
     id match {
-      case Some(nodeId) => {
+      case Some(nodeId) =>
         val relationship = "HAS_site"
         val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship)
-        val instances: List[Instance] = childNodeIds.map { childId =>
-          Instance.fromNeo4jGraph(Some(childId)).get
+        val instances: List[Instance] = childNodeIds.flatMap { childId =>
+          Instance.fromNeo4jGraph(Some(childId))
         }
+
         Some(Site(Some(nodeId), instances))
-      }
+
       case None => None
     }
   }
