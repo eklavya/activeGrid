@@ -2,7 +2,7 @@ package com.activegrid.model
 
 import com.fasterxml.jackson.annotation.{JsonIgnoreProperties, JsonInclude}
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 /**
@@ -29,8 +29,8 @@ object ImageInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImagesTest2"
 
-    override def toNeo4jGraph(imageInfo: ImageInfo): Option[Node] = {
-      logger.debug(s"In toGraph for Image Info: ${imageInfo}")
+    override def toNeo4jGraph(imageInfo: ImageInfo): Node = {
+      logger.debug(s"In toGraph for Image Info: $imageInfo")
       val map = Map("state" -> imageInfo.state,
         "ownerId" -> imageInfo.ownerId,
         "publicValue" -> imageInfo.publicValue,
@@ -50,30 +50,35 @@ object ImageInfo {
     }
 
 
-    override def fromNeo4jGraph(nodeId: Long): ImageInfo = {
+    override def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
       ImageInfo.fromNeo4jGraph(nodeId)
     }
 
 
   }
 
-  def fromNeo4jGraph(nodeId: Long): ImageInfo = {
-    val node = GraphDBExecutor.findNodeById(nodeId)
-    val map = GraphDBExecutor.getProperties(node, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-    val imageInfo = ImageInfo(Some(node.getId),
-      map.get("state").get.asInstanceOf[String],
-      map.get("ownerId").get.asInstanceOf[String],
-      map.get("publicValue").get.asInstanceOf[Boolean],
-      map.get("architecture").get.asInstanceOf[String],
-      map.get("imageType").get.asInstanceOf[String],
-      map.get("platform").get.asInstanceOf[String],
-      map.get("imageOwnerAlias").get.asInstanceOf[String],
-      map.get("name").get.asInstanceOf[String],
-      map.get("description").get.asInstanceOf[String],
-      map.get("rootDeviceType").get.asInstanceOf[String],
-      map.get("rootDeviceName").get.asInstanceOf[String],
-      map.get("version").get.asInstanceOf[String])
-    imageInfo
+  def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
+    try {
+      val node = GraphDBExecutor.findNodeById(nodeId)
+      val map = GraphDBExecutor.getProperties(node, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+      val imageInfo = ImageInfo(Some(node.getId),
+        map.get("state").get.asInstanceOf[String],
+        map.get("ownerId").get.asInstanceOf[String],
+        map.get("publicValue").get.asInstanceOf[Boolean],
+        map.get("architecture").get.asInstanceOf[String],
+        map.get("imageType").get.asInstanceOf[String],
+        map.get("platform").get.asInstanceOf[String],
+        map.get("imageOwnerAlias").get.asInstanceOf[String],
+        map.get("name").get.asInstanceOf[String],
+        map.get("description").get.asInstanceOf[String],
+        map.get("rootDeviceType").get.asInstanceOf[String],
+        map.get("rootDeviceName").get.asInstanceOf[String],
+        map.get("version").get.asInstanceOf[String])
+      Some(imageInfo)
+    } catch {
+      case nfe: NotFoundException => None
+      case exception: Exception => throw new Exception("Unable to get the Entity")
+    }
   }
 
 }
