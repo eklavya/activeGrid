@@ -30,5 +30,7 @@ trait JsonSupport extends DefaultJsonProtocol with SprayJsonSupport {
 
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
 
+  //implicit val pluginFormat = jsonFormat(PlugIn.apply , "id","name","active","file")
+
 
 }

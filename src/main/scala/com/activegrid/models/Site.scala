@@ -17,7 +17,7 @@ object Site {
   implicit class SiteImpl(site: Site) extends Neo4jRep[Site] {
     val siteLabel = "Site"
 
-    override def toNeo4jGraph(): Node = {
+    override def toNeo4jGraph(): Option[Node] = {
       logger.debug(s"Executing $getClass ::toNeo4jGraph ")
       try {
         neo4JRepository.withTx {
@@ -25,31 +25,36 @@ object Site {
             val node = neo4JRepository.createNode(siteLabel)(neo)
             if (!site.siteName.isEmpty) node.setProperty("siteName", site.siteName.get)
             if (!site.groupBy.isEmpty) node.setProperty("groupBy", site.groupBy.get)
-            node
+            Some(node)
         }
       } catch {
         case exception: Exception => throw new Exception(s"Unable to persist entity $site")
       }
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Site = {
+    override def fromNeo4jGraph(nodeId: Option[Long]): Option[Site] = {
       logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
       Site.fromNeo4jGraph(nodeId)
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): Site = {
+  def fromNeo4jGraph(nodeId: Option[Long]): Option[Site] = {
     logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
     neo4JRepository.withTx {
       neo =>
-        try {
-          val node = neo4JRepository.getNodeById(nodeId)(neo)
-          val site = new Site(Some(nodeId),
-            if (node.hasProperty("siteName")) Some(node.getProperty("siteName").asInstanceOf[String]) else None,
-            if (node.hasProperty("groupBy")) Some(node.getProperty("groupBy").asInstanceOf[String]) else None)
-          site
-        } catch {
-          case nfe: NotFoundException => throw new Exception(s"Site entity with ID:$nodeId is Not Found")
+        nodeId match {
+          case Some(nodeId) => {
+            try {
+              val node = neo4JRepository.getNodeById(nodeId)(neo)
+              val site = new Site(Some(nodeId),
+                if (node.hasProperty("siteName")) Some(node.getProperty("siteName").asInstanceOf[String]) else None,
+                if (node.hasProperty("groupBy")) Some(node.getProperty("groupBy").asInstanceOf[String]) else None)
+              Some(site)
+            } catch {
+              case nfe: NotFoundException => None
+            }
+          }
+          case None => None
         }
     }
   }
