@@ -1,7 +1,7 @@
 package com.activegrid.models
 
 
-import com.activegrid.entities.AppSettings
+import com.activegrid.entities.{AppSettings, ExecutionStatus}
 import com.activegrid.neo4j.AppSettingsNeo4jWrapper
 
 import scala.concurrent.ExecutionContext.Implicits.global

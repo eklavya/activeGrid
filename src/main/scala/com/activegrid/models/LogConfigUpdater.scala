@@ -5,6 +5,7 @@ package com.activegrid.models
   */
 
 
+import com.activegrid.entities.ExecutionStatus
 import org.apache.log4j._
 import org.neo4j.helpers.Exceptions
 
