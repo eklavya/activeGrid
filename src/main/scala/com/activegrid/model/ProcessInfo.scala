@@ -42,7 +42,7 @@ object ProcessInfo {
       Some(ProcessInfo(Some(nodeId), pid, parentPid, name, command, owner, residentBytes, software, softwareVersion))
     }
     else {
-      logger.warn(s"could not get graph properties for ProcessInfo node with ${nodeId}")
+      logger.warn(s"could not get graph properties for ProcessInfo node with $nodeId")
       None
     }
 

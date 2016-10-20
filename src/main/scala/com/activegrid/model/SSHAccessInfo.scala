@@ -26,7 +26,7 @@ object SSHAccessInfo {
       Some(SSHAccessInfo(Some(nodeId), keyPairInfo.get, userName, port))
     }
     else {
-      logger.warn(s"could not get graph properties for node with ${nodeId}")
+      logger.warn(s"could not get graph properties for SSHAccessInfo node with $nodeId")
       None
     }
   }
