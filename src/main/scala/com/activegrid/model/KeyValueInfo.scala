@@ -25,7 +25,7 @@ object KeyValueInfo {
       Some(KeyValueInfo(Some(nodeId), key, value))
     }
     else {
-      logger.warn(s"could not get graph properties for KeyValueInfo node with ${nodeId}")
+      logger.warn(s"could not get graph properties for KeyValueInfo node with $nodeId")
       None
     }
   }

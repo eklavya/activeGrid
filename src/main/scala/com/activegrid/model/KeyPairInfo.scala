@@ -29,7 +29,7 @@ object KeyPairInfo {
       Some(KeyPairInfo(Some(nodeId), keyName, keyFingerprint, keyMaterial, filePath, status, defaultUser, passPhrase))
     }
     else {
-      logger.warn(s"could not get graph properties for KeyPairInfo node with ${nodeId}")
+      logger.warn(s"could not get graph properties for KeyPairInfo node with $nodeId")
       None
     }
   }
