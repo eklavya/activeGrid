@@ -12,4 +12,8 @@ object Neo4JRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def hasLabel(node: Node, label: String): Boolean = {
     node.hasLabel(label)
   }
+
+  def getProperty[T: Manifest](node: Node, name: String): Option[T] = {
+    if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+  }
 }
