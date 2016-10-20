@@ -1,4 +1,12 @@
 # Ignore Play! working directory #
+target/
+.idea
+*.iws
+*.ipr
+src/main/scala-*
+project/*
+.metadata/
+!project/build.properties
 bin/
 /db
 .eclipse
@@ -6,12 +14,10 @@ bin/
 /logs/
 /modules
 /project/target
-/target
 tmp/
 test-result
 server.pid
 *.eml
 /dist/
 .cache
-.idea
-graphdb
+
