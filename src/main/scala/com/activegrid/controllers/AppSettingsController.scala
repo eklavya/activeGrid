@@ -33,13 +33,12 @@ class AppSettingsController {
             case util.Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
             case util.Failure(ex) =>
               logger.error("Error while save settings", ex)
-              complete("Error while saving settings")
+              complete(StatusCodes.InternalServerError, "These is problem while processing request")
           }
 
         }
       }
     }
-
   }
 
   val updateRQ = pathPrefix("config") {
@@ -53,8 +52,10 @@ class AppSettingsController {
               case false => complete(StatusCodes.OK,"Updated failed,,Retry!!")
             }
             case util.Failure(ex) =>
-              logger.error("Failed to update settings", ex)
-              complete(StatusCodes.BadRequest, "Failed to update settings")
+              ex match {
+                case aie:IllegalArgumentException => complete(StatusCodes.OK,"Failed to update settings")
+                case _ => complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
           }
         }
       }
@@ -72,8 +73,14 @@ class AppSettingsController {
               case false => complete(StatusCodes.OK,"Updated failed,,Retry!!")
             }
             case util.Failure(ex) =>
-              logger.error("Failed to update settings", ex)
-              complete(StatusCodes.BadRequest, "Authsetting updation  failed.")
+              ex match {
+                case aie:IllegalArgumentException =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.OK,"Failed to update settings")
+                case _ =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
           }
         }
       }
@@ -91,8 +98,14 @@ class AppSettingsController {
               case false => complete(StatusCodes.OK,"Deletion failed,,Retry!!")
             }
             case util.Failure(ex) =>
-              logger.error("Delete operation failed", ex)
-              complete(StatusCodes.BadRequest, "Delete operation failed.")
+              ex match {
+                case aie:IllegalArgumentException =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.OK,"Failed to delete settings")
+                case _ =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
           }
         }
       }
@@ -121,8 +134,14 @@ class AppSettingsController {
               case false => complete(StatusCodes.OK,"Deletion failed,,Retry!!")
             }
             case util.Failure(ex) =>
-              logger.error("Delete operation failed", ex)
-              complete(StatusCodes.BadRequest, "Delete operation failed.")
+              ex match {
+                case aie:IllegalArgumentException =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.OK,"Failed to delete settings")
+                case _ =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
           }
         }
       }

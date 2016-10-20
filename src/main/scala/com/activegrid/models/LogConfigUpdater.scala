@@ -32,16 +32,14 @@ class LogConfigUpdater {
 
   def setLogLevel(loggerName: String, tolevel: String): Future[ExecutionStatus] = Future {
     val log: Logger = getLogger(loggerName)
-    val executionStatus= new ExecutionStatus;
     if (log != null) {
       val level = Level.toLevel(tolevel)
       log.setLevel(level)
-     executionStatus.status=true
+      ExecutionStatus(true)
     }
     else {
-      executionStatus.status=false
+      ExecutionStatus(false)
     }
-    executionStatus
 
   }
 }
