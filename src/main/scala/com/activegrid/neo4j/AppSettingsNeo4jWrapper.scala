@@ -16,7 +16,7 @@ import scala.collection.immutable.HashMap
 class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
 
   val lables: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings", "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
-  val util = new Utils();
+  val util = new Utils()
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   override def toGraph(entity: AppSettings): Option[Node] = {
@@ -43,7 +43,6 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
   override def fromGraph(nodeId: Long): AppSettings = {
     val genaralSettings = scala.collection.mutable.HashMap.empty[String, String]
     val authSettings = scala.collection.mutable.HashMap.empty[String, String]
-    try {
       withTx {
         neo => {
           withTx { neo =>
@@ -72,21 +71,14 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
           }
         }
       }
-    }
-    catch {
-      case ex: Exception => logger.error("Error in executing the file", ex)
-    }
     logger.info(genaralSettings.toMap.toString())
     logger.info(authSettings.toMap.toString())
     AppSettings(genaralSettings.toMap, authSettings.toMap)
   }
 
   def updateSettings(settingsMap: Map[String, String], relationName: String): ExecutionStatus = {
-    val executionStatus= new ExecutionStatus;
-    try {
       withTx {
         neo => {
-          var genaralSettings = Map.empty[String, String];
           withTx { neo =>
             // "AS" is key to "Application Settings" defined in the MAP  "labels"
             // Fetching  nodes with  "Application Settings" Label
@@ -98,7 +90,7 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
                 val relation: Relationship = iterator.next
                 logger.info("Processing " + relation.getType.name())
                 if (relation.getType.name.equalsIgnoreCase(relationName)) {
-                  val node = relation.getEndNode;
+                  val node = relation.getEndNode
                   settingsMap.foreach {
                     case (k, v) => node.setProperty(k, v.toString)
                   }
@@ -108,21 +100,12 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
           }
         }
       }
-    } catch {
-      case iae: IllegalArgumentException => logger.error("Null value passed to property")
-        executionStatus.status = false;
-      case ex: Exception => logger.error(ex.getMessage)
-        executionStatus.status = false
-    }
-    executionStatus
+    ExecutionStatus(true)
   }
 
   def deleteSetting(settingsToDelete: Map[String, String], relationName: String): ExecutionStatus = {
-   val executionStatus=new ExecutionStatus
-    try {
       withTx {
         neo => {
-          var genaralSettings = Map.empty[String, String];
           withTx { neo =>
             val settingNodes = getAllNodesWithLabel(lables.get("AS").toString)(neo)
             for (n <- settingNodes) {
@@ -131,7 +114,7 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
               while (iterator.hasNext) {
                 val relation: Relationship = iterator.next
                 if (relation.getType.name.equalsIgnoreCase(relationName)) {
-                  val node = relation.getEndNode;
+                  val node = relation.getEndNode
                   logger.info(settingsToDelete.toString())
                   logger.info(s" properties ${node.getAllProperties}")
                   settingsToDelete.foreach {
@@ -145,14 +128,7 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
             }
           }
         }
-      }
     }
-    catch {
-      case iae: IllegalArgumentException => logger.error(iae.getMessage, iae)
-        executionStatus.status=false
-      case ex: Exception => logger.error(ex.getMessage, ex)
-        executionStatus.status=false
-    }
-    executionStatus
+    ExecutionStatus(true)
   }
 }
