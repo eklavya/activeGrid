@@ -22,8 +22,8 @@ object Site {
       neo4JRepository.withTx {
         neo =>
           val node = neo4JRepository.createNode(siteLabel)(neo)
-          if (!site.siteName.isEmpty) node.setProperty("siteName", site.siteName.get)
-          if (!site.groupBy.isEmpty) node.setProperty("groupBy", site.groupBy.get)
+          if (site.siteName.nonEmpty) node.setProperty("siteName", site.siteName.get)
+          if (site.groupBy.nonEmpty) node.setProperty("groupBy", site.groupBy.get)
           node
       }
     }
@@ -41,9 +41,12 @@ object Site {
         try {
           val node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, siteLabel)) {
-            val site = new Site(Some(nodeId),
-              if (node.hasProperty("siteName")) Some(node.getProperty("siteName").asInstanceOf[String]) else None,
-              if (node.hasProperty("groupBy")) Some(node.getProperty("groupBy").asInstanceOf[String]) else None)
+            val site = new Site(
+              Some(nodeId),
+              neo4JRepository.getProperty[String](node, "siteName"),
+              neo4JRepository.getProperty[String](node, "groupBy")
+            )
+
             Some(site)
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $siteLabel")
