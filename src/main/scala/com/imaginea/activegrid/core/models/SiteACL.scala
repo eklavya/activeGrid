@@ -2,7 +2,7 @@ package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.discovery.models.{Instance, Site}
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.{NotFoundException, Node}
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 /**
@@ -56,62 +56,52 @@ object SiteACL {
       siteACLNode
     }
 
-    override def fromNeo4jGraph(nodeId: Long): SiteACL = {
+    override def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
 
-      try {
         val siteACLNode = Neo4jRepository.findNodeById(nodeId)
         logger.debug(s" SiteACL ${siteACLNode}")
 
-        val siteACLMap = Neo4jRepository.getProperties(siteACLNode, "name")
+        val siteACLMapOption = Neo4jRepository.getProperties(siteACLNode, "name")
+        logger.debug(s" is SiteACL entity ${siteACLMapOption}")
 
-        val siteNode = Neo4jRepository.getNodesWithRelation(siteACLNode, hasSite)
-        val siteList: List[Site] = siteNode.map(child => {
-          logger.debug(s" Site -> SiteACL ${child}")
-          val site: Site = null
-          site.fromNeo4jGraph(child.getId)
+        siteACLMapOption.map( siteACLMap =>{
+          val siteNode: List[Node] = Neo4jRepository.getNodesWithRelation(siteACLNode, hasSite)
+          val siteList: List[Site] = siteNode.map(child => {
+            logger.debug(s" Site -> SiteACL ${child}")
+            val site: Site = null
+            site.fromNeo4jGraph(child.getId)
+          }).flatten
+
+          val site = siteList match {
+            case Nil => None
+            case (x :: xs) => Some(x)
+          }
+
+          val instanceNodes = Neo4jRepository.getNodesWithRelation(siteACLNode, hasInstances)
+          val instances = instanceNodes.map(child => {
+            logger.debug(s" Instance -> SiteACL ${child}")
+            val instance: Instance = null
+            instance.fromNeo4jGraph(child.getId)
+          }).flatten
+
+          val groupNodes = Neo4jRepository.getNodesWithRelation(siteACLNode, hasGroups)
+          val groups = groupNodes.map(child => {
+            logger.debug(s"UserGroup -> SiteACL ${child}")
+            val group: UserGroup = null
+            group.fromNeo4jGraph(child.getId)
+          }).flatten
+
+          val userGroup = SiteACL(
+            id = Some(siteACLNode.getId),
+            name = siteACLMap.get("name").get.asInstanceOf[String],
+            site = site,
+            instances = instances,
+            groups = groups
+          )
+          logger.debug(s"UserGroup - ${userGroup}")
+          userGroup
         })
 
-        val site = siteList match {
-          case Nil => None
-          case (x :: xs) => Some(x)
-        }
-
-        val instanceNodes = Neo4jRepository.getNodesWithRelation(siteACLNode, hasInstances)
-        val instances = instanceNodes.map(child => {
-          logger.debug(s" Instance -> SiteACL ${child}")
-          val instance: Instance = null
-          instance.fromNeo4jGraph(child.getId)
-        })
-
-        val groupNodes = Neo4jRepository.getNodesWithRelation(siteACLNode, hasGroups)
-        val groups = groupNodes.map(child => {
-          logger.debug(s"UserGroup -> SiteACL ${child}")
-          val group: UserGroup = null
-          group.fromNeo4jGraph(child.getId)
-        })
-
-        val userGroup = SiteACL(
-          id = Some(siteACLNode.getId),
-          name = siteACLMap.get("name").get.asInstanceOf[String],
-          site = site,
-          instances = instances,
-          groups = groups
-        )
-        logger.debug(s"UserGroup - ${userGroup}")
-        userGroup
-      } catch {
-        case ex: NodePropertyUnavailable => {
-          //Handling Exception: NODE has no property with propertyKey="name"
-          logger.error(ex.getMessage)
-          throw new NoDataFound(ex.getMessage)
-        }
-        case x: NotFoundException =>
-          throw new NoDataFound("No record found for UserGroup")
-        case ex: Exception => {
-          logger.error(ex.getMessage)
-          throw ex
-        }
-      }
     }
   }
 

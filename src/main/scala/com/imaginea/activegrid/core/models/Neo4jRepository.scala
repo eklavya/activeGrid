@@ -32,7 +32,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     logger.debug(s"result size ${nodesIterator}  - ${nodesIterator.size}")
     nodesIterator.size match {
       case x if x > 0 => nodesIterator.toList.head
-      case _ => throw new NoDataFound(s"Unable to Find node - ${label} with ${propertyKey} property")
+      case _ => throw new NotFoundException(s"Unable to Find node - ${label} with ${propertyKey} property")
     }
   }
 
@@ -81,14 +81,15 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     getAllNodesWithLabel(label)(neo).toList
   }
 
-  def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
-      // Validating the availability of property in the node
-      keys.foreach(key => if(!node.hasProperty(key)){
-        throw new NodePropertyUnavailable(s" ${key} Property is not available in ${node.getId}")
-      })
-      keys.map( key => {
+  def getProperties(node: Node, keys: String*): Option[Map[String, Any]] = withTx { neo =>
+    // Validating the availability of property in the node
+    if(keys.forall( key => node.hasProperty(key))){
+      Some(keys.map(key => {
         key -> node.getProperty(key)
-      }).toMap
+      }).toMap)
+    } else{
+      None
+    }
   }
 
   /**
@@ -122,7 +123,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
     val node = findNodeById(nodeId)
-    //TODO: need to delete relations before deleting node
     val relations = node.getRelationships(Direction.OUTGOING)
     logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
     val relationsIterator = relations.iterator()
@@ -157,7 +157,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       },
       result => {
         val node = result._1
-        //TODO: need to delete relations before deleting node
         val relations = node.getRelationships(Direction.OUTGOING)
         logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
         val relationsIterator = relations.iterator()
@@ -197,7 +196,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
    */
   def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>
 
-    // get realtion with parent  (incoming relations)
+    // get relation with parent  (incoming relations)
     // delete incoming
     // delete node
     val node = getNodeById(nodeId)
@@ -224,8 +223,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getNodesWithRelation(fromNode: Node, relationLabel: String): List[Node] = withTx { neo =>
     logger.debug(s"Checking for the child's of ${fromNode}  with relation ${relationLabel}")
     val relType = DynamicRelationshipType.withName(relationLabel)
-    //val relations = fromNode.getRelationships(relType, Direction.OUTGOING).iterator()
-    //val childNodes: scala.collection.mutable.ListBuffer[Node] = scala.collection.mutable.ListBuffer()
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 

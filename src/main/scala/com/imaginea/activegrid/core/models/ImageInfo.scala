@@ -32,7 +32,6 @@ object ImageInfo {
 
     override def toNeo4jGraph(entity: ImageInfo): Node = {
       logger.debug(s"toGraph for Image ${imageInfo}")
-      // TODO: Image fields
       val map = Map("imageId" -> entity.imageId.getOrElse("")
         , "state" -> entity.state.getOrElse("")
         , "ownerId" -> entity.ownerId.getOrElse(""))
@@ -42,9 +41,8 @@ object ImageInfo {
       node
     }
 
-    //TODO : Change the Empty string
-    override def fromNeo4jGraph(nodeId: Long): ImageInfo = {
-      ImageInfo(id = None, publicValue = false)
+    override def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
+      Some(ImageInfo(id = None, publicValue = false))
     }
   }
 

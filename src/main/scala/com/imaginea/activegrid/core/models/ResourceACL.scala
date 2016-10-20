@@ -26,14 +26,14 @@ object ResourceACL {
       Neo4jRepository.saveEntity[ResourceACL](label,entity.id,resourceMap)
     }
 
-    override def fromNeo4jGraph(nodeId: Long): ResourceACL = {
+    override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = {
       val node = Neo4jRepository.findNodeById(nodeId)
-          val map = Neo4jRepository.getProperties(node, "resources", "permission", "resourceIds")
-          ResourceACL(Some(node.getId)
-            , map.get("resources").get.asInstanceOf[String]
-            , map.get("permission").get.asInstanceOf[String]
-            , map.get("resourceIds").get.asInstanceOf[Array[Long]])
-      }
+      Neo4jRepository.getProperties(node, "resources", "permission", "resourceIds")
+        .map(map => ResourceACL(Some(node.getId)
+          , map.get("resources").get.asInstanceOf[String]
+          , map.get("permission").get.asInstanceOf[String]
+          , map.get("resourceIds").get.asInstanceOf[Array[Long]])).orElse(None)
+    }
   }
 
 }

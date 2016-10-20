@@ -56,22 +56,23 @@ object KeyPairInfo {
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): KeyPairInfo = {
+    override def fromNeo4jGraph(nodeId: Long): Option[KeyPairInfo] = {
       val node = Neo4jRepository.findNodeById(nodeId)
-      val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
-
-      val keyPairInfo = KeyPairInfo(
-        Some(node.getId),
-        map.get("keyName").get.asInstanceOf[String],
-        Some(map.get("keyFingerprint").get.asInstanceOf[String]),
-        Some(map.get("keyMaterial").get.asInstanceOf[String]),
-        Some(map.get("filePath").get.asInstanceOf[String]),
-        map.get("status").get.asInstanceOf[String],
-        Some(map.get("defaultUser").get.asInstanceOf[String]),
-        Some(map.get("passPhrase").get.asInstanceOf[String])
-      )
-      logger.debug(s"Key pair info - ${keyPairInfo}")
-      keyPairInfo
+      val mapOption = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
+      mapOption.map( map => {
+        val keyPairInfo = KeyPairInfo(
+          Some(node.getId),
+          map.get("keyName").get.asInstanceOf[String],
+          Some(map.get("keyFingerprint").get.asInstanceOf[String]),
+          Some(map.get("keyMaterial").get.asInstanceOf[String]),
+          Some(map.get("filePath").get.asInstanceOf[String]),
+          map.get("status").get.asInstanceOf[String],
+          Some(map.get("defaultUser").get.asInstanceOf[String]),
+          Some(map.get("passPhrase").get.asInstanceOf[String])
+        )
+        logger.debug(s"Key pair info - ${keyPairInfo}")
+        keyPairInfo
+      }).orElse(None)
     }
   }
 
