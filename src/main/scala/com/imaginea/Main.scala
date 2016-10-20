@@ -243,20 +243,17 @@ object Main extends App {
 
                 val name = strict.getName()
                 val value = strict.entity.getData().decodeString("UTF-8")
-                val optionalFileName = strict.getFilename()
-                logger.debug(s"--- $name  -- $value -- $optionalFileName")
+                val mayBeFile = strict.filename
+                logger.debug(s"--- $name  -- $value -- $mayBeFile")
 
-                if (optionalFileName.equals(java.util.Optional.empty)) {
-                  logger.debug(s" simple field")
-                  name match {
-                    case "userName" | "passPhase" => (name, value)
-                    case _ => (new String, new String)
-                  }
-                } else {
-                  logger.debug(s"reading from the file $optionalFileName")
-                  (name, value)
+                mayBeFile match {
+                  case Some(fileName) => (name, value)
+                  case None =>
+                    if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
+                      (name, value)
+                    else
+                      (new String, new String)
                 }
-
               }).filter{case (k, v) => !k.isEmpty}.toMap[String, String]
 
               val sshKeyContentInfo: SSHKeyContentInfo = SSHKeyContentInfo(dataMap)
