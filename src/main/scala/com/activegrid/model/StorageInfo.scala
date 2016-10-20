@@ -24,7 +24,7 @@ object StorageInfo {
       Some(StorageInfo(Some(nodeId), used, total))
     }
     else {
-      logger.warn(s"could not get graph properties of StorageInfo node with ${nodeId}")
+      logger.warn(s"could not get graph properties of StorageInfo node with $nodeId")
       None
     }
   }

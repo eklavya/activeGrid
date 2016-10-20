@@ -31,7 +31,7 @@ object InstanceConnection {
       Some(InstanceConnection(Some(nodeId), sourceNodeId, targetNodeId, portRanges))
     }
     else {
-      logger.warn(s"could not get graph properties for node with ${nodeId}")
+      logger.warn(s"could not get graph properties for node with $nodeId")
       None
     }
   }

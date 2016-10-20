@@ -100,7 +100,7 @@ object Instance {
         tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers))
     }
     else {
-      logger.warn(s"could not get graph properties for Instance node with ${nodeId}")
+      logger.warn(s"could not get graph properties for Instance node with $nodeId")
       None
     }
 
