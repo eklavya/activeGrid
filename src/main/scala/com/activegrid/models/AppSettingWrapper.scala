@@ -16,13 +16,11 @@ class AppSettingWrapper {
   val appSettingWrapper = new AppSettingsNeo4jWrapper
 
   def addSettings(appSettings: AppSettings): Future[ExecutionStatus] = Future {
-    val executionStatus=new ExecutionStatus
     val maybeNode = appSettingWrapper.toGraph(appSettings)
     maybeNode match {
-      case Some(node) =>  executionStatus.status = true
-      case _ => executionStatus.status = false
+      case Some(node) =>  ExecutionStatus(true)
+      case _ => ExecutionStatus(false)
     }
-    executionStatus
   }
 
   def updateSettings(settingsMap: Map[String, String]): Future[ExecutionStatus] = Future {

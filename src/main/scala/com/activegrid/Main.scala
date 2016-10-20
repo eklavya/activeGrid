@@ -10,10 +10,9 @@ import com.activegrid.controllers.{AppSettingsController, LogConfigUpdateControl
 
 object Main extends App {
 
-
-  implicit val system = ActorSystem();
+  implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
-  implicit val executionContext = system.dispatcher;
+  implicit val executionContext = system.dispatcher
 
   val appCntrl = new AppSettingsController()
   val loggerCntrl = new LogConfigUpdateController()
