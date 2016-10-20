@@ -34,12 +34,12 @@ object APMServerDetails {
           if (!aPMServerDetails.name.isEmpty) node.setProperty("name", aPMServerDetails.name)
           node.setProperty("serverUrl", aPMServerDetails.serverUrl)
           node.setProperty("provider", aPMServerDetails.provider.toString)
-          if (!aPMServerDetails.headers.isEmpty) {
+          if (aPMServerDetails.headers.nonEmpty) {
             val headersNode = neo4JRepository.createNode(headersLabel)(neo)
             aPMServerDetails.headers.get.foreach { case (key, value) => headersNode.setProperty(key, value) }
             createRelationShip(node, headersNode, apmServer_header_relation)
           }
-          if (!aPMServerDetails.monitoredSite.isEmpty) {
+          if (aPMServerDetails.monitoredSite.nonEmpty) {
             val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph
             createRelationShip(node, siteNode, apmServer_site_relation)
           }
@@ -83,8 +83,15 @@ object APMServerDetails {
                   relationship.getEndNode.getAllProperties.map { case (key, value) => header.put(key.toString, value.toString) }
               }
             }
-            val aPMServerDetails1 = new APMServerDetails(Some(node.getId), node.getProperty("name").asInstanceOf[String], node.getProperty("serverUrl").asInstanceOf[String]
-              , siteEntity, APMProvider.toProvider(node.getProperty("provider").asInstanceOf[String]), if (header.nonEmpty) Some(header.toMap) else None)
+            val aPMServerDetails1 = new APMServerDetails(
+              Some(node.getId),
+              neo4JRepository.getProperty[String](node, "name").get,
+              neo4JRepository.getProperty[String](node, "serverUrl").get,
+              siteEntity,
+              APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
+              if (header.nonEmpty) Some(header.toMap) else None
+            )
+
             Some(aPMServerDetails1)
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $apmServerDetailsLabel")
