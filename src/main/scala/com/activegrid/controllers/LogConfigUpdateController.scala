@@ -21,7 +21,7 @@ class LogConfigUpdateController {
     path("logs" / "level") {
       put {
         entity(as[String]) { level =>
-          val saved: Future[String] = cfgUpdater.setLogLevel(cfgUpdater.ROOT, level)
+          val saved = cfgUpdater.setLogLevel(cfgUpdater.ROOT, level)
           onComplete(saved) {
             case util.Success(saved) => complete(StatusCodes.OK, "Settings saved successfully")
             case util.Failure(ex) =>
@@ -38,7 +38,7 @@ class LogConfigUpdateController {
     path("logs" / "level") {
       get {
         entity(as[String]) { level =>
-          val loglevel: Future[String] = cfgUpdater.getLogLevel(level)
+          val loglevel = cfgUpdater.getLogLevel(level)
           onComplete(loglevel) {
             case util.Success(loglevel) => complete(StatusCodes.OK, "Settings saved successfully")
             case util.Failure(ex) =>
