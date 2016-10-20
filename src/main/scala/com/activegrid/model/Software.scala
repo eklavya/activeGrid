@@ -30,7 +30,7 @@ object Software {
       Some(Software(Some(nodeId), version, name, provider, downloadURL, port, processNames, discoverApplications))
     }
     else {
-      logger.warn(s"could not get graph properties for node with ${nodeId}")
+      logger.warn(s"could not get graph properties for node with $nodeId")
       None
     }
   }

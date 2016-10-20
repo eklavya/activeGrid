@@ -12,7 +12,7 @@ import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
-
+import scala.util.{Success,Failure}
 import scala.concurrent.Future
 
 object Main {
@@ -117,8 +117,8 @@ object Main {
             Page[ImageInfo](imageInfoList)
           }
           onComplete(listOfImages) {
-            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) =>
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
               logger.error(s"Unable to Retrieve ImageInfo List; Failed with ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List")
           }
@@ -131,8 +131,8 @@ object Main {
               "Successfully added ImageInfo"
             }
             onComplete(buildImage) {
-              case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-              case util.Failure(ex) =>
+              case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case Failure(ex) =>
                 logger.error(s"Unable to Save Image; Failed with ${ex.getMessage}", ex)
                 complete(StatusCodes.BadRequest, "Unable to Save Image")
             }
@@ -145,8 +145,8 @@ object Main {
             "Successfully deleted ImageInfo"
           }
           onComplete(deleteImages) {
-            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) =>
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
               logger.error(s"Unable to Delete Image; Failed with ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, "Unable to Delete Image")
           }
@@ -168,8 +168,8 @@ object Main {
             }
           }
           onComplete(listOfInstanceFlavors) {
-            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) =>
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
               logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, "Unable to get List of Instance Flavors")
           }
@@ -188,8 +188,8 @@ object Main {
             Page[Instance](instanceList)
           }
           onComplete(listOfAllInstanceNodes) {
-            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) =>
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
               logger.error(s"Unable to get Instance nodes; Failed with ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Unable to get Instance nodes")
           }
@@ -201,8 +201,8 @@ object Main {
             Page[Instance](List.empty[Instance])
           }
           onComplete(topology) {
-            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) =>
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
               logger.error(s"Unable to get Instance nodes; Failed with ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Unable to get Instance nodes")
           }
@@ -226,8 +226,8 @@ object Main {
             }
           }
           onComplete(nodeInstance) {
-            case util.Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case util.Failure(ex) =>
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
               logger.error(s"Unable to get Instance with name $name; Failed with ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Unable to get Instance with name $name")
           }

@@ -49,7 +49,7 @@ object ImageInfo {
       Some(ImageInfo(Some(nodeId), imageId, state, ownerId, publicValue, architecture, imageType, platform, imageOwnerAlias, name, description, rootDeviceType, rootDeviceName, version))
     }
     else {
-      logger.warn(s"could not get graph properties for ImageInfo node with ${nodeId}")
+      logger.warn(s"could not get graph properties for ImageInfo node with $nodeId")
       None
     }
   }
