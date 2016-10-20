@@ -1,6 +1,7 @@
 package com.activegrid.neo4j
 
 import com.activegrid.entities.AppSettings
+import com.activegrid.models.ExecutionStatus
 import com.activegrid.utils.Utils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.{Node, Relationship}
@@ -80,8 +81,8 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
     AppSettings(genaralSettings.toMap, authSettings.toMap)
   }
 
-  def updateSettings(settingsMap: Map[String, String], relationName: String): String = {
-    val msg = new StringBuilder("success")
+  def updateSettings(settingsMap: Map[String, String], relationName: String): ExecutionStatus = {
+    val executionStatus= new ExecutionStatus;
     try {
       withTx {
         neo => {
@@ -109,22 +110,15 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
       }
     } catch {
       case iae: IllegalArgumentException => logger.error("Null value passed to property")
-        msg.append("failed")
+        executionStatus.status = false;
       case ex: Exception => logger.error(ex.getMessage)
-        msg.append("failed")
-
+        executionStatus.status = false
     }
-    if (msg.toString().contains("failed")) {
-      "FAILED"
-    }
-    else {
-      "SUCCESS"
-    }
-
+    executionStatus
   }
 
-  def deleteSetting(settingsToDelete: Map[String, String], relationName: String): String = {
-    val msg = new StringBuilder;
+  def deleteSetting(settingsToDelete: Map[String, String], relationName: String): ExecutionStatus = {
+   val executionStatus=new ExecutionStatus
     try {
       withTx {
         neo => {
@@ -155,13 +149,10 @@ class AppSettingsNeo4jWrapper extends Neo4JRepo[AppSettings] with DBWrapper {
     }
     catch {
       case iae: IllegalArgumentException => logger.error(iae.getMessage, iae)
-        msg.append("failed")
+        executionStatus.status=false
       case ex: Exception => logger.error(ex.getMessage, ex)
-        msg.append("failed")
+        executionStatus.status=false
     }
-    if (msg.toString().contains("failed"))
-      "FAILED"
-    else
-      "SUCCESS"
+    executionStatus
   }
 }
