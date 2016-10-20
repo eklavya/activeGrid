@@ -24,7 +24,7 @@ object PortRange {
       Some(PortRange(Some(nodeId), fromPort, toPort))
     }
     else {
-      logger.warn(s"could not get graph properties for PortRange node with ${nodeId}")
+      logger.warn(s"could not get graph properties for PortRange node with $nodeId")
       None
     }
   }
