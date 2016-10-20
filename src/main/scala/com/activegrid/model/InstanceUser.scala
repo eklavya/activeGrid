@@ -25,7 +25,7 @@ object InstanceUser {
       Some(InstanceUser(Some(nodeId), userName, publicKeys))
     }
     else {
-      logger.warn(s"could not get graph properties for node with ${nodeId}")
+      logger.warn(s"could not get graph properties for node with $nodeId")
       None
     }
   }
