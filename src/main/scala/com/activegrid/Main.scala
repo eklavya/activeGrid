@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.util._
 
 object Main extends App with JsonSupport {
 
@@ -29,8 +30,8 @@ object Main extends App with JsonSupport {
           onComplete(Future {
             appsetting.toNeo4jGraph
           }) {
-            case util.Success(response) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) =>
+            case Success(response) => complete(StatusCodes.OK, "Done")
+            case Failure(exception) =>
               logger.error(s"Unable to save App Settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save App Settings")
           }
@@ -42,12 +43,12 @@ object Main extends App with JsonSupport {
         AppSettings.getAppSettingNode.flatMap(node => AppSettings.fromNeo4jGraph(node.getId))
       }
       onComplete(appSettings) {
-        case util.Success(response) =>
+        case Success(response) =>
           response match {
             case Some(appsettings) => complete(StatusCodes.OK, appsettings)
             case None => complete(StatusCodes.BadRequest, "Unable to get the App Settings")
           }
-        case util.Failure(exception) =>
+        case Failure(exception) =>
           logger.error(s"Unable to get App Settings ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable to get App Settings")
       }
@@ -60,8 +61,8 @@ object Main extends App with JsonSupport {
             AppSettings.updateAppSettings(setting, "Has_Settings")
           }
           onComplete(response) {
-            case util.Success(responseMessage) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) =>
+            case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+            case Failure(exception) =>
               logger.error(s"Unable to save the settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save the settings")
           }
@@ -75,8 +76,8 @@ object Main extends App with JsonSupport {
             AppSettings.updateAppSettings(setting, "Has_AuthSettings")
           }
           onComplete(response) {
-            case util.Success(responseMessage) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) =>
+            case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+            case Failure(exception) =>
               logger.error(s"Unable to save the Auth settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save the Auth settings")
           }
@@ -88,8 +89,8 @@ object Main extends App with JsonSupport {
         AppSettings.getAppSettingNode.flatMap(node => AppSettings.fromNeo4jGraph(node.getId))
       }
       onComplete(appSettings) {
-        case util.Success(response) => complete(StatusCodes.OK, response)
-        case util.Failure(exception) =>
+        case Success(response) => complete(StatusCodes.OK, response)
+        case Failure(exception) =>
           logger.error(s"Unable to fetch settings ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable to fetch the settings")
       }
@@ -101,8 +102,8 @@ object Main extends App with JsonSupport {
           AppSettings.deleteSettings(list, "Has_Settings")
         }
         onComplete(isDeleted) {
-          case util.Success(response) => complete(StatusCodes.OK, "Done")
-          case util.Failure(exception) =>
+          case Success(response) => complete(StatusCodes.OK, "Done")
+          case Failure(exception) =>
             logger.error(s"Unable to delete settings ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to delete  settings")
         }
@@ -113,8 +114,8 @@ object Main extends App with JsonSupport {
       entity(as[String]) {
         level =>
           onComplete(logLevelUpdater.setLogLevel(logLevelUpdater.ROOT, level)) {
-            case util.Success(response) => complete(StatusCodes.OK, "Done")
-            case util.Failure(exception) =>
+            case Success(response) => complete(StatusCodes.OK, "Done")
+            case Failure(exception) =>
               logger.error(s"Unable to update log level ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to update log level")
           }
@@ -124,8 +125,8 @@ object Main extends App with JsonSupport {
     get {
       val response = logLevelUpdater.getLogLevel(logLevelUpdater.ROOT)
       onComplete(response) {
-        case util.Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
-        case util.Failure(exception) =>
+        case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+        case Failure(exception) =>
           logger.error(s"Unable to get the log level ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable to get the log level")
       }
@@ -142,12 +143,12 @@ object Main extends App with JsonSupport {
           apmServerDetails.fromNeo4jGraph(serverDetailsEnity.getId)
         }
         onComplete(serverDetails) {
-          case util.Success(response) =>
+          case Success(response) =>
             response match {
               case Some(details) => complete(StatusCodes.OK, response)
               case None => complete(StatusCodes.BadRequest, "Unable to Save Server Details")
             }
-          case util.Failure(exception) =>
+          case Failure(exception) =>
             logger.error(s"Unable to save the APM Server Details ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to save the Server details")
         }
@@ -159,8 +160,8 @@ object Main extends App with JsonSupport {
         getAPMServers.toList
       }
       onComplete(serverDetailsList) {
-        case util.Success(response) => complete(StatusCodes.OK, response)
-        case util.Failure(exception) =>
+        case Success(response) => complete(StatusCodes.OK, response)
+        case Failure(exception) =>
           logger.error(s"Unable get the APM Server Details ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable get the APM server details")
       }
@@ -173,12 +174,12 @@ object Main extends App with JsonSupport {
           APMServerDetails.fromNeo4jGraph(serverId).flatMap(serverDetails => Some(serverDetails.serverUrl))
         }
         onComplete(serverDetailsList) {
-          case util.Success(response) =>
+          case Success(response) =>
             response match {
               case Some(detailsList) => complete(StatusCodes.OK, detailsList)
               case None => complete(StatusCodes.BadRequest, s"Unable to get URL with given ID : $serverId")
             }
-          case util.Failure(exception) =>
+          case Failure(exception) =>
             logger.error(s"Unable to get the APM Server Url ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to get the APM Server Url")
         }
@@ -191,19 +192,19 @@ object Main extends App with JsonSupport {
           val aPMServerDetails = getAPMServers
           logger.info(s"All Sever details : $aPMServerDetails")
           val list = aPMServerDetails.filter(server => {
-            if (!server.monitoredSite.isEmpty) server.monitoredSite.get.id == site.id else false
+            if (server.monitoredSite.nonEmpty) server.monitoredSite.get.id == site.id else false
           })
           logger.info(s"Filtered Server details : $list")
           Some(list.toList)
         }
       }
       onComplete(serverDetails) {
-        case util.Success(response) =>
+        case Success(response) =>
           response match {
             case Some(details) => complete(StatusCodes.OK, details)
             case None => complete(StatusCodes.BadRequest, s"Unable to get APMServer Details with given Site ID : $siteId")
           }
-        case util.Failure(exception) =>
+        case Failure(exception) =>
           logger.error(s"Unable to get the APM Server Details : $exception")
           complete(StatusCodes.BadRequest, s"Unable to get the APM Server Details with Site Id :$siteId")
       }
