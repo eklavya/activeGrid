@@ -1,4 +1,4 @@
-package com.activegrid.models
+package com.activegrid.entities
 
 /**
   * Created by sivag on 20/10/16.
