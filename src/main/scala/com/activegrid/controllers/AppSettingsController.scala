@@ -5,7 +5,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import com.activegrid.entities.AppSettings
-import com.activegrid.models.AppSettingWrapper
+import com.activegrid.models.{AppSettingWrapper, ExecutionStatus}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -28,7 +28,7 @@ class AppSettingsController {
     path("settings") {
       post {
         entity(as[AppSettings]) { appSettings =>
-          val maybeAdded: Future[String] = appSettingsWrapper.addSettings(appSettings)
+          val maybeAdded = appSettingsWrapper.addSettings(appSettings)
           onComplete(maybeAdded) {
             case util.Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
             case util.Failure(ex) =>
@@ -46,9 +46,12 @@ class AppSettingsController {
     path("settings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated: Future[String] = appSettingsWrapper.updateSettings(appSettings)
+          val maybeUpdated = appSettingsWrapper.updateSettings(appSettings)
           onComplete(maybeUpdated) {
-            case util.Success(save) => complete(StatusCodes.OK, "Settings updated successfully")
+            case util.Success(update)  => update.status match {
+              case true  => complete(StatusCodes.OK,"Updated successfully")
+              case false => complete(StatusCodes.OK,"Updated failed,,Retry!!")
+            }
             case util.Failure(ex) =>
               logger.error("Failed to update settings", ex)
               complete(StatusCodes.BadRequest, "Failed to update settings")
@@ -62,9 +65,12 @@ class AppSettingsController {
     path("authsettings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated: Future[String] = appSettingsWrapper.updateAuthSettings(appSettings)
+          val maybeUpdated = appSettingsWrapper.updateAuthSettings(appSettings)
           onComplete(maybeUpdated) {
-            case util.Success(save) => complete(StatusCodes.OK, "Authsettings updated successfully")
+            case util.Success(update)  => update.status match {
+              case true  => complete(StatusCodes.OK,"Updated successfully")
+              case false => complete(StatusCodes.OK,"Updated failed,,Retry!!")
+            }
             case util.Failure(ex) =>
               logger.error("Failed to update settings", ex)
               complete(StatusCodes.BadRequest, "Authsetting updation  failed.")
@@ -78,9 +84,12 @@ class AppSettingsController {
     path("settings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeDeleted: Future[String] = appSettingsWrapper.deleteSettings(appSettings)
+          val maybeDeleted = appSettingsWrapper.deleteSettings(appSettings)
           onComplete(maybeDeleted) {
-            case util.Success(save) => complete(StatusCodes.OK, "Settings deleted successfully")
+            case util.Success(delete)  => delete.status match {
+              case true  => complete(StatusCodes.OK,"Deleted successfully")
+              case false => complete(StatusCodes.OK,"Deletion failed,,Retry!!")
+            }
             case util.Failure(ex) =>
               logger.error("Delete operation failed", ex)
               complete(StatusCodes.BadRequest, "Delete operation failed.")
@@ -105,9 +114,12 @@ class AppSettingsController {
     path("authsettings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeDelete: Future[String] = appSettingsWrapper.deleteAuthSettings(appSettings)
+          val maybeDelete = appSettingsWrapper.deleteAuthSettings(appSettings)
           onComplete(maybeDelete) {
-            case util.Success(save) => complete(StatusCodes.OK, "Deleted  succesfully")
+            case util.Success(delete)  => delete.status match {
+              case true  => complete(StatusCodes.OK,"Deleted successfully")
+              case false => complete(StatusCodes.OK,"Deletion failed,,Retry!!")
+            }
             case util.Failure(ex) =>
               logger.error("Delete operation failed", ex)
               complete(StatusCodes.BadRequest, "Delete operation failed.")
