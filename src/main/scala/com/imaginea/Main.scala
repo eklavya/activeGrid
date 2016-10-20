@@ -292,13 +292,7 @@ object Main extends App {
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
     User.fromNeo4jGraph(userId) match {
-      case Some(user) =>
-        val keysList: List[KeyPairInfo] = user.publicKeys
-        keysList match {
-          case keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-          case _ :: keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-          case _ => None
-        }
+      case Some(user) => user.publicKeys.dropWhile(_.id.get != keyId).headOption
       case None => None
     }
   }
