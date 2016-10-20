@@ -1,7 +1,6 @@
 package com.activegrid.neo4j
 
-import com.activegrid.entities.AppSettings
-import com.activegrid.models.ExecutionStatus
+import com.activegrid.entities.{AppSettings, ExecutionStatus}
 import com.activegrid.utils.Utils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.{Node, Relationship}
