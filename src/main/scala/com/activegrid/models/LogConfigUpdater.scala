@@ -6,13 +6,14 @@ package com.activegrid.models
 
 
 import org.apache.log4j._
+import org.neo4j.helpers.Exceptions
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class LogConfigUpdater {
 
-  val ROOT: String = "root"
+  val ROOT: String = "root" //
 
   def getLogger(loggerName: String): Logger = {
     loggerName match {
@@ -29,16 +30,18 @@ class LogConfigUpdater {
       null
   }
 
-  def setLogLevel(loggerName: String, tolevel: String): Future[String] = Future {
+  def setLogLevel(loggerName: String, tolevel: String): Future[ExecutionStatus] = Future {
     val log: Logger = getLogger(loggerName)
+    val executionStatus= new ExecutionStatus;
     if (log != null) {
       val level = Level.toLevel(tolevel)
       log.setLevel(level)
-      "success"
+     executionStatus.status=true
     }
     else {
-      "fail"
+      executionStatus.status=false
     }
+    executionStatus
 
   }
 }
