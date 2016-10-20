@@ -6,8 +6,8 @@ import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by babjik on 26/9/16.
-  */
+ * Created by babjik on 26/9/16.
+ */
 case class User(override val id: Option[Long]
                 , username: String
                 , password: String
@@ -46,31 +46,32 @@ object User {
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): User = {
+    override def fromNeo4jGraph(nodeId: Long): Option[User] = {
       val node = Neo4jRepository.findNodeById(nodeId)
-      val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+      val mapOption = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+      mapOption.map( map => {
+        val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
+        val keyPairInfo: KeyPairInfo = null
 
-      val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
-      val keyPairInfo: KeyPairInfo = null
+        val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
+          keyPairInfo.fromNeo4jGraph(keyPairNode.getId)
+        }).flatten
 
-      val keyPairInfos = keyPairInfoNodes.map(keyPairNode => {
-        keyPairInfo.fromNeo4jGraph(keyPairNode.getId)
-      })
+        val user = User(Some(node.getId),
+          map.get("username").get.asInstanceOf[String],
+          map.get("password").get.asInstanceOf[String],
+          map.get("email").get.asInstanceOf[String],
+          map.get("uniqueId").get.asInstanceOf[String],
+          keyPairInfos,
+          map.get("accountNonExpired").get.asInstanceOf[Boolean],
+          map.get("accountNonLocked").get.asInstanceOf[Boolean],
+          map.get("credentialsNonExpired").get.asInstanceOf[Boolean],
+          map.get("enabled").get.asInstanceOf[Boolean],
+          map.get("displayName").get.asInstanceOf[String])
 
-      val user = User(Some(node.getId),
-        map.get("username").get.asInstanceOf[String],
-        map.get("password").get.asInstanceOf[String],
-        map.get("email").get.asInstanceOf[String],
-        map.get("uniqueId").get.asInstanceOf[String],
-        keyPairInfos,
-        map.get("accountNonExpired").get.asInstanceOf[Boolean],
-        map.get("accountNonLocked").get.asInstanceOf[Boolean],
-        map.get("credentialsNonExpired").get.asInstanceOf[Boolean],
-        map.get("enabled").get.asInstanceOf[Boolean],
-        map.get("displayName").get.asInstanceOf[String])
-
-      logger.debug(s"user - ${user}")
-      user
+        logger.debug(s"user - ${user}")
+        user
+      }).orElse(None)
     }
   }
 

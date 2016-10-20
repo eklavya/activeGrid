@@ -63,13 +63,13 @@ object Instance {
     }
 
 
-    override def fromNeo4jGraph(nodeId: Long): Instance = {
+    override def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
       val node = Neo4jRepository.findNodeById(nodeId)
 
         logger.debug(s" UserGroupProxy ${node}")
 
-        val instanceMap = Neo4jRepository.getProperties(node, "instanceId","name","state","platform","architecture","publicDnsName")
-
+        val instanceMapOption = Neo4jRepository.getProperties(node, "instanceId","name","state","platform","architecture","publicDnsName")
+      instanceMapOption.map(instanceMap => {
         val instance = Instance(
           id = Some(node.getId),
           instanceId = instanceMap.get("instanceId").get.asInstanceOf[String],
@@ -81,6 +81,7 @@ object Instance {
         )
         logger.debug(s"InstanceMap - ${instanceMap}")
         instance
+      }).orElse(None)
     }
   }
 }

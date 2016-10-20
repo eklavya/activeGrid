@@ -7,15 +7,33 @@ package com.imaginea.activegrid.core.models
 
 sealed trait ResourceType {
   def name: String
+
   override def toString: String = name
 }
 
-case object SiteResource extends ResourceType { val name = "Site" }
-case object WorkflowResource extends ResourceType { val name = "Workflow" }
-case object InstanceResource extends ResourceType { val name = "Instance" }
-case object UserResource extends ResourceType { val name = "User"}
-case object UserGroupResource extends ResourceType { val name = "UserGroup"}
-case object AllResource extends ResourceType { val name = "All" }
+case object SiteResource extends ResourceType {
+  val name = "Site"
+}
+
+case object WorkflowResource extends ResourceType {
+  val name = "Workflow"
+}
+
+case object InstanceResource extends ResourceType {
+  val name = "Instance"
+}
+
+case object UserResource extends ResourceType {
+  val name = "User"
+}
+
+case object UserGroupResource extends ResourceType {
+  val name = "UserGroup"
+}
+
+case object AllResource extends ResourceType {
+  val name = "All"
+}
 
 object ResourceType {
   implicit def toResourceType(name: String): ResourceType = name match {

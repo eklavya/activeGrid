@@ -1,9 +1,7 @@
 package com.imaginea.activegrid.core.models
 
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.{NotFoundException, Node}
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 
@@ -37,8 +35,6 @@ object UserGroup {
       val map = Map("name" -> userGroup.name)
       val userGroupNode = Neo4jRepository.saveEntity[UserGroup](UserGroup.label, userGroup.id, map)
 
-      //val node = Neo4jRepository.saveEntity[KeyPairInfo](ResourceACLProtocol.label, userGroup.id, map)
-
       //Iterating the users and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with Users ${userGroup.users}")
       for {users <- userGroup.users
@@ -59,53 +55,41 @@ object UserGroup {
       userGroupNode
     }
 
-    override def fromNeo4jGraph(nodeId: Long): UserGroup = {
-      try {
+    override def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
+
         //findNodeById will fetch any node with the specified id
         val node = Neo4jRepository.findNodeById(nodeId)
         logger.debug(s" UserGroupProxy ${node}")
 
         // Fetching the UserGroup specific properties from the fetched node
         // Failure case can be mapped as No data found
-        val userGroupMap = Neo4jRepository.getProperties(node, "name")
+        val userGroupMapOption = Neo4jRepository.getProperties(node, "name")
 
-        val userNodes = Neo4jRepository.getNodesWithRelation(node, hasUsers)
-        val users = userNodes.map(child => {
-          logger.debug(s" UserGroup -> User node ${child}")
-          val user: User = null
-          user.fromNeo4jGraph(child.getId)
-        }).toSet
+        logger.debug(s" UserProxy get properties ${userGroupMapOption}")
+        userGroupMapOption.map(userGroupMap =>{
+          val userNodes = Neo4jRepository.getNodesWithRelation(node, hasUsers)
+          val users = userNodes.map(child => {
+            logger.debug(s" UserGroup -> User node ${child}")
+            val user: User = null
+            user.fromNeo4jGraph(child.getId)
+          }).flatten.toSet
 
-        val accessNodes = Neo4jRepository.getNodesWithRelation(node, hasResourceAccess)
-        val resources = accessNodes.map(child => {
-          logger.debug(s" UserGroup -> Resource node ${child}")
-          val resource: ResourceACL = null
-          resource.fromNeo4jGraph(child.getId)
-        }).toSet
+          val accessNodes = Neo4jRepository.getNodesWithRelation(node, hasResourceAccess)
+          val resources = accessNodes.map(child => {
+            logger.debug(s" UserGroup -> Resource node ${child}")
+            val resource: ResourceACL = null
+            resource.fromNeo4jGraph(child.getId)
+          }).flatten.toSet
 
-        val userGroup = UserGroup(
-          id = Some(node.getId),
-          name = userGroupMap.get("name").get.asInstanceOf[String],
-          users = Some(users),
-          accesses = Some(resources)
-        )
-        logger.debug(s"UserGroup - ${userGroup}")
-        userGroup
-      }
-      catch {
-        case ex: NodePropertyUnavailable => {
-          //Handling Exception: NODE has no property with propertyKey="name"
-          logger.error(ex.getMessage)
-          throw new NoDataFound(ex.getMessage)
-        }
-        case x: NotFoundException =>
-          throw new NoDataFound("Entity not found")
-        case ex: Exception => {
-          logger.error(ex.getMessage)
-          throw ex
-        }
-      }
+          val userGroup = UserGroup(
+            id = Some(node.getId),
+            name = userGroupMap.get("name").get.asInstanceOf[String],
+            users = Some(users),
+            accesses = Some(resources)
+          )
+          logger.debug(s"UserGroup - ${userGroup}")
+          userGroup
+        })
     }
   }
-
 }

@@ -16,12 +16,21 @@ case class APMServerDetails(override val id: Option[Long]
 
 sealed trait APMProvider {
   def name: String
+
   override def toString: String = name
 }
 
-case object Graphite extends APMProvider { val name = "GRAPHITE" }
-case object NewRelic extends APMProvider { val name = "NEWRELIC" }
-case object AppDynamics extends APMProvider { val name = "APPDYNAMICS" }
+case object Graphite extends APMProvider {
+  val name = "GRAPHITE"
+}
+
+case object NewRelic extends APMProvider {
+  val name = "NEWRELIC"
+}
+
+case object AppDynamics extends APMProvider {
+  val name = "APPDYNAMICS"
+}
 
 object APMProvider {
   implicit def toAPMProvider(name: String): APMProvider = name match {

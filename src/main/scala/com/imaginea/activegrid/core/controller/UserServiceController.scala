@@ -51,7 +51,6 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
 
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
 
-
   implicit val InstanceFormat = jsonFormat(Instance.apply, "id", "instanceId", "name", "state", "platform", "architecture", "publicDnsName")
   implicit val SiteFormat = jsonFormat(Site.apply, "id", "siteName", "siteName")
   implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
@@ -66,10 +65,25 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
           userGroup.fromNeo4jGraph(id)
         }
         onComplete(getUserGroup) {
-          case Success(result) => complete(StatusCodes.OK, result)
+          case Success(result) => result match {
+            case None => {
+              logger.debug(s"UserGroup Entity not found for requested id = ${id}")
+              complete(StatusCodes.NoContent, None)
+            }
+            case Some(entity) => {
+              logger.debug(s"UserGroup Entity found for requested id = ${id}",entity)
+              complete(StatusCodes.OK, entity)
+            }
+          }
           case Failure(ex) => ex match {
-            case x: ApplicationException => complete(StatusCodes.NoContent, None)
-            case x: Exception => complete(StatusCodes.BadRequest, s"Unable to fetch User group, Exception: ${ex.getMessage}")
+            case x: NotFoundException => {
+              logger.error(s"UserGroup Entity not found for requested id = ${id}",x)
+              complete(StatusCodes.NoContent, None)
+            }
+            case x: Exception => {
+              logger.error("Exception while performing UserGroup fromNeo4jGraph function: ",ex)
+              complete(StatusCodes.BadRequest, s"Unable to fetch User group, Exception: ${ex.getMessage}")
+            }
           }
         }
       } ~
@@ -92,7 +106,7 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
           val userGroups = Future {
             val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
             val userGroup: UserGroup = null
-            val listOfUserGroups = nodeList.map(node => userGroup.fromNeo4jGraph(node.getId))
+            val listOfUserGroups= nodeList.map(node => userGroup.fromNeo4jGraph(node.getId)).flatten
             Page[UserGroup](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups)
           }
           complete(userGroups)
@@ -125,10 +139,25 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
             siteAcl.fromNeo4jGraph(id)
           }
           onComplete(accessFuture) {
-            case Success(result) => complete(StatusCodes.OK, result)
+            case Success(result) => result match {
+              case None => {
+                logger.debug(s"SiteACL Entity not found for requested id = ${id}")
+                complete(StatusCodes.NoContent, None)
+              }
+              case Some(entity) => {
+                logger.debug(s"SiteACL Entity found for requested id = ${id}",entity)
+                complete(StatusCodes.OK, entity)
+              }
+            }
             case Failure(ex) => ex match {
-              case x: ApplicationException => complete(StatusCodes.NoContent, None)
-              case x: Exception => complete(StatusCodes.BadRequest, s"Unable to fetch User access for id = ${id}, Exception: ${ex.getMessage}")
+              case ex: NotFoundException => {
+                logger.error(s"SiteACL Entity not found for requested id = ${id}",ex)
+                complete(StatusCodes.NoContent, None)
+              }
+              case x: Exception => {
+                logger.error("Exception while performing SiteACL fromNeo4jGraph function: ",ex)
+                complete(StatusCodes.BadRequest, s"Unable to fetch User group, Exception: ${ex.getMessage}")
+              }
             }
           }
         }
@@ -144,7 +173,7 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
                 nodeList.map {
                   node =>
                     siteACL.fromNeo4jGraph(node.getId)
-                }
+                }.flatten
               Page[SiteACL](0, listOfUserGroups.size, listOfUserGroups.size, listOfUserGroups)
             }
             onComplete(accessFuture) {
@@ -167,7 +196,7 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
               }
             }
         }
-    }/* ~
+    } ~
     pathPrefix("users" / LongNumber) { userId =>
       pathPrefix("keys") {
         pathPrefix(LongNumber) { keyId =>
@@ -260,7 +289,7 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
       val getUsers = Future {
         val user: User = null
         val nodeList = Neo4jRepository.getNodesByLabel(User.label)
-        val listOfUsers = nodeList.map(node => user.fromNeo4jGraph(node.getId))
+        val listOfUsers = nodeList.map(node => user.fromNeo4jGraph(node.getId)).flatten
         Some(Page[User](0, listOfUsers.size, listOfUsers.size, listOfUsers))
       }
       onComplete(getUsers) {
@@ -278,25 +307,30 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
         }
       }
     }
-  }*/
+  }
 
   private def getKeyPairInfo(userId: Long): Page[KeyPairInfo] = {
-    val keysList: List[KeyPairInfo] = user.fromNeo4jGraph(userId).publicKeys
+    val keysList: List[KeyPairInfo] = user.fromNeo4jGraph(userId).map(_.publicKeys).getOrElse(List.empty)
     Page(0, keysList.size, keysList.size, keysList)
   }
 
   private def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    val keysList: List[KeyPairInfo] = user.fromNeo4jGraph(userId).publicKeys
+    val keysList: List[KeyPairInfo] =
+      user.fromNeo4jGraph(userId)
+        .map(_.publicKeys)
+        .map{
+          keysList => keysList.filter(key => key.id.contains(keyId))}
+        .getOrElse(List.empty)
 
     keysList match {
-      case keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-      case _ :: keyInfo :: _ if keyInfo.id.get.equals(keyId) => Some(keyInfo)
-      case _ => None
+      case Nil => None
+      case x::xs => Some(x)
     }
   }
 
   private def addKeyPair(userId: Long, sSHKeyContentInfo: SSHKeyContentInfo): Future[Page[KeyPairInfo]] = Future {
     FileUtils.createDirectories(UserUtils.getKeyDirPath(userId))
+
     val keysList = sSHKeyContentInfo.keyMaterials.map {
       case (keyName: String, keyMaterial: String) =>
         logger.debug(s" (${keyName}  --> (${keyMaterial}))")
@@ -308,6 +342,7 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
         UserUtils.addKeyPair(userId, keyPairInfo)
         keyPairInfo
     }.toList
+
     logger.debug(s"result from map ${keysList}")
     Page(0, keysList.size, keysList.size, keysList)
   }

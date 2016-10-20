@@ -29,12 +29,21 @@ case class PolicyCondition(
 
 sealed trait ConditionType {
   val name: String
+
   override def toString: String = name
 }
 
-case object GreaterThanCondition extends ConditionType { val name = "GREATER_THAN" }
-case object LessThanCondition extends ConditionType { val name = "LESSER_THAN" }
-case object EqualToCondition extends ConditionType { val name = "EQUAL_TO" }
+case object GreaterThanCondition extends ConditionType {
+  val name = "GREATER_THAN"
+}
+
+case object LessThanCondition extends ConditionType {
+  val name = "LESSER_THAN"
+}
+
+case object EqualToCondition extends ConditionType {
+  val name = "EQUAL_TO"
+}
 
 object ConditionType {
   implicit def toConditionType(name: String): ConditionType = name match {

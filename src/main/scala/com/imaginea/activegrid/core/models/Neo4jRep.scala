@@ -11,6 +11,6 @@ trait Neo4jRep[T] {
   def toNeo4jGraph(entity: T): Node
 
   /* Returning Option of Type to handle invalid nodeId */
-  def fromNeo4jGraph(nodeId: Long): T
+  def fromNeo4jGraph(nodeId: Long): Option[T]
 }
 

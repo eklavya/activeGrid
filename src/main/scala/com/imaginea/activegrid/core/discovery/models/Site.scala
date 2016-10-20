@@ -15,19 +15,7 @@ case class Site(override val id: Option[Long],
                  ) extends BaseEntity
 
 //TODO: The above case class is the Simple Site used to persist
-// Waiting for Site Service to bring the Site Entity case clas
-/*case class Site( override val id: Option[Long],
-                 siteName: String,
-                 instances: List[Instance] = List.empty,
-                 filters: List[Filter] = List.empty,
-                 keypairs: List[InstanceGroup] = List.empty,
-                 applications: List[Application] = List.empty,
-                 groupBy: String,
-                 loadBalancers: List[LoadBalancer] = List.empty,
-                 scalingGroups: List[ScalingGroup] = List.empty,
-                 reservedInstanceDetails: List[ReservedInstanceDetails] = List.empty,
-                 scalingPolicies: List[AutoScalingPolicy] = List.empty
-                 ) extends BaseEntity*/
+//It will be replaced once the SiteService up
 
 object Site {
   val label = "Site"
@@ -55,20 +43,21 @@ object Site {
     }
 
 
-    override def fromNeo4jGraph(nodeId: Long): Site = {
+    override def fromNeo4jGraph(nodeId: Long): Option[Site] = {
       val siteNode = Neo4jRepository.findNodeById(nodeId)
 
       logger.debug(s" SiteNode ${siteNode}")
 
-      val userGroupMap = Neo4jRepository.getProperties(siteNode, "name")
-
-      val site = Site(
-        id = Some(siteNode.getId),
-        siteName = userGroupMap.get("name").get.asInstanceOf[String],
-        groupBy = userGroupMap.get("groupBy").get.asInstanceOf[String]
-      )
-      logger.debug(s"Site - ${site}")
-      site
+      val userGroupMapOption = Neo4jRepository.getProperties(siteNode, "name")
+      userGroupMapOption.map(userGroupMap => {
+        val site = Site(
+          id = Some(siteNode.getId),
+          siteName = userGroupMap.get("name").get.asInstanceOf[String],
+          groupBy = userGroupMap.get("groupBy").get.asInstanceOf[String]
+        )
+        logger.debug(s"Site - ${site}")
+        site
+      }).orElse(None)
     }
   }
 
