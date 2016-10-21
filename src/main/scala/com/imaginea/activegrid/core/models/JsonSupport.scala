@@ -1,4 +1,4 @@
-package com.activegrid.models
+package com.imaginea.activegrid.core.models
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import org.slf4j.LoggerFactory
