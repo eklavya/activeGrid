@@ -17,7 +17,7 @@ object AppSettingsNeo4jWrapper extends DBWrapper {
   val labels: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings", "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def toNeo4jGraph(entity: AppSettings): Option[Node] = {
+  def toNeo4jGraph(entity: AppSettings): Node = {
     withTx {
       neo => {
         val generalSettings = createNode(labels("GS").toString)(neo)
@@ -27,17 +27,17 @@ object AppSettingsNeo4jWrapper extends DBWrapper {
         val appSettings = createNode(labels("AS").toString)(neo)
         appSettings --> labels("HGS").toString --> generalSettings
         appSettings --> labels("HAS").toString --> authSettings
-        Some(appSettings)
+        appSettings
       }
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): AppSettings = {
+  def fromNeo4jGraph(nodeId: Long): Option[AppSettings] = {
     withTx {
       neo => {
         withTx { neo =>
           val settingNodes = getAllNodesWithLabel(labels("AS").toString)(neo).toList
-          settingNodes.map { node => AppSettings(getSettingsByRelation(node, labels("HGS").toString), getSettingsByRelation(node, labels("HAS").toString)) }.head
+          settingNodes.map { node => AppSettings(getSettingsByRelation(node, labels("HGS").toString), getSettingsByRelation(node, labels("HAS").toString)) }.headOption
         }
       }
     }
