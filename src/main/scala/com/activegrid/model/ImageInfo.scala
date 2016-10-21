@@ -76,10 +76,6 @@ object ImageInfo {
         map("version").asInstanceOf[String])
       Some(imageInfo)
     } catch {
-      case nse: NoSuchElementException =>
-        logger.warn(nse.getMessage, nse)
-        None
-
       case ex: Exception =>
         logger.warn(ex.getMessage, ex)
         None
