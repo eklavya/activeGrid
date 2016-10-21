@@ -27,7 +27,7 @@ object ResourceACL {
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = {
-      val node = Neo4jRepository.findNodeById(nodeId)
+      val node = Neo4jRepository.findNodeById(label,nodeId)
       Neo4jRepository.getProperties(node, "resources", "permission", "resourceIds")
         .map(map => ResourceACL(Some(node.getId)
           , map.get("resources").get.asInstanceOf[String]

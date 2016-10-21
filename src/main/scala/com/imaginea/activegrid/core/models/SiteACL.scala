@@ -58,7 +58,7 @@ object SiteACL {
 
     override def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
 
-        val siteACLNode = Neo4jRepository.findNodeById(nodeId)
+        val siteACLNode = Neo4jRepository.findNodeById(label,nodeId)
         logger.debug(s" SiteACL ${siteACLNode}")
 
         val siteACLMapOption = Neo4jRepository.getProperties(siteACLNode, "name")

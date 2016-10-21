@@ -224,7 +224,7 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
 
               key match {
                 case Some(keyPairInfo) => {
-                  val status = Neo4jRepository.deleteChildNode(keyId)
+                  val status = Neo4jRepository.deleteChildNode(User.label,keyId)
                   status match {
                     case Some(false) | None => throw new Exception(s"No key pair found with id ${keyId}")
                     case Some(true) => // do nothing
@@ -265,7 +265,7 @@ class UserServiceController(implicit val executionContext: ExecutionContext) {
         }
       } ~ delete {
         val deleteUserFuture = Future {
-          Neo4jRepository.deleteEntity(userId)
+          Neo4jRepository.deleteEntity(User.label,userId)
         }
         onComplete(deleteUserFuture) {
           case Success(status) => complete(StatusCodes.OK, "Deleted succesfuly")

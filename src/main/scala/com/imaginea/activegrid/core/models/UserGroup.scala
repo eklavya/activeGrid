@@ -58,7 +58,7 @@ object UserGroup {
     override def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
 
         //findNodeById will fetch any node with the specified id
-        val node = Neo4jRepository.findNodeById(nodeId)
+        val node = Neo4jRepository.findNodeById(label,nodeId)
         logger.debug(s" UserGroupProxy ${node}")
 
         // Fetching the UserGroup specific properties from the fetched node

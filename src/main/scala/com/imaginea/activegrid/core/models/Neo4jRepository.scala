@@ -82,6 +82,10 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def getProperties(node: Node, keys: String*): Option[Map[String, Any]] = withTx { neo =>
+
+   /* val map: Map[String,Any] = (for(key <- keys if(node.hasProperty(key)))
+      yield (key -> node.getProperty(key))).toMap*/
+
     // Validating the availability of property in the node
     if(keys.forall( key => node.hasProperty(key))){
       Some(keys.map(key => {
@@ -91,7 +95,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       None
     }
   }
-
   /**
    * Finds the node with given node and property information
    * @param label
@@ -121,8 +124,8 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
    * @param nodeId
    */
 
-  def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
-    val node = findNodeById(nodeId)
+  def deleteEntity(label:String,nodeId: Long): Unit = withTx { implicit neo =>
+    val node = findNodeById(label,nodeId)
     val relations = node.getRelationships(Direction.OUTGOING)
     logger.debug(s"found relations for node ${nodeId} - relations ${relations}")
     val relationsIterator = relations.iterator()
@@ -135,9 +138,11 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     node.delete
   }
 
-  def findNodeById(id: Long): Node = withTx { implicit neo =>
+  def findNodeById(label:String ,id: Long): Node = withTx { implicit neo =>
     try {
-      getNodeById(id)
+      val node = getNodeById(id)
+      if(!node.hasLabel(label)) throw new NotFoundException(s"Requested $id of the node is belongs to $label")
+      node
     } catch {
       case e: NotFoundException => {
         logger.warn(s"node with Id ${id} is not found", e.getMessage)
@@ -194,7 +199,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
    * @param nodeId
    * @return
    */
-  def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>
+  def deleteChildNode(label:String,nodeId: Long): Option[Boolean] = withTx { implicit neo =>
 
     // get relation with parent  (incoming relations)
     // delete incoming
@@ -206,7 +211,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       incomingRelation.delete()
     })
 
-    deleteEntity(nodeId)
+    deleteEntity(label,nodeId)
     Some(true)
   }
 

@@ -64,7 +64,7 @@ object Instance {
 
 
     override def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
-      val node = Neo4jRepository.findNodeById(nodeId)
+      val node = Neo4jRepository.findNodeById(label,nodeId)
 
         logger.debug(s" UserGroupProxy ${node}")
 
