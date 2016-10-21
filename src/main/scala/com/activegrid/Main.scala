@@ -23,7 +23,7 @@ object Main extends App {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
-  implicit val appSettings = jsonFormat(AppSettings.apply,"settings","authSettings")
+  implicit val appSettings = jsonFormat(AppSettings.apply, "settings", "authSettings")
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
@@ -31,11 +31,13 @@ object Main extends App {
     path("settings") {
       post {
         entity(as[AppSettings]) { appSettings =>
-          val maybeAdded = Future { appSettings.toGraph(appSettings) }
+          val maybeAdded = Future {
+            appSettings.toGraph(appSettings)
+          }
           onComplete(maybeAdded) {
             case Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
             case Failure(ex) =>
-              logger.error("Error while save settings",ex)
+              logger.error("Error while save settings", ex)
               complete(StatusCodes.InternalServerError, "These is problem while processing request")
           }
 
@@ -46,7 +48,9 @@ object Main extends App {
   val settingGetRQ = pathPrefix("config") {
     path("settings") {
       get {
-        val allSettings = Future { AppSettingsNeo4jWrapper.fromNeo4jGraph(0L) }
+        val allSettings = Future {
+          AppSettingsNeo4jWrapper.fromNeo4jGraph(0L)
+        }
         onComplete(allSettings) {
           case Success(settings) =>
             complete(StatusCodes.OK, settings)
@@ -61,17 +65,17 @@ object Main extends App {
     path("settings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings,"GENERAL_SETTINGS")
+          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "GENERAL_SETTINGS")
           onComplete(maybeUpdated) {
-            case Success(update)  => update.status match {
-              case true  => complete(StatusCodes.OK,"Updated successfully")
-              case false => complete(StatusCodes.OK,"Updated failed,,Retry!!")
+            case Success(update) => update.status match {
+              case true => complete(StatusCodes.OK, "Updated successfully")
+              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
             }
             case Failure(ex) =>
               ex match {
-                case aie:IllegalArgumentException =>
+                case aie: IllegalArgumentException =>
                   logger.error("Update operation failed", ex)
-                  complete(StatusCodes.OK,"Failed to update settings")
+                  complete(StatusCodes.OK, "Failed to update settings")
                 case _ =>
                   logger.error("Update operation failed", ex)
                   complete(StatusCodes.InternalServerError, "These is problem while processing request")
@@ -86,17 +90,17 @@ object Main extends App {
     path("authsettings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings,"AUTH_SETTINGS")
+          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "AUTH_SETTINGS")
           onComplete(maybeUpdated) {
-            case Success(update)  => update.status match {
-              case true  => complete(StatusCodes.OK,"Updated successfully")
-              case false => complete(StatusCodes.OK,"Updated failed,,Retry!!")
+            case Success(update) => update.status match {
+              case true => complete(StatusCodes.OK, "Updated successfully")
+              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
             }
             case Failure(ex) =>
               ex match {
-                case aie:IllegalArgumentException =>
+                case aie: IllegalArgumentException =>
                   logger.error("Update operation failed", ex)
-                  complete(StatusCodes.OK,"Failed to update settings")
+                  complete(StatusCodes.OK, "Failed to update settings")
                 case _ =>
                   logger.error("Update operation failed", ex)
                   complete(StatusCodes.InternalServerError, "These is problem while processing request")
@@ -111,17 +115,17 @@ object Main extends App {
     path("settings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeDeleted = AppSettingsNeo4jWrapper.deleteSetting(appSettings,"GENERAL_SETTINGS")
+          val maybeDeleted = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "GENERAL_SETTINGS")
           onComplete(maybeDeleted) {
-            case Success(delete)  => delete.status match {
-              case true  => complete(StatusCodes.OK,"Deleted successfully")
-              case false => complete(StatusCodes.OK,"Deletion failed,,Retry!!")
+            case Success(delete) => delete.status match {
+              case true => complete(StatusCodes.OK, "Deleted successfully")
+              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
             }
             case Failure(ex) =>
               ex match {
-                case aie:IllegalArgumentException =>
+                case aie: IllegalArgumentException =>
                   logger.error("Delete operation failed", ex)
-                  complete(StatusCodes.OK,"Failed to delete settings")
+                  complete(StatusCodes.OK, "Failed to delete settings")
                 case _ =>
                   logger.error("Delete operation failed", ex)
                   complete(StatusCodes.InternalServerError, "These is problem while processing request")
@@ -136,17 +140,17 @@ object Main extends App {
     path("authsettings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeDelete = AppSettingsNeo4jWrapper.deleteSetting(appSettings,"AUTH_SETTINGS")
+          val maybeDelete = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "AUTH_SETTINGS")
           onComplete(maybeDelete) {
-            case Success(delete)  => delete.status match {
-              case true  => complete(StatusCodes.OK,"Deleted successfully")
-              case false => complete(StatusCodes.OK,"Deletion failed,,Retry!!")
+            case Success(delete) => delete.status match {
+              case true => complete(StatusCodes.OK, "Deleted successfully")
+              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
             }
             case Failure(ex) =>
               ex match {
-                case aie:IllegalArgumentException =>
+                case aie: IllegalArgumentException =>
                   logger.error("Delete operation failed", ex)
-                  complete(StatusCodes.OK,"Failed to delete settings")
+                  complete(StatusCodes.OK, "Failed to delete settings")
                 case _ =>
                   logger.error("Delete operation failed", ex)
                   complete(StatusCodes.InternalServerError, "These is problem while processing request")
