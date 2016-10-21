@@ -1,6 +1,6 @@
 package com.activegrid.utils
 
-import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.{Node, Relationship};
 
 
 class Utils {
@@ -10,6 +10,7 @@ class Utils {
       case (k, v) => n.setProperty(k, v);
     }
   }
+
 
   /**
     *
