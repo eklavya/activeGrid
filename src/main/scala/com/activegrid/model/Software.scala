@@ -25,10 +25,10 @@ object Software {
 
     override def toNeo4jGraph(software: Software): Option[Node] = {
       logger.debug(s"In toGraph for Software: $software")
-      val map = Map("version" -> software.version.getOrElse(None),
+      val map = Map("version" -> software.version,
         "name" -> software.name,
         "provider" -> software.provider,
-        "downloadURL" -> software.downloadURL.getOrElse(None),
+        "downloadURL" -> software.downloadURL,
         "port" -> software.port,
         "processNames" -> software.processNames.toArray,
         "discoverApplications" -> software.discoverApplications)
