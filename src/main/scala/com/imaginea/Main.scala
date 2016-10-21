@@ -17,6 +17,7 @@ import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 /**
   * Created by babjik on 22/9/16.
@@ -55,12 +56,12 @@ object Main extends App {
             getKeyById(userId, keyId)
           }
           onComplete(key) {
-            case util.Success(response) =>
+            case Success(response) =>
               response match {
                 case Some(keyPairInfo) => complete(StatusCodes.OK, keyPairInfo)
                 case None => complete(StatusCodes.BadRequest, "Unable to get the key")
               }
-            case util.Failure(ex) =>
+            case Failure(ex) =>
               logger.error(s"Unable to get the key, Reason: ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Unable to get the key")
           }
@@ -71,8 +72,8 @@ object Main extends App {
             getKeyById(userId, keyId).flatMap(key => {Neo4jRepository.deleteChildNode(keyId)})
           }
           onComplete(resposne) {
-            case util.Success(result) => complete(StatusCodes.OK, "Deleted Successfully")
-            case util.Failure(ex) =>
+            case Success(result) => complete(StatusCodes.OK, "Deleted Successfully")
+            case Failure(ex) =>
               logger.error(s"Failed delete, Message: ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Failed to delete")
           }
@@ -85,8 +86,8 @@ object Main extends App {
           }
         }
         onComplete(result) {
-          case util.Success(page) => complete(StatusCodes.OK, page)
-          case util.Failure(ex) =>
+          case Success(page) => complete(StatusCodes.OK, page)
+          case Failure(ex) =>
             logger.error(s"Failed get Users, Message: ${ex.getMessage}", ex)
             complete(StatusCodes.BadRequest, s"Failed get Users")
         }
@@ -110,8 +111,8 @@ object Main extends App {
             Page(resultKeys.toList)
           }
           onComplete(result) {
-            case util.Success(page) => complete(StatusCodes.OK, page)
-            case util.Failure(ex) =>
+            case Success(page) => complete(StatusCodes.OK, page)
+            case Failure(ex) =>
               logger.error(s"Failed to add keys, Message: ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Failed to add keys")
           }
@@ -122,12 +123,12 @@ object Main extends App {
         User.fromNeo4jGraph(userId)
       }
       onComplete(result) {
-        case util.Success(mayBeUser) =>
+        case Success(mayBeUser) =>
           mayBeUser match  {
             case Some(user) => complete(StatusCodes.OK, user)
             case None => complete(StatusCodes.BadRequest, s"Failed to get user with id $userId")
           }
-        case util.Failure(ex) =>
+        case Failure(ex) =>
           logger.error(s"Failed to get user, Message: ${ex.getMessage}", ex)
           complete(StatusCodes.BadRequest, s"Failed to get user, Message: ${ex.getMessage}")
       }
@@ -136,8 +137,8 @@ object Main extends App {
         Neo4jRepository.deleteEntity(userId)
       }
       onComplete(result) {
-        case util.Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
-        case util.Failure(ex) =>
+        case Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
+        case Failure(ex) =>
           logger.error(s"Failed to delete user, Message: ${ex.getMessage}", ex)
           complete(StatusCodes.BadRequest, s"Failed to delete user, Message: ${ex.getMessage}")
       }
@@ -161,8 +162,8 @@ object Main extends App {
           }
         }
         onComplete(result) {
-          case util.Success(page) => complete(StatusCodes.OK, page)
-          case util.Failure(ex) =>
+          case Success(page) => complete(StatusCodes.OK, page)
+          case Failure(ex) =>
             logger.error(s"Failed to get keys, Message: ${ex.getMessage}", ex)
             complete(StatusCodes.BadRequest, s"Failed to get keys")
         }
@@ -175,8 +176,8 @@ object Main extends App {
         Page[User](listOfUsers)
       }
       onComplete(result) {
-        case util.Success(page) => complete(StatusCodes.OK, page)
-        case util.Failure(ex) =>
+        case Success(page) => complete(StatusCodes.OK, page)
+        case Failure(ex) =>
           logger.error(s"Failed to get users, Message: ${ex.getMessage}", ex)
           complete(StatusCodes.BadRequest, s"Failed to get users")
       }
@@ -186,8 +187,8 @@ object Main extends App {
           user.toNeo4jGraph(user)
         }
         onComplete(result) {
-          case util.Success(status) => complete(StatusCodes.OK, "Successfully saved user")
-          case util.Failure(ex) =>
+          case Success(status) => complete(StatusCodes.OK, "Successfully saved user")
+          case Failure(ex) =>
             logger.error(s"Failed save user, Message: ${ex.getMessage}", ex)
             complete(StatusCodes.BadRequest, s"Failed save user")
         }
@@ -203,12 +204,12 @@ object Main extends App {
             Neo4jRepository.findNodeByLabelAndId("KeyPairInfo", keyId).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
           }
           onComplete(result) {
-            case util.Success(mayBekey) =>
+            case Success(mayBekey) =>
               mayBekey match {
                 case Some(key) => complete(StatusCodes.OK, key)
                 case None => complete(StatusCodes.BadRequest, s"failed to get key pair for id $keyId")
               }
-            case util.Failure(ex) =>
+            case Failure(ex) =>
               logger.error(s"Failed to get Key Pair, Message: ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Failed to get Key Pair")
           }
@@ -217,8 +218,8 @@ object Main extends App {
             Neo4jRepository.deleteChildNode(keyId)
           }
           onComplete(result) {
-            case util.Success(key) => complete(StatusCodes.OK, "Deleted Successfully")
-            case util.Failure(ex) =>
+            case Success(key) => complete(StatusCodes.OK, "Deleted Successfully")
+            case ailure(ex) =>
               logger.error(s"Failed to delete Key Pair, Message: ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Failed to delete Key Pair")
           }
@@ -231,8 +232,8 @@ object Main extends App {
           Page[KeyPairInfo](listOfKeys)
         }
         onComplete(result) {
-          case util.Success(page) => complete(StatusCodes.OK, page)
-          case util.Failure(ex) =>
+          case uuccess(page) => complete(StatusCodes.OK, page)
+          case Failure(ex) =>
             logger.error(s"Failed to get Keys, Message: ${ex.getMessage}", ex)
             complete(StatusCodes.BadRequest, s"Failed to get Keys")
         }
@@ -275,8 +276,8 @@ object Main extends App {
               Page[KeyPairInfo](addedKeyPairs)
             }
             onComplete(result) {
-              case util.Success(page) => complete(StatusCodes.OK, page)
-              case util.Failure(ex) =>
+              case Success(page) => complete(StatusCodes.OK, page)
+              case Failure(ex) =>
                 logger.error(s"Failed to update Keys, Message: ${ex.getMessage}", ex)
                 complete(StatusCodes.BadRequest, s"Failed to update Keys")
             }
