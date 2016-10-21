@@ -13,7 +13,7 @@ import scala.collection.JavaConversions._
 case class AppSettings(override val id: Option[Long], settings: Map[String, String], authSettings: Map[String, String]) extends BaseEntity
 
 object AppSettings {
-  val repo = Neo4jRepository
+  val repo = Neo4JRepository
   val labelName = "AppSettings"
   val settingsLableName = "Settings"
   val authSettingsLableName = "AuthSettings"
@@ -23,7 +23,7 @@ object AppSettings {
 
   implicit class AppSettingsImpl(entity: AppSettings) extends Neo4jRep[AppSettings] {
 
-    override def toNeo4jGraph(entity: AppSettings): Node = {
+    override def toNeo4jGraph: Node = {
       logger.info(s"Executing $getClass :: toNeo4jGraph")
       repo.withTx { neo =>
         val node: Node = repo.createNode(labelName)(neo)
@@ -35,6 +35,7 @@ object AppSettings {
         val authSettingsNode = repo.createNode(authSettingsLableName)(neo)
         entity.authSettings.foreach { case (key, value) => authSettingsNode.setProperty(key, value) }
         createRelationShip(node, authSettingsNode, authSettingsRelationName)
+
         node
       }
     }
