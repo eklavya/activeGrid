@@ -46,6 +46,10 @@ object Main extends App {
   implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
 
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
+  implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+  implicit val softwarePageFormat = jsonFormat4(Page[Software])
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val PageFormat = jsonFormat4(Page[ImageInfo])
 
 
   def userRoute: Route = pathPrefix("users" / LongNumber) { userId =>
@@ -69,7 +73,9 @@ object Main extends App {
         } ~ delete {
           val resposne = Future {
             logger.debug(s"Deleting Key[$keyId] of User[$userId] ")
-            getKeyById(userId, keyId).flatMap(key => {Neo4jRepository.deleteChildNode(keyId)})
+            getKeyById(userId, keyId).flatMap(key => {
+              Neo4jRepository.deleteChildNode(keyId)
+            })
           }
           onComplete(resposne) {
             case Success(result) => complete(StatusCodes.OK, "Deleted Successfully")
@@ -124,7 +130,7 @@ object Main extends App {
       }
       onComplete(result) {
         case Success(mayBeUser) =>
-          mayBeUser match  {
+          mayBeUser match {
             case Some(user) => complete(StatusCodes.OK, user)
             case None => complete(StatusCodes.BadRequest, s"Failed to get user with id $userId")
           }
@@ -198,94 +204,188 @@ object Main extends App {
 
   //KeyPair Serivce
   def keyPairRoute: Route = pathPrefix("keypairs") {
-      pathPrefix(LongNumber) { keyId =>
-        get {
-          val result = Future {
-            Neo4jRepository.findNodeByLabelAndId("KeyPairInfo", keyId).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
-          }
-          onComplete(result) {
-            case Success(mayBekey) =>
-              mayBekey match {
-                case Some(key) => complete(StatusCodes.OK, key)
-                case None => complete(StatusCodes.BadRequest, s"failed to get key pair for id $keyId")
-              }
-            case Failure(ex) =>
-              logger.error(s"Failed to get Key Pair, Message: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Failed to get Key Pair")
-          }
-        } ~ delete {
-          val result = Future {
-            Neo4jRepository.deleteChildNode(keyId)
-          }
-          onComplete(result) {
-            case Success(key) => complete(StatusCodes.OK, "Deleted Successfully")
-            case ailure(ex) =>
-              logger.error(s"Failed to delete Key Pair, Message: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Failed to delete Key Pair")
-          }
-        }
-      } ~ get {
+    pathPrefix(LongNumber) { keyId =>
+      get {
         val result = Future {
-          val nodeList = Neo4jRepository.getNodesByLabel("KeyPairInfo")
-          logger.debug(s"nodeList $nodeList")
-          val listOfKeys = nodeList.flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
-          Page[KeyPairInfo](listOfKeys)
+          Neo4jRepository.findNodeByLabelAndId("KeyPairInfo", keyId).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
         }
         onComplete(result) {
-          case uuccess(page) => complete(StatusCodes.OK, page)
+          case Success(mayBekey) =>
+            mayBekey match {
+              case Some(key) => complete(StatusCodes.OK, key)
+              case None => complete(StatusCodes.BadRequest, s"failed to get key pair for id $keyId")
+            }
           case Failure(ex) =>
-            logger.error(s"Failed to get Keys, Message: ${ex.getMessage}", ex)
-            complete(StatusCodes.BadRequest, s"Failed to get Keys")
+            logger.error(s"Failed to get Key Pair, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed to get Key Pair")
         }
-      } ~ put {
-          entity(as[Multipart.FormData]) { formData =>
-            val result = Future {
-
-              val dataMap = formData.asInstanceOf[FormData.Strict].strictParts.foldLeft(Map[String, String]())((accum, strict) => {
-                val name = strict.getName()
-                val value = strict.entity.getData().decodeString("UTF-8")
-                val mayBeFile = strict.filename
-                logger.debug(s"--- $name  -- $value -- $mayBeFile")
-
-                mayBeFile match {
-                  case Some(fileName) => accum + ((name, value))
-                  case None =>
-                    if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
-                      accum + ((name, value))
-                    else
-                      accum
-                }
-              })
-
-              val sshKeyContentInfo: SSHKeyContentInfo = SSHKeyContentInfo(dataMap)
-              logger.debug(s"ssh info   - $sshKeyContentInfo")
-              logger.debug(s"Data Map --- $dataMap")
-              val userNameLabel = "userName"
-              val passPhaseLabel = "passPhase"
-              val addedKeyPairs: List[KeyPairInfo] = dataMap.map { case (keyName, keyMaterial) =>
-                if (!userNameLabel.equalsIgnoreCase(keyName) && !passPhaseLabel.equalsIgnoreCase(keyName)) {
-                  val keyPairInfo = getOrCreateKeyPair(keyName, keyMaterial, None, UploadedKeyPair, dataMap.get(userNameLabel), dataMap.get(passPhaseLabel))
-                  val mayBeNode = saveKeyPair(keyPairInfo)
-                  mayBeNode match {
-                    case Some(key) => key
-                    case _ => // do nothing
-                  }
-                }
-              }.toList.collect { case x: KeyPairInfo => x }
-
-              Page[KeyPairInfo](addedKeyPairs)
-            }
-            onComplete(result) {
-              case Success(page) => complete(StatusCodes.OK, page)
-              case Failure(ex) =>
-                logger.error(s"Failed to update Keys, Message: ${ex.getMessage}", ex)
-                complete(StatusCodes.BadRequest, s"Failed to update Keys")
-            }
-          }
+      } ~ delete {
+        val result = Future {
+          Neo4jRepository.deleteChildNode(keyId)
+        }
+        onComplete(result) {
+          case Success(key) => complete(StatusCodes.OK, "Deleted Successfully")
+          case Failure(ex) =>
+            logger.error(s"Failed to delete Key Pair, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed to delete Key Pair")
+        }
       }
+    } ~ get {
+      val result = Future {
+        val nodeList = Neo4jRepository.getNodesByLabel("KeyPairInfo")
+        logger.debug(s"nodeList $nodeList")
+        val listOfKeys = nodeList.flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
+        Page[KeyPairInfo](listOfKeys)
+      }
+      onComplete(result) {
+        case Success(page) => complete(StatusCodes.OK, page)
+        case Failure(ex) =>
+          logger.error(s"Failed to get Keys, Message: ${ex.getMessage}", ex)
+          complete(StatusCodes.BadRequest, s"Failed to get Keys")
+      }
+    } ~ put {
+      entity(as[Multipart.FormData]) { formData =>
+        val result = Future {
+
+          val dataMap = formData.asInstanceOf[FormData.Strict].strictParts.foldLeft(Map[String, String]())((accum, strict) => {
+            val name = strict.getName()
+            val value = strict.entity.getData().decodeString("UTF-8")
+            val mayBeFile = strict.filename
+            logger.debug(s"--- $name  -- $value -- $mayBeFile")
+
+            mayBeFile match {
+              case Some(fileName) => accum + ((name, value))
+              case None =>
+                if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
+                  accum + ((name, value))
+                else
+                  accum
+            }
+          })
+
+          val sshKeyContentInfo: SSHKeyContentInfo = SSHKeyContentInfo(dataMap)
+          logger.debug(s"ssh info   - $sshKeyContentInfo")
+          logger.debug(s"Data Map --- $dataMap")
+          val userNameLabel = "userName"
+          val passPhaseLabel = "passPhase"
+          val addedKeyPairs: List[KeyPairInfo] = dataMap.map { case (keyName, keyMaterial) =>
+            if (!userNameLabel.equalsIgnoreCase(keyName) && !passPhaseLabel.equalsIgnoreCase(keyName)) {
+              val keyPairInfo = getOrCreateKeyPair(keyName, keyMaterial, None, UploadedKeyPair, dataMap.get(userNameLabel), dataMap.get(passPhaseLabel))
+              val mayBeNode = saveKeyPair(keyPairInfo)
+              mayBeNode match {
+                case Some(key) => key
+                case _ => // do nothing
+              }
+            }
+          }.toList.collect { case x: KeyPairInfo => x }
+
+          Page[KeyPairInfo](addedKeyPairs)
+        }
+        onComplete(result) {
+          case Success(page) => complete(StatusCodes.OK, page)
+          case Failure(ex) =>
+            logger.error(s"Failed to update Keys, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed to update Keys")
+        }
+      }
+    }
   }
 
-  val route: Route = userRoute ~ keyPairRoute
+
+  def catalogRoutes = pathPrefix("catalog") {
+    path("images" / "view") {
+      get {
+        val getImages: Future[Page[ImageInfo]] = Future {
+          val imageLabel: String = "ImagesTest2"
+          val nodesList = GraphDBExecutor.getNodesByLabel(imageLabel)
+          val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
+
+          Page[ImageInfo](imageInfoList)
+        }
+
+        onComplete(getImages) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to Retrieve ImageInfo List. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to Retrieve ImageInfo List.")
+        }
+      }
+    } ~ path("images") {
+      put {
+        entity(as[ImageInfo]) { image =>
+          val buildImage = Future {
+            image.toNeo4jGraph(image)
+            "Successfully added ImageInfo"
+          }
+          onComplete(buildImage) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to Save Image. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to Save Image.")
+          }
+        }
+      }
+    } ~ path("images" / LongNumber) { imageId =>
+      delete {
+        val deleteImages = Future {
+          GraphDBExecutor.deleteEntity[ImageInfo](imageId)
+        }
+
+        onComplete(deleteImages) {
+          case Success(successResponse) => complete(StatusCodes.OK, "Successfully deleted ImageInfo")
+          case Failure(exception) =>
+            logger.error(s"Unable to Delete Image. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to Delete Image.")
+        }
+      }
+    } ~ path("softwares") {
+      put {
+        entity(as[Software]) { software =>
+          val buildSoftware = Future {
+            software.toNeo4jGraph(software)
+            "Saved Software Successfully"
+          }
+          onComplete(buildSoftware) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to Save Software. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to Save Software.")
+          }
+        }
+      }
+    } ~ path("softwares" / LongNumber) { softwareId =>
+      delete {
+        val deleteSoftware = Future {
+          GraphDBExecutor.deleteEntity[Software](softwareId)
+          "Deleted Successfully"
+        }
+
+        onComplete(deleteSoftware) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to Delete Software. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to Delete Software.")
+        }
+      }
+    } ~ path("softwares") {
+      get {
+        val getSoftwares = Future {
+          val softwareLabel: String = "SoftwaresTest2"
+          val nodesList = GraphDBExecutor.getNodesByLabel(softwareLabel)
+          val softwaresList = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
+          Page[Software](softwaresList)
+        }
+        onComplete(getSoftwares) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to Retrieve Softwares List. Failed with :  ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to Retrieve Softwares List.")
+        }
+      }
+    }
+  }
+
+  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")

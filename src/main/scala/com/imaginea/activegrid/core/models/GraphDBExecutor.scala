@@ -1,4 +1,4 @@
-package com.activegrid.model
+package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}

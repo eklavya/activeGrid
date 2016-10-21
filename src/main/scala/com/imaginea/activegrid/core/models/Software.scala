@@ -1,6 +1,5 @@
-package com.activegrid.model
+package com.imaginea.activegrid.core.models
 
-import com.activegrid.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
