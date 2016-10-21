@@ -1,67 +1,63 @@
 package com.imaginea.activegrid.core.models
 
-import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
-
 /**
-  * Created by shareefn on 27/9/16.
+  * Created by nagulmeeras on 14/10/16.
   */
-
-case class Site(override val id: Option[Long], instances: List[Instance]) extends BaseEntity
+case class Site(override val id: Option[Long],
+                siteName: Option[String],
+                groupBy: Option[String]) extends BaseEntity
 
 object Site {
-
-  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  val neo4JRepository = Neo4JRepository
+  val logger = LoggerFactory.getLogger(getClass)
+  val siteLabel = "Site"
 
   implicit class SiteImpl(site: Site) extends Neo4jRep[Site] {
 
-    override def toNeo4jGraph(entity: Site): Node = {
-      val label = "Site"
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[Site](label, Map.empty)
-      val relationship = "HAS_site"
-      entity.instances.foreach { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        GraphDBExecutor.setGraphRelationship(node, instanceNode, relationship)
+    override def toNeo4jGraph: Node = {
+      logger.debug(s"Executing $getClass ::toNeo4jGraph ")
+      neo4JRepository.withTx {
+        neo =>
+          val node = neo4JRepository.createNode(siteLabel)(neo)
+          if (site.siteName.nonEmpty) node.setProperty("siteName", site.siteName.get)
+          if (site.groupBy.nonEmpty) node.setProperty("groupBy", site.groupBy.get)
+          node
       }
-      node
     }
 
-    override def fromNeo4jGraph(id: Long): Option[Site] = {
-      Site.fromNeo4jGraph(id)
+    override def fromNeo4jGraph(nodeId: Long): Option[Site] = {
+      logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
+      Site.fromNeo4jGraph(nodeId)
     }
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[Site] = {
-    val relationship = "HAS_site"
-    val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship)
-    val instances: List[Instance] = childNodeIds.flatMap { childId =>
-      Instance.fromNeo4jGraph(childId)
-    }
+    logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
+    neo4JRepository.withTx {
+      neo =>
+        try {
+          val node = neo4JRepository.getNodeById(nodeId)(neo)
+          if (neo4JRepository.hasLabel(node, siteLabel)) {
+            val site = new Site(
+              Some(nodeId),
+              neo4JRepository.getProperty[String](node, "siteName"),
+              neo4JRepository.getProperty[String](node, "groupBy")
+            )
 
-    Some(Site(Some(nodeId), instances))
+            Some(site)
+          } else {
+            logger.warn(s"Node is not found with ID:$nodeId and Label : $siteLabel")
+            None
+          }
+        } catch {
+          case nfe: NotFoundException =>
+            logger.warn(nfe.getMessage, nfe)
+            None
+        }
+    }
   }
 }
 
-/*
-case class Site(siteName: String,
-                instances: List[Instance],
-                filters: List[SiteFilter],
-                keypairs: List[KeyPairInfo],
-                groupsList: List[InstanceGroup],
-                applications: List[Application],
-                groupBy: String,
-                loadBalancers: List[LoadBalancer],
-                scalingGroups: List[ScalingGroup],
-                reservedInstanceDetails: List[ReservedInstanceDetails],
-                scalingPolicies: List[AutoScalingPolicy]
-
-
-
-case class KeyPairStatus()
-
-
-
-
-*/
