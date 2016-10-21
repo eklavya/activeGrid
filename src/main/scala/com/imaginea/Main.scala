@@ -239,22 +239,22 @@ object Main extends App {
       } ~ put {
           entity(as[Multipart.FormData]) { formData =>
             val result = Future {
-              val dataMap = formData.asInstanceOf[FormData.Strict].strictParts.map(strict => {
 
+              val dataMap = formData.asInstanceOf[FormData.Strict].strictParts.foldLeft(Map[String, String]())((accum, strict) => {
                 val name = strict.getName()
                 val value = strict.entity.getData().decodeString("UTF-8")
                 val mayBeFile = strict.filename
                 logger.debug(s"--- $name  -- $value -- $mayBeFile")
 
                 mayBeFile match {
-                  case Some(fileName) => (name, value)
+                  case Some(fileName) => accum + ((name, value))
                   case None =>
                     if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
-                      (name, value)
+                      accum + ((name, value))
                     else
-                      (new String, new String)
+                      accum
                 }
-              }).filter{case (k, v) => !k.isEmpty}.toMap[String, String]
+              })
 
               val sshKeyContentInfo: SSHKeyContentInfo = SSHKeyContentInfo(dataMap)
               logger.debug(s"ssh info   - $sshKeyContentInfo")
