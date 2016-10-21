@@ -8,11 +8,13 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import com.activegrid.entities.AppSettings
-import com.activegrid.models.{AppSettingWrapper, LogConfigUpdater}
+import com.activegrid.models.LogConfigUpdater
+import com.activegrid.neo4j.AppSettingsNeo4jWrapper
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 
@@ -21,18 +23,15 @@ object Main extends App {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
+  implicit val appSettings = jsonFormat(AppSettings.apply,"settings","authSettings")
 
-
-  val appSettingsWrapper = new AppSettingWrapper
-  val cfgUpdater = new LogConfigUpdater
-  implicit val appSettings = jsonFormat2(AppSettings)
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   val settingsPostRQ = pathPrefix("config") {
     path("settings") {
       post {
         entity(as[AppSettings]) { appSettings =>
-          val maybeAdded = appSettingsWrapper.addSettings(appSettings)
+          val maybeAdded = Future { appSettings.toGraph(appSettings) }
           onComplete(maybeAdded) {
             case Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
             case Failure(ex) =>
@@ -44,12 +43,25 @@ object Main extends App {
       }
     }
   }
-
+  val settingGetRQ = pathPrefix("config") {
+    path("settings") {
+      get {
+        val allSettings = Future { AppSettingsNeo4jWrapper.fromNeo4jGraph(0L) }
+        onComplete(allSettings) {
+          case Success(settings) =>
+            complete(StatusCodes.OK, settings)
+          case Failure(ex) =>
+            logger.error("Failed to get settings", ex)
+            complete("Failed to get settings")
+        }
+      }
+    }
+  }
   val settingsUpdateRQ = pathPrefix("config") {
     path("settings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated = appSettingsWrapper.updateSettings(appSettings)
+          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings,"GENERAL_SETTINGS")
           onComplete(maybeUpdated) {
             case Success(update)  => update.status match {
               case true  => complete(StatusCodes.OK,"Updated successfully")
@@ -74,7 +86,7 @@ object Main extends App {
     path("authsettings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated = appSettingsWrapper.updateAuthSettings(appSettings)
+          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings,"AUTH_SETTINGS")
           onComplete(maybeUpdated) {
             case Success(update)  => update.status match {
               case true  => complete(StatusCodes.OK,"Updated successfully")
@@ -99,7 +111,7 @@ object Main extends App {
     path("settings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeDeleted = appSettingsWrapper.deleteSettings(appSettings)
+          val maybeDeleted = AppSettingsNeo4jWrapper.deleteSetting(appSettings,"GENERAL_SETTINGS")
           onComplete(maybeDeleted) {
             case Success(delete)  => delete.status match {
               case true  => complete(StatusCodes.OK,"Deleted successfully")
@@ -119,25 +131,12 @@ object Main extends App {
       }
     }
   }
-  val settingGetRQ = pathPrefix("config") {
-    path("settings") {
-      get {
-        val allSettings = appSettingsWrapper.getSettings()
-        onComplete(allSettings) {
-          case Success(settings) =>
-            complete(StatusCodes.OK, settings)
-          case Failure(ex) =>
-            logger.error("Failed to get settings", ex)
-            complete("Failed to get settings")
-        }
-      }
-    }
-  }
+
   val deleteAuthRQ = pathPrefix("config") {
     path("authsettings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeDelete = appSettingsWrapper.deleteAuthSettings(appSettings)
+          val maybeDelete = AppSettingsNeo4jWrapper.deleteSetting(appSettings,"AUTH_SETTINGS")
           onComplete(maybeDelete) {
             case Success(delete)  => delete.status match {
               case true  => complete(StatusCodes.OK,"Deleted successfully")
@@ -163,7 +162,7 @@ object Main extends App {
     path("logs" / "level") {
       put {
         entity(as[String]) { level =>
-          val saved = cfgUpdater.setLogLevel(cfgUpdater.ROOT, level)
+          val saved = LogConfigUpdater.setLogLevel(LogConfigUpdater.ROOT, level)
           onComplete(saved) {
             case Success(saved) => complete(StatusCodes.OK, "Settings saved successfully")
             case Failure(ex) =>
@@ -180,7 +179,7 @@ object Main extends App {
     path("logs" / "level") {
       get {
         entity(as[String]) { level =>
-          val loglevel = cfgUpdater.getLogLevel(level)
+          val loglevel = LogConfigUpdater.getLogLevel(level)
           onComplete(loglevel) {
             case Success(loglevel) => complete(StatusCodes.OK, "Settings saved successfully")
             case Failure(ex) =>

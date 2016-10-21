@@ -5,14 +5,11 @@ package com.activegrid.models
   */
 
 
-import com.activegrid.entities.ExecutionStatus
 import org.apache.log4j._
-import org.neo4j.helpers.Exceptions
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class LogConfigUpdater {
+object LogConfigUpdater {
 
   val ROOT: String = "root" //
 
