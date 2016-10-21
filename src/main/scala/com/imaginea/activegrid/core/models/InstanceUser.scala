@@ -42,5 +42,4 @@ object InstanceUser {
       InstanceUser.fromNeo4jGraph(id)
     }
   }
-
 }

@@ -308,8 +308,8 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Failed save user group")
             }
           }
-       }
-    }
+        }
+      }
   } ~
     pathPrefix("users") {
       path("access" / LongNumber) { id =>
@@ -354,17 +354,17 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Failed to get user access")
             }
           } ~ post {
-             entity(as[SiteACL]) { siteACL =>
-                val result = Future {
-                  siteACL.toNeo4jGraph(siteACL)
-                }
-                onComplete(result) {
-                  case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
-                  case Failure(ex) =>
-                    logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
-                    complete(StatusCodes.BadRequest, s"Failed save Site access")
-                }
+            entity(as[SiteACL]) { siteACL =>
+              val result = Future {
+                siteACL.toNeo4jGraph(siteACL)
               }
+              onComplete(result) {
+                case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
+                case Failure(ex) =>
+                  logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
+                  complete(StatusCodes.BadRequest, s"Failed save Site access")
+              }
+            }
 
           }
         }

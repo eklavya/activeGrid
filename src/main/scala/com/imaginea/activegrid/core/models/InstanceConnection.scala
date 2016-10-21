@@ -53,5 +53,4 @@ object InstanceConnection {
       InstanceConnection.fromNeo4jGraph(id)
     }
   }
-
 }

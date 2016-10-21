@@ -75,5 +75,4 @@ object ProcessInfo {
       ProcessInfo.fromNeo4jGraph(id)
     }
   }
-
 }

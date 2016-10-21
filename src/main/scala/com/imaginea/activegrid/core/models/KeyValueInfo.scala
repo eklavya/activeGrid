@@ -42,5 +42,4 @@ object KeyValueInfo {
       KeyValueInfo.fromNeo4jGraph(id)
     }
   }
-
 }
