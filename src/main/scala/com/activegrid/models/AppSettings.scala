@@ -60,7 +60,6 @@ object AppSettings {
   def fromNeo4jGraph(nodeId: Long): Option[AppSettings] = {
     repo.withTx {
       neo =>
-        var appSettings: AppSettings = AppSettings(Some(0), Map.empty, Map.empty)
         try {
           val node = repo.getNodeById(nodeId)(neo)
           if (repo.hasLabel(node, labelName)) {
