@@ -58,10 +58,6 @@ object Software {
         map("discoverApplications").asInstanceOf[Boolean])
       Some(software)
     } catch {
-      case nse: NoSuchElementException =>
-        logger.warn(nse.getMessage, nse)
-        None
-
       case ex: Exception =>
         logger.warn(ex.getMessage, ex)
         None
