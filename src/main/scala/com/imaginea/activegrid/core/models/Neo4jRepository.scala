@@ -6,6 +6,7 @@ import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
+import scala.util.Try
 
 /**
   * Created by babjik on 23/9/16.
@@ -27,6 +28,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       logger.debug(s"Setting property to $label[${node.getId}]  $key -> $value")
       value match {
         case None => if (node.hasProperty(key)) node.removeProperty(key)
+        case Some(x) => node.setProperty(key, x)
         case _ => node.setProperty(key, value)
       }
     }
@@ -49,10 +51,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
-    val map = keys.map(key => (key, {
-      if (node.hasProperty(key)) node.getProperty(key) else None
-    })).filter{case (k, v) => v != None}.toMap[String, Any]
-    map
+    keys.foldLeft(Map[String, Any]())((accum, i) => if(node.hasProperty(i))  accum + ((i, node.getProperty(i))) else accum)
   }
 
   def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>
