@@ -4,7 +4,6 @@ import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 
 
 /**
@@ -65,21 +64,17 @@ object AppSettings {
         try {
           val node = repo.getNodeById(nodeId)(neo)
           if (repo.hasLabel(node, labelName)) {
-            val relationships = node.getRelationships
-            val relationshipItr = relationships.iterator()
-            val settings: mutable.Map[String, String] = mutable.Map.empty[String, String]
-            val authSettings: mutable.Map[String, String] = mutable.Map.empty[String, String]
-            while (relationshipItr.hasNext) {
-              val relationship = relationshipItr.next()
+            val settingsMap = collection.mutable.Map.empty[String, Map[String, String]]
+            node.getRelationships.map(relationship => {
               val endNode = relationship.getEndNode
+              val map = endNode.getAllProperties.foldLeft(Map[String, String]())((map, prop) => map + ((prop._1, prop._2.asInstanceOf[String])))
               relationship.getType.name match {
-                case `settingsRelationName` => endNode.getAllProperties.map { case (key, value) => settings.put(key, value.toString) }
-                case `authSettingsRelationName` => endNode.getAllProperties.map { case (key, value) => authSettings.put(key, value.toString) }
+                case `settingsRelationName` => settingsMap.put("settings", map)
+                case `authSettingsRelationName` => settingsMap.put("authSettings", map)
                 case _ => None
               }
-              appSettings = new AppSettings(Option.apply(node.getId), settings.toMap, authSettings.toMap)
-            }
-            Some(appSettings)
+            })
+            Some(new AppSettings(Option.apply(node.getId), settingsMap("settings"), settingsMap("authSettings")))
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $labelName")
             None
