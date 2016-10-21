@@ -4,7 +4,6 @@ import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 
 /**
   * Created by nagulmeeras on 14/10/16.
@@ -70,29 +69,26 @@ object APMServerDetails {
         try {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
-            val itr = node.getRelationships.iterator
-            var siteEntity: Option[Site] = None
-            val header: mutable.Map[String, String] = mutable.Map.empty[String, String]
-            while (itr.hasNext) {
-              val relationship = itr.next()
-              relationship.getType.name match {
-                case `apmServer_site_relation` =>
-                  siteEntity = Site.fromNeo4jGraph(relationship.getEndNode.getId)
+            val enityMap = collection.mutable.Map.empty[String, Option[Any]]
+            node.getRelationships.map {
+              relationship =>
+                logger.info("comingbbbbbbbbbb")
+                relationship.getType.name match {
+                  case `apmServer_site_relation` =>
+                    enityMap.put("siteEntity", Site.fromNeo4jGraph(relationship.getEndNode.getId))
 
-                case `apmServer_header_relation` =>
-                  relationship.getEndNode.getAllProperties.map { case (key, value) => header.put(key.toString, value.toString) }
-              }
+                  case `apmServer_header_relation` =>
+                    enityMap.put("headers", Some(relationship.getEndNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String])))))
+                }
             }
-            val aPMServerDetails1 = new APMServerDetails(
+            Some(new APMServerDetails(
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              siteEntity,
+              if(enityMap.contains("siteEntiy")) ("siteEntiy").asInstanceOf[Option[Site]] else None,
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
-              if (header.nonEmpty) Some(header.toMap) else None
-            )
-
-            Some(aPMServerDetails1)
+              if(enityMap.contains("headers")) enityMap("headers").asInstanceOf[Option[Map[String, String]]] else None
+            ))
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $apmServerDetailsLabel")
             None
