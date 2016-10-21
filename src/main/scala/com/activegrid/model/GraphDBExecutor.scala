@@ -33,9 +33,8 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getGraphProperties(nodeId: Long, listOfKeys: List[String]): Map[String, Any] = withTx { neo =>
     try {
       val node = getNodeById(nodeId)(neo)
-      listOfKeys
-        .map(key => (key, node.getProperty(key).asInstanceOf[Any])).toMap[String, Any]
-        .filter { case (k, v) => v != NO_VAL }
+      listOfKeys.
+        foldLeft(Map[String, Any]())((accum, key) => if (node.getProperty(key) != NO_VAL) accum + ((key, node.getProperty(key))) else accum)
     }
     catch {
       case ex: Exception =>
