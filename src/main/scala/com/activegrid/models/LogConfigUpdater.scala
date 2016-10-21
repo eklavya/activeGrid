@@ -6,6 +6,7 @@ package com.activegrid.models
 
 
 import org.apache.log4j._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
