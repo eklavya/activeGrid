@@ -36,6 +36,7 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       v match {
         case None =>
           if (node.hasProperty(k)) node.removeProperty(k)
+        case Some(x) => node.setProperty(k, x)
         case _ => node.setProperty(k, v)
       }
     }
