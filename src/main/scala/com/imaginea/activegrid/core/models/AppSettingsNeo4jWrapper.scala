@@ -1,8 +1,5 @@
-package com.activegrid.neo4j
+package com.imaginea.activegrid.core.models
 
-import com.activegrid.entities.AppSettings
-import com.activegrid.models.ExecutionStatus
-import com.activegrid.utils.Utils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -18,7 +15,6 @@ import scala.concurrent.Future
 object AppSettingsNeo4jWrapper extends DBWrapper {
 
   val labels: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings", "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
-  val util = new Utils()
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def toNeo4jGraph(entity: AppSettings): Option[Node] = {
@@ -26,8 +22,8 @@ object AppSettingsNeo4jWrapper extends DBWrapper {
       neo => {
         val generalSettings = createNode(labels("GS").toString)(neo)
         val authSettings = createNode(labels("AUS").toString)(neo)
-        util.setNodeProperties(generalSettings, entity.settings)
-        util.setNodeProperties(authSettings, entity.authSettings)
+        setNodeProperties(generalSettings, entity.settings)
+        setNodeProperties(authSettings, entity.authSettings)
         val appSettings = createNode(labels("AS").toString)(neo)
         appSettings --> labels("HGS").toString --> generalSettings
         appSettings --> labels("HAS").toString --> authSettings
@@ -102,5 +98,10 @@ object AppSettingsNeo4jWrapper extends DBWrapper {
       }
     }
     ExecutionStatus(true)
+  }
+  def setNodeProperties(n: Node, settings: Map[String, String]) {
+    settings.foreach {
+      case (k, v) => n.setProperty(k, v);
+    }
   }
 }

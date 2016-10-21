@@ -1,6 +1,5 @@
-package com.activegrid.neo4j
+package com.imaginea.activegrid.core.models
 
-import com.activegrid.entities.BaseEntity
 import org.neo4j.graphdb.Node
 
 /**

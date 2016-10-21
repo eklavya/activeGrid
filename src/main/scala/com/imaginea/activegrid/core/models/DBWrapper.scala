@@ -1,4 +1,4 @@
-package com.activegrid.neo4j
+package com.imaginea.activegrid.core.models
 
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 
