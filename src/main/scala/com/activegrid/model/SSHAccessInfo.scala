@@ -1,6 +1,5 @@
 package com.activegrid.model
 
-import com.activegrid.model.Graph.Neo4jRep
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
