@@ -72,7 +72,6 @@ object APMServerDetails {
             val enityMap = collection.mutable.Map.empty[String, Option[Any]]
             node.getRelationships.map {
               relationship =>
-                logger.info("comingbbbbbbbbbb")
                 relationship.getType.name match {
                   case `apmServer_site_relation` =>
                     enityMap.put("siteEntity", Site.fromNeo4jGraph(relationship.getEndNode.getId))
@@ -85,7 +84,7 @@ object APMServerDetails {
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              if(enityMap.contains("siteEntiy")) ("siteEntiy").asInstanceOf[Option[Site]] else None,
+              if(enityMap.contains("siteEntiy")) enityMap("siteEntiy").asInstanceOf[Option[Site]] else None,
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
               if(enityMap.contains("headers")) enityMap("headers").asInstanceOf[Option[Map[String, String]]] else None
             ))
