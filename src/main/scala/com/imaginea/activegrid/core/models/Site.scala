@@ -1,4 +1,4 @@
-package com.activegrid.models
+package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory

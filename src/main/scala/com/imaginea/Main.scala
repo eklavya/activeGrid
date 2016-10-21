@@ -1,4 +1,4 @@
-package com.activegrid
+package com.imaginea
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -6,7 +6,8 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatchers
 import akka.stream.ActorMaterializer
-import com.activegrid.models._
+import com.imaginea.activegrid.core.models.{APMServerDetails, LogLevelUpdater}
+import com.imaginea.models._
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable

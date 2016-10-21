@@ -1,4 +1,4 @@
-package com.activegrid.models
+package com.imaginea.activegrid.core.models
 
 import org.apache.log4j._
 

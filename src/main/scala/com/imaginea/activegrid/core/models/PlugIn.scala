@@ -1,4 +1,4 @@
-package com.activegrid.models
+package com.imaginea.activegrid.core.models
 
 import akka.http.scaladsl.common.StrictForm.FileData
 
