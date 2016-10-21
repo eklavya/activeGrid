@@ -25,19 +25,8 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
-    val map = keys.map(key => (key, {
-      try {
-        val value = node.getProperty(key)
-        logger.debug(s" ($key) --> (${node.getProperty(key)}) ")
-        value
-      } catch {
-        case ex: Throwable => logger.warn(s"failed to get values for the key $key")
-          None
-      }
-    })).filter { case (k, v) => v != None }.toMap[String, Any]
-    map
+    keys.foldLeft(Map[String, Any]())((accum, i) => if (node.hasProperty(i)) accum + ((i, node.getProperty(i))) else accum)
   }
-
 
   def saveEntity[T <: BaseEntity](label: String, map: Map[String, Any]): Node = withTx { implicit neo =>
     val node = createNode(label)
