@@ -57,7 +57,7 @@ object KeyPairInfo {
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[KeyPairInfo] = {
-      val node = Neo4jRepository.findNodeById(nodeId)
+      val node = Neo4jRepository.findNodeById(label,nodeId)
       val mapOption = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
       mapOption.map( map => {
         val keyPairInfo = KeyPairInfo(

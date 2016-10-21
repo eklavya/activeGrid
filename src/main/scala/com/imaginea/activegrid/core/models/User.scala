@@ -47,7 +47,7 @@ object User {
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[User] = {
-      val node = Neo4jRepository.findNodeById(nodeId)
+      val node = Neo4jRepository.findNodeById(label,nodeId)
       val mapOption = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
       mapOption.map( map => {
         val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
@@ -82,7 +82,7 @@ object UserUtils {
   val has_publicKeys = "HAS_publicKeys"
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Relationship = {
-    val userNode = Neo4jRepository.findNodeById(userId)
+    val userNode = Neo4jRepository.findNodeById(User.label,userId)
     val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
     Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode)
   }

@@ -44,11 +44,11 @@ object Site {
 
 
     override def fromNeo4jGraph(nodeId: Long): Option[Site] = {
-      val siteNode = Neo4jRepository.findNodeById(nodeId)
+      val siteNode = Neo4jRepository.findNodeById(label,nodeId)
 
       logger.debug(s" SiteNode ${siteNode}")
 
-      val userGroupMapOption = Neo4jRepository.getProperties(siteNode, "name")
+      val userGroupMapOption = Neo4jRepository.getProperties(siteNode, "name","groupBy")
       userGroupMapOption.map(userGroupMap => {
         val site = Site(
           id = Some(siteNode.getId),
