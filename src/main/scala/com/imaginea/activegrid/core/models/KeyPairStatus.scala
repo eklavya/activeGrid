@@ -1,4 +1,4 @@
-package com.activegrid.model
+package com.imaginea.activegrid.core.models
 
 /**
   * Created by shareefn on 7/10/16.

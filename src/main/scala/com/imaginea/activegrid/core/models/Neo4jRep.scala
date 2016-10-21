@@ -1,4 +1,4 @@
-package com.activegrid.model
+package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.Node
 
