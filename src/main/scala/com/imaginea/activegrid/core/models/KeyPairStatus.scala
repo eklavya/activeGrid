@@ -1,30 +1,36 @@
 package com.imaginea.activegrid.core.models
 
 /**
-  * Created by babjik on 26/9/16.
+  * Created by shareefn on 7/10/16.
   */
+//object KeyPairStatus extends Enumeration{
+//  type KeyPairStatus = Value
+//  val UPLOADED, NOT_YET_UPLOADED, INCORRECT_UPLOAD = Value
+//}
+
+
 sealed trait KeyPairStatus {
-  def name: String
+  def value: String
 
-  override def toString: String = name
+  override def toString: String = value
 }
 
-case object UploadedKeyPair extends KeyPairStatus {
-  val name = "UPLOADED"
+case object UPLOADED extends KeyPairStatus {
+  val value = "UPLOADED"
 }
 
-case object NotYetUploadedKeyPair extends KeyPairStatus {
-  val name = "NOT_YET_UPLOADED"
+case object NOT_YET_UPLOADED extends KeyPairStatus {
+  val value = "NOT_YET_UPLOADED"
 }
 
-case object IncorrectUploadKeyPair extends KeyPairStatus {
-  val name = "INCORRECT_UPLOAD"
+case object INCORRECT_UPLOAD extends KeyPairStatus {
+  val value = "INCORRECT_UPLOAD"
 }
 
 object KeyPairStatus {
-  implicit def toKeyPairStatus(name: String): KeyPairStatus = name match {
-    case "UPLOADED" => UploadedKeyPair
-    case "NOT_YET_UPLOADED" => NotYetUploadedKeyPair
-    case "INCORRECT_UPLOAD" => IncorrectUploadKeyPair
+  implicit def toKeyPairStatus(value: String): KeyPairStatus = value match {
+    case "UPLOADED" => UPLOADED
+    case "NOT_YET_UPLOADED" => NOT_YET_UPLOADED
+    case "INCORRECT_UPLOAD" => INCORRECT_UPLOAD
   }
 }

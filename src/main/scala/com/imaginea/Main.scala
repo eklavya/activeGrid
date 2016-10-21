@@ -1,4 +1,4 @@
-package com.activegrid
+package com.imaginea
 
 import akka.Done
 import akka.actor.ActorSystem
@@ -7,13 +7,14 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
-import com.activegrid.model._
+import com.imaginea.activegrid.core.models._
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
-import scala.util.{Success,Failure}
+
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 object Main {
 

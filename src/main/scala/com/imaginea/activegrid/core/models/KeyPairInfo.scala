@@ -1,58 +1,43 @@
 package com.imaginea.activegrid.core.models
 
-import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by babjik on 26/9/16.
+  * Created by shareefn on 7/10/16.
   */
-case class KeyPairInfo(override val id: Option[Long]
-                       , keyName: String
-                       , keyFingerprint: Option[String]
-                       , keyMaterial: String
-                       , filePath: Option[String]
-                       , status: KeyPairStatus
-                       , defaultUser: Option[String]
-                       , passPhrase: Option[String]
-                      ) extends BaseEntity
+case class KeyPairInfo(override val id: Option[Long], keyName: String, keyFingerprint: String, keyMaterial: String, filePath: String, status: KeyPairStatus, defaultUser: String, passPhrase: String) extends BaseEntity
 
 object KeyPairInfo {
+
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def apply(keyName: String, keyMaterial: String, filePath: Option[String], status: KeyPairStatus): KeyPairInfo =
-    new KeyPairInfo(None, keyName, None, keyMaterial, filePath, status, None, None)
-
   def fromNeo4jGraph(nodeId: Long): Option[KeyPairInfo] = {
-    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
-    mayBeNode match {
-      case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
+    val listOfKeys = List("keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
+    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+    if (propertyValues.nonEmpty) {
+      val keyName = propertyValues("keyName").toString
+      val keyFingerprint = propertyValues("keyFingerprint").toString
+      val keyMaterial = propertyValues("keyMaterial").toString
+      val filePath = propertyValues("filePath").toString
+      val status: KeyPairStatus = KeyPairStatus.toKeyPairStatus(propertyValues("status").asInstanceOf[String])
+      val defaultUser = propertyValues("defaultUser").toString
+      val passPhrase = propertyValues("passPhrase").toString
 
-        val keyPairInfo = KeyPairInfo(
-          Some(node.getId),
-          map("keyName").toString,
-          ActiveGridUtils.getValueFromMapAs[String](map, "keyFingerprint"),
-          map("keyMaterial").toString,
-          ActiveGridUtils.getValueFromMapAs[String](map, "filePath"),
-          KeyPairStatus.toKeyPairStatus(map("status").toString),
-          ActiveGridUtils.getValueFromMapAs[String](map, "defaultUser"),
-          ActiveGridUtils.getValueFromMapAs[String](map, "passPhrase")
-        )
-
-        logger.debug(s"Key pair info - $keyPairInfo")
-        Some(keyPairInfo)
-      case None => None
+      Some(KeyPairInfo(Some(nodeId), keyName, keyFingerprint, keyMaterial, filePath, status, defaultUser, passPhrase))
+    }
+    else {
+      logger.warn(s"could not get graph properties for KeyPairInfo node with $nodeId")
+      None
     }
   }
 
-  implicit class RichKeyPairInfo(keyPairInfo: KeyPairInfo) extends Neo4jRep[KeyPairInfo] {
-    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  implicit class KeyPairInfoImpl(keyPairInfo: KeyPairInfo) extends Neo4jRep[KeyPairInfo] {
+
     val label = "KeyPairInfo"
 
     override def toNeo4jGraph(entity: KeyPairInfo): Node = {
-      logger.debug(s"toGraph for KeyPairInfo $entity")
       val map = Map(
         "keyName" -> entity.keyName,
         "keyFingerprint" -> entity.keyFingerprint,
@@ -60,19 +45,14 @@ object KeyPairInfo {
         "filePath" -> entity.filePath,
         "status" -> entity.status.toString,
         "defaultUser" -> entity.defaultUser,
-        "passPhrase" -> entity.passPhrase
-      )
-
-      val node = Neo4jRepository.saveEntity[KeyPairInfo](label, entity.id, map)
-
-      logger.debug(s"node - $node")
+        "passPhrase" -> entity.passPhrase)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[KeyPairInfo](label, map)
       node
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[KeyPairInfo] = {
-      KeyPairInfo.fromNeo4jGraph(nodeId)
+    override def fromNeo4jGraph(id: Long): Option[KeyPairInfo] = {
+      KeyPairInfo.fromNeo4jGraph(id)
     }
-
   }
-
 }
+

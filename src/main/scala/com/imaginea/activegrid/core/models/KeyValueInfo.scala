@@ -15,17 +15,17 @@ object KeyValueInfo {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def fromNeo4jGraph(nodeId: Long): Option[KeyValueInfo] = {
-    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
-    mayBeNode match {
-      case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "key", "value")
-        val key = map("key").toString
-        val value = map("value").toString
+    val listOfKeys = List("key", "value")
+    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+    if (propertyValues.nonEmpty) {
+      val key = propertyValues("key").toString
+      val value = propertyValues("value").toString
 
-        Some(KeyValueInfo(Some(nodeId), key, value))
-      case None =>
-        logger.warn(s"could not find node for KeyValueInfo with nodeId $nodeId")
-        None
+      Some(KeyValueInfo(Some(nodeId), key, value))
+    }
+    else {
+      logger.warn(s"could not get graph properties for KeyValueInfo node with $nodeId")
+      None
     }
   }
 
@@ -34,7 +34,7 @@ object KeyValueInfo {
     override def toNeo4jGraph(entity: KeyValueInfo): Node = {
       val label = "KeyValueInfo"
       val mapPrimitives = Map("key" -> entity.key, "value" -> entity.value)
-      val node = Neo4jRepository.saveEntity[KeyValueInfo](label, entity.id, mapPrimitives)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[KeyValueInfo](label, mapPrimitives)
       node
     }
 
@@ -42,5 +42,4 @@ object KeyValueInfo {
       KeyValueInfo.fromNeo4jGraph(id)
     }
   }
-
 }
