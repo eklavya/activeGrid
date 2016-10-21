@@ -1,6 +1,5 @@
-package com.activegrid.entities
+package com.imaginea.activegrid.core.models
 
-import com.activegrid.neo4j.{AppSettingsNeo4jWrapper, Neo4JRepo}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory

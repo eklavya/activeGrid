@@ -1,4 +1,4 @@
-package com.activegrid
+package com.imaginea
 
 
 import akka.actor.ActorSystem
@@ -7,9 +7,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
-import com.activegrid.entities.AppSettings
-import com.activegrid.models.LogConfigUpdater
-import com.activegrid.neo4j.AppSettingsNeo4jWrapper
+import com.imaginea.activegrid.core.models.{AppSettings, AppSettingsNeo4jWrapper, LogConfigUpdater}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -27,7 +25,7 @@ object Main extends App {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  val settingsPostRQ = pathPrefix("config") {
+  val routes = pathPrefix("config") {
     path("settings") {
       post {
         entity(as[AppSettings]) { appSettings =>
@@ -44,8 +42,7 @@ object Main extends App {
         }
       }
     }
-  }
-  val settingGetRQ = pathPrefix("config") {
+  } ~ pathPrefix("config") {
     path("settings") {
       get {
         val allSettings = Future {
@@ -60,8 +57,7 @@ object Main extends App {
         }
       }
     }
-  }
-  val settingsUpdateRQ = pathPrefix("config") {
+  } ~ pathPrefix("config") {
     path("settings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
@@ -85,8 +81,7 @@ object Main extends App {
       }
     }
 
-  }
-  val settingsUpdateAuthRQ = pathPrefix("config") {
+  } ~ pathPrefix("config") {
     path("authsettings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
@@ -110,8 +105,7 @@ object Main extends App {
       }
     }
 
-  }
-  val deleteRQ = pathPrefix("config") {
+  } ~ pathPrefix("config") {
     path("settings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
@@ -134,9 +128,7 @@ object Main extends App {
         }
       }
     }
-  }
-
-  val deleteAuthRQ = pathPrefix("config") {
+  } ~ pathPrefix("config") {
     path("authsettings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
@@ -160,9 +152,7 @@ object Main extends App {
       }
     }
 
-  }
-
-  val logUpdateRQ = pathPrefix("config") {
+  } ~ pathPrefix("config") {
     path("logs" / "level") {
       put {
         entity(as[String]) { level =>
@@ -178,8 +168,7 @@ object Main extends App {
       }
     }
 
-  }
-  val logGetRQ = pathPrefix("config") {
+  } ~ pathPrefix("config") {
     path("logs" / "level") {
       get {
         entity(as[String]) { level =>
@@ -196,9 +185,6 @@ object Main extends App {
     }
 
   }
-  val routes = logUpdateRQ ~ logGetRQ ~ settingGetRQ ~ settingsPostRQ ~ settingsUpdateRQ ~ settingsUpdateAuthRQ ~ deleteRQ ~ deleteAuthRQ
-
-
   Http().bindAndHandle(handler = routes, interface = "localhost", port = 5000)
 
 }
