@@ -18,8 +18,9 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
   val addAppSetting = post {
     path("appsettings") {
       entity(as[AppSettings]) {
-        appsetting => onComplete(appSettingRepository.saveAppSettings(appsetting)) {
-          done => complete("Done")
+        appsetting => onSuccess(appSettingRepository.saveAppSettings(appsetting)) {
+          case Some(response) => complete(StatusCodes.OK,response)
+          case None => complete(StatusCodes.BadRequest,"Unable to save App Settings")
         }
       }
     }
@@ -27,17 +28,22 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
   val getAppSettings = get {
     path("config") {
       val appSettings = appSettingRepository.getAppSettings()
-      onComplete(appSettings) {
-        done => complete(StatusCodes.OK, appSettings)
+      onSuccess(appSettings){
+        case Some(response) => complete(StatusCodes.OK,response)
+        case None => complete(StatusCodes.BadRequest , "Unable to fetch App Settings")
       }
+
     }
   }
   val addSetting = post {
     path(PathMatchers.separateOnSlashes("config/settings")) {
       entity(as[Map[String, String]]) {
         setting =>
-          appSettingRepository.saveSetting(setting)
-          complete(StatusCodes.OK, "Done")
+          val response = appSettingRepository.saveSetting(setting)
+          onSuccess(response){
+            case Some(respo) => complete(StatusCodes.OK,respo)
+            case None => complete(StatusCodes.BadRequest,"Unable to save settings")
+          }
       }
     }
   }
@@ -45,8 +51,9 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
   val getSettings = path(PathMatchers.separateOnSlashes("config/settings")) {
     get {
       val appSettings = appSettingRepository.getSettings()
-      onComplete(appSettings) {
-        done => complete(StatusCodes.OK, appSettings)
+      onSuccess(appSettings){
+        case Some(response) => complete(StatusCodes.OK,response)
+        case None => complete(StatusCodes.BadRequest,"Unable to get Settings")
       }
     }
   }
@@ -55,9 +62,10 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
     delete {
       entity(as[List[String]]) { list =>
         val isDeleted = appSettingRepository.deleteSettings(list)
-        onComplete(isDeleted) {
-          done => complete(StatusCodes.OK, "Done")
-        }
+        onSuccess(isDeleted){
+          case Some(response) => complete(StatusCodes.OK, response)
+          case None => complete(StatusCodes.BadRequest,"Unable to delete settings")
+         }
       }
     }
   }
@@ -67,8 +75,9 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
       entity(as[String]) {
         level =>
           val res = logLevelUpdater.setLogLevel(logLevelUpdater.ROOT, level)
-          onComplete(res) { done =>
-            complete(StatusCodes.OK, "")
+          onSuccess(res){
+            case Some(response) => complete(StatusCodes.OK,response)
+            case None => complete(StatusCodes.BadRequest , "Unable to update the log level")
           }
 
       }
@@ -76,11 +85,17 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
   }
   val getLogLevel = path(PathMatchers.separateOnSlashes("config/logs/level")) {
     get {
-      val response = logLevelUpdater.getLogLevel(logLevelUpdater.ROOT)
-      onComplete(response) { done =>
-        complete(StatusCodes.OK, response)
+      val loglevel = logLevelUpdater.getLogLevel(logLevelUpdater.ROOT)
+      onSuccess(loglevel){
+        case Some(response) => complete(StatusCodes.OK, response)
+        case None => complete(StatusCodes.BadRequest , "Unable get log level")
       }
+
     }
+  }
+
+  val index = path(""){
+    getFromResource("web/index.html")
   }
 
 

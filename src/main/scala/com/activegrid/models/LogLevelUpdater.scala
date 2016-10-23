@@ -17,16 +17,17 @@ class LogLevelUpdater(implicit executionContext: ExecutionContext) {
     }
   }
 
-  def getLogLevel(logger: String): Future[String] = Future {
+  def getLogLevel(logger: String): Future[Option[String]] = Future {
     val log: Logger = getLogger(logger)
-    if (log != null) log.getLevel.toString else null
+    if (log != null) Some(log.getLevel.toString) else None
   }
 
-  def setLogLevel(logger: String, tolevel: String): Future[Unit] = Future {
+  def setLogLevel(logger: String, tolevel: String): Future[Option[String]] = Future {
     val log: Logger = getLogger(logger)
     if (log != null) {
       val level = Level.toLevel(tolevel)
       log.setLevel(level)
     }
+    Some("Success")
   }
 }
