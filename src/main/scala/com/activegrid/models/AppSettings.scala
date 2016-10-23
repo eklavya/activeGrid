@@ -15,7 +15,7 @@ case class AppSettings(override val id: Option[Long], settings: Map[String, Stri
 
 
 object AppSettings {
-  val repo = Neo4JRepo
+  val repo = Neo4JRepository
 
   implicit class AppSettingsImpl(entity: AppSettings) extends Neo4jRep[AppSettings] {
 
@@ -28,15 +28,17 @@ object AppSettings {
     val logger = LoggerFactory.getLogger(getClass)
 
     override def toNeo4jGraph(): Node = {
-
+      logger.info(s"Executing $getClass :: toNeo4jGraph")
       repo.withTx { neo =>
         val node: Node = repo.createNode(labelName)(neo)
         if (entity.settings != null) {
+          logger.info(s"Persisting settings with relation ${entity.settings} ")
           val settingsNode = repo.createNode(settingsLableName)(neo)
           entity.settings.foreach { case (key, value) => settingsNode.setProperty(key, value) }
           createRelationShip(node, settingsNode, settingsRelationName)
         }
         if (entity.authSettings != null) {
+          logger.info("Persisting auth settings with relation")
           val authSettingsNode = repo.createNode(authSettingsLableName)(neo)
           entity.authSettings.foreach { case (key, value) => authSettingsNode.setProperty(key, value) }
           createRelationShip(node, authSettingsNode, authSettingsRelationName)
@@ -46,18 +48,19 @@ object AppSettings {
     }
 
     override def fromNeo4jGraph(): AppSettings = {
-      var appSettings: AppSettings = null
+      logger.info(s"Executing $getClass ::fromNeo4jGraph ")
+      var appSettings: AppSettings = AppSettings(Some(0), Map.empty, Map.empty)
       repo.withTx {
         neo =>
 
           val nodes = repo.getAllNodesWithLabel("AppSettings")(neo)
-
+          logger.info(s"Getting all nodes with relation AppSettings ...$nodes")
           nodes.foreach {
             node =>
               val relationships = node.getRelationships
               val relationshipItr = relationships.iterator()
-              val settings: mutable.Map[String, String] = mutable.Map()
-              val authSettings: mutable.Map[String, String] = mutable.Map()
+              val settings: mutable.Map[String, String] = mutable.Map.empty[String, String]
+              val authSettings: mutable.Map[String, String] = mutable.Map.empty[String, String]
               while (relationshipItr.hasNext) {
                 val relationship = relationshipItr.next()
                 val endNode = relationship.getEndNode
@@ -72,51 +75,62 @@ object AppSettings {
 
           }
       }
-
+      logger.info(s"Returning the App Settings : $appSettings")
       appSettings
     }
 
 
     def getAppSettingNode(): Node = {
       repo.withTx {
-        neo => val nodes = repo.getAllNodesWithLabel(labelName)(neo)
+        neo =>
+          val nodes = repo.getAllNodesWithLabel(labelName)(neo)
           nodes.head
       }
     }
 
     def updateAppSettings(settings: Map[String, String], relation: String): Unit = {
-      val node = getAppSettingNode()
-      repo.withTx {
-        neo =>
-          val relationships = node.getRelationships
-          val itr = relationships.iterator()
-          while (itr.hasNext) {
-            val relationship = itr.next()
-            val endNode = relationship.getEndNode
-            logger.info("nodes relation :" + relationship.getType.name() + " actual relation :" + relation)
-            if (relationship.getType.name.equalsIgnoreCase(relation)) {
-              logger.info("COming to add new property")
-              settings.foreach { case (key, value) => endNode.setProperty(key, value) }
+      logger.info(s"Executing the $getClass :: updateAppSettings")
+      try {
+        val node = getAppSettingNode()
+        repo.withTx {
+          neo =>
+            val relationships = node.getRelationships
+            val itr = relationships.iterator()
+            while (itr.hasNext) {
+              val relationship = itr.next()
+              val endNode = relationship.getEndNode
+              logger.info("nodes relation :" + relationship.getType.name() + " actual relation :" + relation)
+              if (relationship.getType.name.equalsIgnoreCase(relation)) {
+                logger.info("Coming to add new property")
+                settings.foreach { case (key, value) => endNode.setProperty(key, value) }
+              }
             }
-          }
+        }
+      } catch {
+        case exception : Exception => throw exception
       }
     }
 
     def deleteSettings(settingNames: List[String], relation: String): Unit = {
-      val node = getAppSettingNode()
-      repo.withTx {
-        neo =>
-          val relationships = node.getRelationships
-          val itr = relationships.iterator()
-          while (itr.hasNext) {
-            val relationship = itr.next()
-            val endNode = relationship.getEndNode
-            logger.info("nodes relation :" + relationship.getType.name() + " actual relation :" + relation)
-            if (relationship.getType.name.equalsIgnoreCase(relation)) {
-              logger.info("Coming to delete property")
-              settingNames.foreach(entry => endNode.removeProperty(entry))
+      logger.info(s"Executing $getClass ::deleteSettings")
+      try {
+        val node = getAppSettingNode()
+        repo.withTx {
+          neo =>
+            val relationships = node.getRelationships
+            val itr = relationships.iterator()
+            while (itr.hasNext) {
+              val relationship = itr.next()
+              val endNode = relationship.getEndNode
+              logger.info("nodes relation :" + relationship.getType.name() + " actual relation :" + relation)
+              if (relationship.getType.name.equalsIgnoreCase(relation)) {
+                logger.info("Coming to delete property")
+                settingNames.foreach(entry => endNode.removeProperty(entry))
+              }
             }
-          }
+        }
+      }catch {
+        case exception : Exception => throw exception
       }
     }
 
