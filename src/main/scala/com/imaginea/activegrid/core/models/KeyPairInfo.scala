@@ -20,6 +20,7 @@ case class KeyPairInfo(override val id: Option[Long]
 
 object KeyPairInfo {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+
   def apply(keyName: String, keyMaterial: String, filePath: Option[String], status: KeyPairStatus): KeyPairInfo =
     new KeyPairInfo(None, keyName, None, keyMaterial, filePath, status, None, None)
 

@@ -16,12 +16,11 @@ import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
 
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
-import scala.collection.JavaConversions._
-import scala.collection.mutable
 
-object Main extends App  {
+object Main extends App {
 
   implicit val config = ConfigFactory.load
   implicit val system = ActorSystem()

@@ -23,7 +23,7 @@ object AppSettings {
 
   implicit class AppSettingsImpl(entity: AppSettings) extends Neo4jRep[AppSettings] {
 
-    override def toNeo4jGraph(entity: AppSettings ): Node = {
+    override def toNeo4jGraph(entity: AppSettings): Node = {
       logger.info(s"Executing $getClass :: toNeo4jGraph")
       repo.withTx { neo =>
         val node: Node = repo.createNode(labelName)(neo)

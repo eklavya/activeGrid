@@ -6,7 +6,6 @@ import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
-import scala.util.Try
 
 /**
   * Created by babjik on 23/9/16.
@@ -59,7 +58,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
-    keys.foldLeft(Map[String, Any]())((accum, i) => if(node.hasProperty(i))  accum + ((i, node.getProperty(i))) else accum)
+    keys.foldLeft(Map[String, Any]())((accum, i) => if (node.hasProperty(i)) accum + ((i, node.getProperty(i))) else accum)
   }
 
   def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>
