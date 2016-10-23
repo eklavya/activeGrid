@@ -16,6 +16,14 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def neo4jStoreDir = "./graphdb/activegriddb"
 
+  def hasLabel(node: Node, label: String): Boolean = {
+    node.hasLabel(label)
+  }
+
+  def getProperty[T: Manifest](node: Node, name: String): Option[T] = {
+    if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+  }
+
   def getSingleNodeByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any): Option[Node] = withTx { implicit neo =>
     logger.debug(s"finding $label's with property $propertyKey and value $propertyValue")
     val nodesIterator = findNodesByLabelAndProperty(label, propertyKey, propertyValue)

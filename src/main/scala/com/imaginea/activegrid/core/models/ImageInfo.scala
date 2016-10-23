@@ -27,7 +27,7 @@ object ImageInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImagesTest2"
 
-    override def toNeo4jGraph(imageInfo: ImageInfo): Option[Node] = {
+    override def toNeo4jGraph(imageInfo: ImageInfo): Node = {
       logger.debug(s"In toGraph for Image Info: $imageInfo")
       val map = Map("state" -> imageInfo.state,
         "ownerId" -> imageInfo.ownerId,
@@ -44,7 +44,7 @@ object ImageInfo {
       )
 
       val imageInfoNode = GraphDBExecutor.saveEntity[ImageInfo](label, map)
-      Some(imageInfoNode)
+      imageInfoNode
     }
 
 
