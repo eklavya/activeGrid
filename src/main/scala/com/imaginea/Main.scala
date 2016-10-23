@@ -6,8 +6,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatchers
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.{APMServerDetails, LogLevelUpdater}
-import com.imaginea.models._
+import com.imaginea.activegrid.core.models._
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
