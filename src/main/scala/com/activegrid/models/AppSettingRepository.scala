@@ -15,7 +15,7 @@ class AppSettingRepository(implicit executionContext: ExecutionContext) {
   val logger = LoggerFactory.getLogger(getClass)
 
 
-  def saveAppSettings(appSettings: AppSettings): Future[Unit] = Future{
+  def saveAppSettings(appSettings: AppSettings): Future[Unit] = Future {
     logger.info(s"Executing $getClass :: saveAppSettings ")
     logger.info("AppSettings : " + appSettings)
     appSettings.toNeo4jGraph()
@@ -23,21 +23,22 @@ class AppSettingRepository(implicit executionContext: ExecutionContext) {
 
   def getAppSettings(): Future[AppSettings] = Future {
     logger.info(s"Executing $getClass getAppSettings")
-    val appSettings = new AppSettings(Some(0), Map.empty, Map.empty).fromNeo4jGraph();
-    if(appSettings == null)
+    val nodeId = AppSettings.getAppSettingNode().getId
+    val appSettings = AppSettings.fromNeo4jGraph(nodeId)
+    if (appSettings == null)
       throw new Exception("Unable to find App Settings")
     else
       appSettings
   }
 
 
-  def saveSetting(setting: Map[String, String]): Future[Unit] = Future{
+  def saveSetting(setting: Map[String, String]): Future[Unit] = Future {
     logger.info(s"Executing $getClass ::saveSetting")
-    val appSettingsImpl = new AppSettingsImpl(AppSettings(Some(0),Map.empty,Map.empty))
+    val appSettingsImpl = new AppSettingsImpl(AppSettings(Some(0), Map.empty, Map.empty))
     try {
       val appSettings = appSettingsImpl.updateAppSettings(setting, "Has_Settings")
-    }catch {
-      case exception : Exception => throw exception
+    } catch {
+      case exception: Exception => throw exception
     }
   }
 
@@ -53,8 +54,8 @@ class AppSettingRepository(implicit executionContext: ExecutionContext) {
     try {
       appSettingsImpl.deleteSettings(settingNames, "Has_Settings")
       logger.info("Deleted settings")
-    }catch {
-      case exception : Exception => throw exception
+    } catch {
+      case exception: Exception => throw exception
     }
     true
   }
