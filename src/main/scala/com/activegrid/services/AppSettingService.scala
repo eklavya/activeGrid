@@ -14,7 +14,7 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
 
   val appSettingRepository = new AppSettingRepository
   val logLevelUpdater = new LogLevelUpdater
-  val logger = LoggerFactory.getLogger(getClass)
+  override val logger = LoggerFactory.getLogger(getClass)
 
   val addAppSetting = post {
     path("appsettings") {
@@ -42,11 +42,11 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
       entity(as[Map[String, String]]) {
         setting =>
           val resp = appSettingRepository.saveSetting(setting)
-          onComplete(resp){
-            case util.Success(response) => complete(StatusCodes.OK,"Done")
+          onComplete(resp) {
+            case util.Success(response) => complete(StatusCodes.OK, "Done")
             case util.Failure(exception) => {
               logger.error(s"Unable to save the settings $exception")
-              complete(StatusCodes.BadRequest,"Unable to save the settings")
+              complete(StatusCodes.BadRequest, "Unable to save the settings")
             }
           }
       }
@@ -114,5 +114,6 @@ class AppSettingService(implicit executionContext: ExecutionContext) extends Jso
     getFromResource("web/index.html")
   }
 
+  val appSettingServiceRoutes = addAppSetting ~ addSetting ~ getAppSettings ~ deleteSettings ~ getSettings ~ getLogLevel ~ updateLogLevel ~ index
 
 }
