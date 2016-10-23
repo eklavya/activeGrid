@@ -16,16 +16,14 @@ case class AppSettings(override val id: Option[Long], settings: Map[String, Stri
 
 object AppSettings {
   val repo = Neo4JRepository
+  val labelName = "AppSettings"
+  val settingsLableName = "Settings"
+  val authSettingsLableName = "AuthSettings"
+  val settingsRelationName = "Has_Settings"
+  val authSettingsRelationName = "Has_AuthSettings"
+  val logger = LoggerFactory.getLogger(getClass)
 
   implicit class AppSettingsImpl(entity: AppSettings) extends Neo4jRep[AppSettings] {
-
-    val labelName = "AppSettings"
-    val settingsLableName = "Settings"
-    val authSettingsLableName = "AuthSettings"
-    val settingsRelationName = "Has_Settings"
-    val authSettingsRelationName = "Has_AuthSettings"
-
-    val logger = LoggerFactory.getLogger(getClass)
 
     override def toNeo4jGraph(): Node = {
       logger.info(s"Executing $getClass :: toNeo4jGraph")
@@ -47,45 +45,10 @@ object AppSettings {
       }
     }
 
-    override def fromNeo4jGraph(): AppSettings = {
+    override def fromNeo4jGraph(nodeId: Long): AppSettings = {
       logger.info(s"Executing $getClass ::fromNeo4jGraph ")
-      var appSettings: AppSettings = AppSettings(Some(0), Map.empty, Map.empty)
-      repo.withTx {
-        neo =>
-
-          val nodes = repo.getAllNodesWithLabel("AppSettings")(neo)
-          logger.info(s"Getting all nodes with relation AppSettings ...$nodes")
-          nodes.foreach {
-            node =>
-              val relationships = node.getRelationships
-              val relationshipItr = relationships.iterator()
-              val settings: mutable.Map[String, String] = mutable.Map.empty[String, String]
-              val authSettings: mutable.Map[String, String] = mutable.Map.empty[String, String]
-              while (relationshipItr.hasNext) {
-                val relationship = relationshipItr.next()
-                val endNode = relationship.getEndNode
-                relationship.getType.name match {
-                  case `settingsRelationName` => endNode.getAllProperties.map { case (key, value) => settings.put(key, value.toString) }
-                  case `authSettingsRelationName` => endNode.getAllProperties.map { case (key, value) => settings.put(key, value.toString) }
-                  case _ => None
-                }
-              }
-
-              appSettings = new AppSettings(Option.apply(node.getId), settings.toMap, authSettings.toMap)
-
-          }
-      }
-      logger.info(s"Returning the App Settings : $appSettings")
+      val appSettings = AppSettings.fromNeo4jGraph(nodeId)
       appSettings
-    }
-
-
-    def getAppSettingNode(): Node = {
-      repo.withTx {
-        neo =>
-          val nodes = repo.getAllNodesWithLabel(labelName)(neo)
-          nodes.head
-      }
     }
 
     def updateAppSettings(settings: Map[String, String], relation: String): Unit = {
@@ -107,7 +70,7 @@ object AppSettings {
             }
         }
       } catch {
-        case exception : Exception => throw exception
+        case exception: Exception => throw exception
       }
     }
 
@@ -129,8 +92,8 @@ object AppSettings {
               }
             }
         }
-      }catch {
-        case exception : Exception => throw exception
+      } catch {
+        case exception: Exception => throw exception
       }
     }
 
@@ -146,5 +109,36 @@ object AppSettings {
     }
   }
 
+  def fromNeo4jGraph(nodeId: Long): AppSettings = {
+    var appSettings: AppSettings = AppSettings(Some(0), Map.empty, Map.empty)
+    repo.withTx {
+      neo =>
+        val node = repo.getNodeById(nodeId)(neo)
+        val relationships = node.getRelationships
+        val relationshipItr = relationships.iterator()
+        val settings: mutable.Map[String, String] = mutable.Map.empty[String, String]
+        val authSettings: mutable.Map[String, String] = mutable.Map.empty[String, String]
+        while (relationshipItr.hasNext) {
+          val relationship = relationshipItr.next()
+          val endNode = relationship.getEndNode
+          relationship.getType.name match {
+            case `settingsRelationName` => endNode.getAllProperties.map { case (key, value) => settings.put(key, value.toString) }
+            case `authSettingsRelationName` => endNode.getAllProperties.map { case (key, value) => settings.put(key, value.toString) }
+            case _ => None
+          }
+          appSettings = new AppSettings(Option.apply(node.getId), settings.toMap, authSettings.toMap)
+        }
+    }
+    logger.info(s"Returning the App Settings : $appSettings")
+    appSettings
+  }
+
+  def getAppSettingNode(): Node = {
+    repo.withTx {
+      neo =>
+        val nodes = repo.getAllNodesWithLabel(labelName)(neo)
+        nodes.head
+    }
+  }
 }
 
