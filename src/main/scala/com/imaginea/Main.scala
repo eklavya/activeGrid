@@ -53,7 +53,7 @@ object Main extends App {
   implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
   implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
   implicit val instanceConnectionFormat = jsonFormat(InstanceConnection.apply, "id", "sourceNodeId", "targetNodeId", "portRanges")
-  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "ParentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
+  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
   implicit val instanceUserFormat = jsonFormat(InstanceUser.apply, "id", "userName", "publicKeys")
   implicit val InstanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
   implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
@@ -62,6 +62,8 @@ object Main extends App {
   implicit val instanceFormat = jsonFormat(Instance.apply, "id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers")
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
+  implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
+
 
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
@@ -659,7 +661,135 @@ object Main extends App {
     }
   }
 
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes
+  val appsettingRoutes = pathPrefix("config") {
+    path("ApplicationSettings") {
+      post {
+        entity(as[ApplicationSettings]) { appSettings =>
+          val maybeAdded = Future {
+            appSettings.toNeo4jGraph(appSettings)
+          }
+          onComplete(maybeAdded) {
+            case Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
+            case Failure(ex) =>
+              logger.error("Error while save settings", ex)
+              complete(StatusCodes.InternalServerError, "These is problem while processing request")
+          }
+
+        }
+      }
+    }
+  } ~ pathPrefix("config") {
+    path("ApplicationSettings") {
+      get {
+        val allSettings = Future {
+          AppSettingsNeo4jWrapper.fromNeo4jGraph(0L)
+        }
+        onComplete(allSettings) {
+          case Success(settings) =>
+            complete(StatusCodes.OK, settings)
+          case Failure(ex) =>
+            logger.error("Failed to get settings", ex)
+            complete("Failed to get settings")
+        }
+      }
+    }
+  } ~ pathPrefix("config") {
+    path("ApplicationSettings") {
+      put {
+        entity(as[Map[String, String]]) { appSettings =>
+          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "GENERAL_SETTINGS")
+          onComplete(maybeUpdated) {
+            case Success(update) => update.status match {
+              case true => complete(StatusCodes.OK, "Updated successfully")
+              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
+            }
+            case Failure(ex) =>
+              ex match {
+                case aie: IllegalArgumentException =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.OK, "Failed to update settings")
+                case _ =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
+          }
+        }
+      }
+    }
+
+  } ~ pathPrefix("config") {
+    path("AuthSettings") {
+      put {
+        entity(as[Map[String, String]]) { appSettings =>
+          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "AUTH_SETTINGS")
+          onComplete(maybeUpdated) {
+            case Success(update) => update.status match {
+              case true => complete(StatusCodes.OK, "Updated successfully")
+              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
+            }
+            case Failure(ex) =>
+              ex match {
+                case aie: IllegalArgumentException =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.OK, "Failed to update settings")
+                case _ =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
+          }
+        }
+      }
+    }
+
+  } ~ pathPrefix("config") {
+    path("ApplicationSettings") {
+      delete {
+        entity(as[Map[String, String]]) { appSettings =>
+          val maybeDeleted = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "GENERAL_SETTINGS")
+          onComplete(maybeDeleted) {
+            case Success(delete) => delete.status match {
+              case true => complete(StatusCodes.OK, "Deleted successfully")
+              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
+            }
+            case Failure(ex) =>
+              ex match {
+                case aie: IllegalArgumentException =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.OK, "Failed to delete settings")
+                case _ =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
+          }
+        }
+      }
+    }
+  } ~ pathPrefix("config") {
+    path("AuthSettings") {
+      delete {
+        entity(as[Map[String, String]]) { appSettings =>
+          val maybeDelete = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "AUTH_SETTINGS")
+          onComplete(maybeDelete) {
+            case Success(delete) => delete.status match {
+              case true => complete(StatusCodes.OK, "Deleted successfully")
+              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
+            }
+            case Failure(ex) =>
+              ex match {
+                case aie: IllegalArgumentException =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.OK, "Failed to delete settings")
+                case _ =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
+          }
+        }
+      }
+    }
+
+  }
+  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
