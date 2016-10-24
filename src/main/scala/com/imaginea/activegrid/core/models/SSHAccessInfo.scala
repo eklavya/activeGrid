@@ -1,4 +1,4 @@
-package com.activegrid.model
+package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
@@ -20,7 +20,7 @@ object SSHAccessInfo {
       val userName = propertyValues("userName").toString
       val port = propertyValues("port").toString.toInt
       val relationship = "HAS_keyPair"
-      val keyPairInfo: Option[KeyPairInfo] = GraphDBExecutor.getChildNodeId(nodeId, relationship).flatMap(id=> KeyPairInfo.fromNeo4jGraph(id))
+      val keyPairInfo: Option[KeyPairInfo] = GraphDBExecutor.getChildNodeId(nodeId, relationship).flatMap(id => KeyPairInfo.fromNeo4jGraph(id))
 
       Some(SSHAccessInfo(Some(nodeId), keyPairInfo.get, userName, port))
     }
@@ -46,4 +46,5 @@ object SSHAccessInfo {
       SSHAccessInfo.fromNeo4jGraph(id)
     }
   }
+
 }

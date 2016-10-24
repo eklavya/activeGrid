@@ -1,4 +1,4 @@
-package com.activegrid.model
+package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
@@ -75,4 +75,5 @@ object ProcessInfo {
       ProcessInfo.fromNeo4jGraph(id)
     }
   }
+
 }
