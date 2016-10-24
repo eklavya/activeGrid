@@ -6,7 +6,6 @@ import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
-import scala.util.Try
 
 /**
   * Created by babjik on 23/9/16.
@@ -15,6 +14,14 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def neo4jStoreDir = "./graphdb/activegriddb"
+
+  def hasLabel(node: Node, label: String): Boolean = {
+    node.hasLabel(label)
+  }
+
+  def getProperty[T: Manifest](node: Node, name: String): Option[T] = {
+    if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+  }
 
   def getSingleNodeByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any): Option[Node] = withTx { implicit neo =>
     logger.debug(s"finding $label's with property $propertyKey and value $propertyValue")
@@ -51,7 +58,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
-    keys.foldLeft(Map[String, Any]())((accum, i) => if(node.hasProperty(i))  accum + ((i, node.getProperty(i))) else accum)
+    keys.foldLeft(Map[String, Any]())((accum, i) => if (node.hasProperty(i)) accum + ((i, node.getProperty(i))) else accum)
   }
 
   def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>

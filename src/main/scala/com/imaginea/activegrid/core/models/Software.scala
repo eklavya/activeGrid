@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -22,7 +23,7 @@ object Software {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "SoftwaresTest2"
 
-    override def toNeo4jGraph(software: Software): Option[Node] = {
+    override def toNeo4jGraph(software: Software): Node = {
       logger.debug(s"In toGraph for Software: $software")
       val map = Map("version" -> software.version,
         "name" -> software.name,
@@ -33,7 +34,7 @@ object Software {
         "discoverApplications" -> software.discoverApplications)
 
       val softwareNode = GraphDBExecutor.saveEntity[Software](label, map)
-      Some(softwareNode)
+      softwareNode
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[Software] = {
