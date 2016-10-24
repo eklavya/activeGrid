@@ -11,13 +11,13 @@ case class Site(override val id: Option[Long],
                 groupBy: Option[String]) extends BaseEntity
 
 object Site {
-  val neo4JRepository = Neo4JRepository
+  val neo4JRepository = Neo4jRepository
   val logger = LoggerFactory.getLogger(getClass)
   val siteLabel = "Site"
 
   implicit class SiteImpl(site: Site) extends Neo4jRep[Site] {
 
-    override def toNeo4jGraph: Node = {
+    override def toNeo4jGraph(entity: Site): Node = {
       logger.debug(s"Executing $getClass ::toNeo4jGraph ")
       neo4JRepository.withTx {
         neo =>

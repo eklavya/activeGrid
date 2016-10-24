@@ -16,7 +16,7 @@ case class APMServerDetails(override val id: Option[Long],
                             headers: Option[Map[String, String]]) extends BaseEntity
 
 object APMServerDetails {
-  val neo4JRepository = Neo4JRepository
+  val neo4JRepository = Neo4jRepository
   val logger = LoggerFactory.getLogger(getClass)
   val apmServerDetailsLabel = "APMServerDetails"
   val headersLabel = "Headers"
@@ -25,7 +25,7 @@ object APMServerDetails {
 
   implicit class APMServerDetailImpl(aPMServerDetails: APMServerDetails) extends Neo4jRep[APMServerDetails] {
 
-    override def toNeo4jGraph: Node = {
+    override def toNeo4jGraph(entity: APMServerDetails): Node = {
       logger.debug(s"Executing $getClass ::toNeo4jGraph ")
       neo4JRepository.withTx {
         neo =>
@@ -39,7 +39,7 @@ object APMServerDetails {
             createRelationShip(node, headersNode, apmServer_header_relation)
           }
           if (aPMServerDetails.monitoredSite.nonEmpty) {
-            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph
+            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph(aPMServerDetails.monitoredSite.get)
             createRelationShip(node, siteNode, apmServer_site_relation)
           }
           node
@@ -84,9 +84,9 @@ object APMServerDetails {
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              if(enityMap.contains("siteEntiy")) enityMap("siteEntiy").asInstanceOf[Option[Site]] else None,
+              if (enityMap.contains("siteEntiy")) enityMap("siteEntiy").asInstanceOf[Option[Site]] else None,
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
-              if(enityMap.contains("headers")) enityMap("headers").asInstanceOf[Option[Map[String, String]]] else None
+              if (enityMap.contains("headers")) enityMap("headers").asInstanceOf[Option[Map[String, String]]] else None
             ))
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $apmServerDetailsLabel")
