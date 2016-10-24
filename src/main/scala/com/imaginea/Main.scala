@@ -27,7 +27,7 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  val logLevelUpdater = new LogLevelUpdater
+
 
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
     override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
@@ -153,28 +153,6 @@ object Main extends App {
             logger.error(s"Unable to delete settings ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to delete  settings")
         }
-      }
-    }
-  } ~ path(PathMatchers.separateOnSlashes("config/logs/level")) {
-    put {
-      entity(as[String]) {
-        level =>
-          onComplete(logLevelUpdater.setLogLevel(logLevelUpdater.ROOT, level)) {
-            case Success(response) => complete(StatusCodes.OK, "Done")
-            case Failure(exception) =>
-              logger.error(s"Unable to update log level ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to update log level")
-          }
-      }
-    }
-  } ~ path(PathMatchers.separateOnSlashes("config/logs/level")) {
-    get {
-      val response = logLevelUpdater.getLogLevel(logLevelUpdater.ROOT)
-      onComplete(response) {
-        case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
-        case Failure(exception) =>
-          logger.error(s"Unable to get the log level ${exception.getMessage}", exception)
-          complete(StatusCodes.BadRequest, "Unable to get the log level")
       }
     }
   }

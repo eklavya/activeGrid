@@ -35,7 +35,6 @@ object AppSettings {
         val authSettingsNode = repo.createNode(authSettingsLableName)(neo)
         entity.authSettings.foreach { case (key, value) => authSettingsNode.setProperty(key, value) }
         createRelationShip(node, authSettingsNode, authSettingsRelationName)
-
         node
       }
     }
