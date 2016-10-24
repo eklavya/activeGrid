@@ -21,3 +21,16 @@ server.pid
 /dist/
 .cache
 graphdb/
+src/main/resources/
+src/main/scala/com/imaginea/activegrid/core/models/AccountInfo.scala
+src/main/scala/com/imaginea/activegrid/core/models/Filter.scala
+src/main/scala/com/imaginea/activegrid/core/models/FilterType.scala
+src/main/scala/com/imaginea/activegrid/core/models/InstanceProvider.scala
+src/main/scala/com/imaginea/activegrid/core/models/PlugIn.scala
+src/main/scala/com/imaginea/activegrid/core/models/PlugInMap.scala
+src/main/scala/com/imaginea/activegrid/core/models/SiteFilter.scala
+src/main/scala/com/imaginea/activegrid/core/services/
+src/main/scala/com/activegrid/services/
+src/main/webapp/
+temporary/
+
