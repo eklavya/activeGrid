@@ -7,7 +7,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.{AppSettings, AppSettingsNeo4jWrapper, LogConfigUpdater}
+import com.imaginea.activegrid.core.models.{AppSettings, AppSettingsNeo4jWrapper}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
@@ -21,7 +21,7 @@ object Main extends App {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
-  implicit val appSettings = jsonFormat(AppSettings.apply, "settings", "authSettings")
+  implicit val appSettings = jsonFormat(AppSettings.apply,"id","settings", "authSettings")
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
@@ -152,39 +152,8 @@ object Main extends App {
       }
     }
 
-  } ~ pathPrefix("config") {
-    path("logs" / "level") {
-      put {
-        entity(as[String]) { level =>
-          val saved = LogConfigUpdater.setLogLevel(LogConfigUpdater.ROOT, level)
-          onComplete(saved) {
-            case Success(saved) => complete(StatusCodes.OK, "Settings saved successfully")
-            case Failure(ex) =>
-              logger.error("ERROR WHILE UPDATING LOG LEVEL", ex)
-              complete("ERROR  WHILE UPDATING LOG LEVEL")
-          }
-
-        }
-      }
-    }
-
-  } ~ pathPrefix("config") {
-    path("logs" / "level") {
-      get {
-        entity(as[String]) { level =>
-          val loglevel = LogConfigUpdater.getLogLevel(level)
-          onComplete(loglevel) {
-            case Success(loglevel) => complete(StatusCodes.OK, "Settings saved successfully")
-            case Failure(ex) =>
-              logger.error("ERROR WHILE GETTING LOG SETTINGS", ex)
-              complete("ERROR  WHILE GETTING LOG SETTINGS")
-          }
-
-        }
-      }
-    }
-
   }
+
   Http().bindAndHandle(handler = routes, interface = "localhost", port = 5000)
 
 }
