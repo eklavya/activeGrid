@@ -13,8 +13,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-spray-json-experimental" % AkkaVersion,
     "ch.qos.logback" % "logback-classic" % "1.1.7",
     "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
-    "eu.fakod" % "neo4j-scala_2.11" % neo4jScalaVersion,
-    "log4j" % "log4j" % "1.2.17"
+    "eu.fakod" % "neo4j-scala_2.11" % neo4jScalaVersion
 
   )
 }
