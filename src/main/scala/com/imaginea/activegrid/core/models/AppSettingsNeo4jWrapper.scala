@@ -12,32 +12,35 @@ import scala.concurrent.Future
 /**
   * Created by sivag on 6/10/16.
   */
-object AppSettingsNeo4jWrapper extends DBWrapper {
+object AppSettingsNeo4jWrapper {
+
 
   val labels: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings", "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  val rep = Neo4jRepository
 
-  def toNeo4jGraph(entity: AppSettings): Node = {
-    withTx {
+
+  def toNeo4jGraph(entity: ApplicationSettings): Node = {
+    rep.withTx {
       neo => {
-        val generalSettings = createNode(labels("GS").toString)(neo)
-        val authSettings = createNode(labels("AUS").toString)(neo)
+        val generalSettings = rep.createNode(labels("GS").toString)(neo)
+        val authSettings = rep.createNode(labels("AUS").toString)(neo)
         setNodeProperties(generalSettings, entity.settings)
         setNodeProperties(authSettings, entity.authSettings)
-        val appSettings = createNode(labels("AS").toString)(neo)
-        appSettings --> labels("HGS").toString --> generalSettings
-        appSettings --> labels("HAS").toString --> authSettings
+        val appSettings = rep.createNode(labels("AS").toString)(neo)
+        rep.createRelation(labels("HGS").toString, appSettings, generalSettings)
+        rep.createRelation(labels("HAS").toString, appSettings, authSettings)
         appSettings
       }
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): Option[AppSettings] = {
-    withTx {
+  def fromNeo4jGraph(nodeId: Long): Option[ApplicationSettings] = {
+    rep.withTx {
       neo => {
-        withTx { neo =>
-          val settingNodes = getAllNodesWithLabel(labels("AS").toString)(neo).toList
-          settingNodes.map { node => AppSettings(getSettingsByRelation(node, labels("HGS").toString), getSettingsByRelation(node, labels("HAS").toString)) }.headOption
+        rep.withTx { neo =>
+          val settingNodes = rep.getAllNodesWithLabel(labels("AS").toString)(neo).toList
+          settingNodes.map { node => ApplicationSettings(Some(node.getId), getSettingsByRelation(node, labels("HGS").toString), getSettingsByRelation(node, labels("HAS").toString)) }.headOption
         }
       }
     }
@@ -74,10 +77,10 @@ object AppSettingsNeo4jWrapper extends DBWrapper {
   }
 
   def updateOrDeleteSettings(settings: Map[String, String], relationName: String, updateOrDelete: String): Future[ExecutionStatus] = Future {
-    withTx {
+    rep.withTx {
       neo => {
-        withTx { neo =>
-          val settingNodes = getAllNodesWithLabel(labels("AS").toString)(neo).headOption
+        rep.withTx { neo =>
+          val settingNodes = rep.getAllNodesWithLabel(labels("AS").toString)(neo).headOption
           settingNodes match {
             case Some(rootNode) => val relationNode = getRelationNodeByName(rootNode, relationName)
               relationNode match {
@@ -99,9 +102,11 @@ object AppSettingsNeo4jWrapper extends DBWrapper {
     }
     ExecutionStatus(true)
   }
+
   def setNodeProperties(n: Node, settings: Map[String, String]) {
     settings.foreach {
       case (k, v) => n.setProperty(k, v);
     }
   }
 }
+
