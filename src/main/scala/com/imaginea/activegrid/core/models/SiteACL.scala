@@ -1,8 +1,8 @@
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 /**
  * Created by ranjithrajd on 25/10/16.
@@ -17,12 +17,13 @@ case class SiteACL(override val id: Option[Long]
 object SiteACL {
   val label = "SiteACL"
 
-  implicit class RichSiteACL(siteACL: SiteACL) extends Neo4jRep[SiteACL] {
-    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-    val hasSite = "HAS_site"
-    val hasInstances = "HAS_instances"
-    val hasGroups = "HAS_groups"
+  val hasSite = "HAS_site"
+  val hasInstances = "HAS_instances"
+  val hasGroups = "HAS_groups"
+
+  implicit class RichSiteACL(siteACL: SiteACL) extends Neo4jRep[SiteACL] {
 
     override def toNeo4jGraph(siteACL: SiteACL): Node = {
 
@@ -30,7 +31,6 @@ object SiteACL {
       val map = Map("name" -> siteACL.name)
 
       val siteACLNode = Neo4jRepository.saveEntity[SiteACL](label, siteACL.id, map)
-
 
       //Building relationship to site with SiteACL
       logger.debug(s"SiteACL has relation with Site ${siteACL.site}")
@@ -56,51 +56,55 @@ object SiteACL {
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
-
-      val siteACLNodeOption = Neo4jRepository.findNodeById(nodeId)
-      logger.debug(s" SiteACL ${siteACLNodeOption}")
-      siteACLNodeOption.map(node => {
-        val siteACLMap = Neo4jRepository.getProperties(node, "name")
-
-        logger.debug(s" is SiteACL entity ${siteACLMap}")
-
-          val siteNode: List[Node] = Neo4jRepository.getNodesWithRelation(node, hasSite)
-          val siteList: List[Site] = siteNode.map(child => {
-            logger.debug(s" Site -> SiteACL ${child}")
-            val site: Site = null
-            site.fromNeo4jGraph(child.getId)
-          }).flatten
-
-          val site = siteList match {
-            case Nil => None
-            case (x :: xs) => Some(x)
-          }
-
-          val instanceNodes = Neo4jRepository.getNodesWithRelation(node, hasInstances)
-          val instances = instanceNodes.map(child => {
-            logger.debug(s" Instance -> SiteACL ${child}")
-            val instance: Instance = null
-            instance.fromNeo4jGraph(child.getId)
-          }).flatten
-
-          val groupNodes = Neo4jRepository.getNodesWithRelation(node, hasGroups)
-          val groups = groupNodes.map(child => {
-            logger.debug(s"UserGroup -> SiteACL ${child}")
-            val group: UserGroup = null
-            group.fromNeo4jGraph(child.getId)
-          }).flatten
-
-          val userGroup = SiteACL(
-            id = Some(node.getId),
-            name = siteACLMap("name").toString,
-            site = site,
-            instances = instances,
-            groups = groups
-          )
-          logger.debug(s"UserGroup - ${userGroup}")
-          userGroup
-      })
+      SiteACL.fromNeo4jGraph(nodeId)
     }
+  }
+
+  def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
+
+    val siteACLNodeOption = Neo4jRepository.findNodeById(nodeId)
+    logger.debug(s" SiteACL ${siteACLNodeOption}")
+    siteACLNodeOption.map(node => {
+      val siteACLMap = Neo4jRepository.getProperties(node, "name")
+
+      logger.debug(s" is SiteACL entity ${siteACLMap}")
+
+      val siteNode: List[Node] = Neo4jRepository.getNodesWithRelation(node, hasSite)
+      val siteList: List[Site] = siteNode.map(child => {
+        logger.debug(s" Site -> SiteACL ${child}")
+        val site: Site = null
+        site.fromNeo4jGraph(child.getId)
+      }).flatten
+
+      val site = siteList match {
+        case Nil => None
+        case (x :: xs) => Some(x)
+      }
+
+      val instanceNodes = Neo4jRepository.getNodesWithRelation(node, hasInstances)
+      val instances = instanceNodes.map(child => {
+        logger.debug(s" Instance -> SiteACL ${child}")
+        val instance: Instance = null
+        instance.fromNeo4jGraph(child.getId)
+      }).flatten
+
+      val groupNodes = Neo4jRepository.getNodesWithRelation(node, hasGroups)
+      val groups = groupNodes.map(child => {
+        logger.debug(s"UserGroup -> SiteACL ${child}")
+        val group: UserGroup = null
+        group.fromNeo4jGraph(child.getId)
+      }).flatten
+
+      val userGroup = SiteACL(
+        id = Some(node.getId),
+        name = siteACLMap("name").toString,
+        site = site,
+        instances = instances,
+        groups = groups
+      )
+      logger.debug(s"UserGroup - ${userGroup}")
+      userGroup
+    })
   }
 
 }

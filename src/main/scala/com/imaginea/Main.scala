@@ -287,8 +287,8 @@ object Main extends App {
         get{
           val result = Future {
             val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
-            val listOfUsers = nodeList.flatMap(node => UserGroup.fromNeo4jGraph(node.getId))
-            Page[UserGroup](listOfUsers)
+            val listOfUserGroups = nodeList.flatMap(node => UserGroup.fromNeo4jGraph(node.getId))
+            Page[UserGroup](listOfUserGroups)
           }
           onComplete(result) {
             case Success(page) => complete(StatusCodes.OK, page)
@@ -314,17 +314,47 @@ object Main extends App {
     pathPrefix("users") {
       path("access" / LongNumber) { id =>
         get {
-          complete("access groups")
+          val result = Future {
+            SiteACL.fromNeo4jGraph(id)
+          }
+          onComplete(result) {
+            case Success(mayBeSiteACL) =>
+              mayBeSiteACL match {
+                case Some(userGroup) => complete(StatusCodes.OK, userGroup)
+                case None => complete(StatusCodes.BadRequest, s"Failed to get user access with id $id")
+              }
+            case Failure(ex) =>
+              logger.error(s"Failed to get user access, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to get access, Message: ${ex.getMessage}")
+          }
         } ~
           delete {
-            complete("access deleted")
+            val result = Future {
+              Neo4jRepository.deleteEntity(id)
+            }
+            onComplete(result) {
+              case Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
+              case Failure(ex) =>
+                logger.error(s"Failed to delete user access, Message: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Failed to delete user access, Message: ${ex.getMessage}")
+            }
           }
       } ~
         path("access") {
           get{
-            complete("all access")
+            val result = Future {
+              val nodeList = Neo4jRepository.getNodesByLabel(SiteACL.label)
+              val listOfSiteACL = nodeList.flatMap(node => SiteACL.fromNeo4jGraph(node.getId))
+              Page[SiteACL](listOfSiteACL)
+            }
+            onComplete(result) {
+              case Success(page) => complete(StatusCodes.OK, page)
+              case Failure(ex) =>
+                logger.error(s"Failed to get user access, Message: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Failed to get user access")
+            }
           } ~ post {
-            entity(as[SiteACL]) { siteACL =>
+             entity(as[SiteACL]) { siteACL =>
                 val result = Future {
                   siteACL.toNeo4jGraph(siteACL)
                 }
@@ -335,6 +365,7 @@ object Main extends App {
                     complete(StatusCodes.BadRequest, s"Failed save Site access")
                 }
               }
+
           }
         }
     } ~

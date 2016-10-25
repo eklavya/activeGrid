@@ -18,12 +18,6 @@ case class UserGroup(override val id: Option[Long]
                      , accesses: Set[ResourceACL] = Set.empty) extends BaseEntity
 
 
-sealed trait ResponseMessage
-
-case class SuccessResponse(id: String) extends ResponseMessage
-
-object FailureResponse extends ResponseMessage
-
 object UserGroup {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val label = "UserGroup"
@@ -55,7 +49,7 @@ object UserGroup {
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
-      fromNeo4jGraph(nodeId)
+      UserGroup.fromNeo4jGraph(nodeId)
     }
   }
   def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
