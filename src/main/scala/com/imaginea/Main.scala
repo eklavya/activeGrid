@@ -64,6 +64,12 @@ object Main extends App {
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
 
+  implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
+  implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
+  implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
+
+  implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
+  implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
 
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
@@ -248,104 +254,219 @@ object Main extends App {
     }
   }
 
-  def userRoute: Route = pathPrefix("users" / LongNumber) { userId =>
-    pathPrefix("keys") {
-      pathPrefix(LongNumber) { keyId =>
-        get {
-          val key = Future {
-            getKeyById(userId, keyId)
-          }
-          onComplete(key) {
-            case Success(response) =>
-              response match {
-                case Some(keyPairInfo) => complete(StatusCodes.OK, keyPairInfo)
-                case None => complete(StatusCodes.BadRequest, "Unable to get the key")
-              }
-            case Failure(ex) =>
-              logger.error(s"Unable to get the key, Reason: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Unable to get the key")
-          }
-
-        } ~ delete {
-          val resposne = Future {
-            logger.debug(s"Deleting Key[$keyId] of User[$userId] ")
-            getKeyById(userId, keyId).flatMap(key => {
-              Neo4jRepository.deleteChildNode(keyId)
-            })
-          }
-          onComplete(resposne) {
-            case Success(result) => complete(StatusCodes.OK, "Deleted Successfully")
-            case Failure(ex) =>
-              logger.error(s"Failed delete, Message: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Failed to delete")
-          }
-        }
-      } ~ get {
+  def userRoute: Route = pathPrefix("users") {
+    path("groups" / LongNumber) { id =>
+      get {
         val result = Future {
-          User.fromNeo4jGraph(userId) match {
-            case Some(user) => Page[KeyPairInfo](user.publicKeys)
-            case None => Page[KeyPairInfo](List.empty[KeyPairInfo])
-          }
+          UserGroup.fromNeo4jGraph(id)
         }
         onComplete(result) {
-          case Success(page) => complete(StatusCodes.OK, page)
-          case Failure(ex) =>
-            logger.error(s"Failed get Users, Message: ${ex.getMessage}", ex)
-            complete(StatusCodes.BadRequest, s"Failed get Users")
-        }
-      } ~ post {
-        entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
-          val result = Future {
-
-            FileUtils.createDirectories(UserUtils.getKeyDirPath(userId))
-
-            val resultKeys = sshKeyInfo.keyMaterials.map { case (keyName: String, keyMaterial: String) =>
-              logger.debug(s" ($keyName  --> ($keyMaterial))")
-              val filePath: String = UserUtils.getKeyFilePath(userId, keyName)
-              FileUtils.saveContentToFile(filePath, keyMaterial)
-
-              val keyPairInfo = KeyPairInfo(keyName, keyMaterial, Some(filePath), UploadedKeyPair)
-              logger.debug(s" new Key Pair Info $keyPairInfo")
-              UserUtils.addKeyPair(userId, keyPairInfo)
-              keyPairInfo
+          case Success(mayBeUserGroup) =>
+            mayBeUserGroup match {
+              case Some(userGroup) => complete(StatusCodes.OK, userGroup)
+              case None => complete(StatusCodes.BadRequest, s"Failed to get user group with id $id")
             }
-
-            Page(resultKeys.toList)
+          case Failure(ex) =>
+            logger.error(s"Failed to get user group, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed to get user group, Message: ${ex.getMessage}")
+        }
+      } ~
+        delete {
+          val result = Future {
+            Neo4jRepository.deleteEntity(id)
+          }
+          onComplete(result) {
+            case Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
+            case Failure(ex) =>
+              logger.error(s"Failed to delete user group, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to delete user group, Message: ${ex.getMessage}")
+          }
+        }
+    } ~
+      path("groups") {
+        get{
+          val result = Future {
+            val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
+            val listOfUserGroups = nodeList.flatMap(node => UserGroup.fromNeo4jGraph(node.getId))
+            Page[UserGroup](listOfUserGroups)
           }
           onComplete(result) {
             case Success(page) => complete(StatusCodes.OK, page)
             case Failure(ex) =>
-              logger.error(s"Failed to add keys, Message: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Failed to add keys")
+              logger.error(s"Failed to get users, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to get users")
+          }
+        } ~ post {
+          entity(as[UserGroup]) { userGroup =>
+            val result = Future {
+              userGroup.toNeo4jGraph(userGroup)
+            }
+            onComplete(result) {
+              case Success(status) => complete(StatusCodes.OK, "User group saved  Successfully")
+              case Failure(ex) =>
+                logger.error(s"Failed save user group, Message: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Failed save user group")
+            }
+          }
+       }
+    }
+  } ~
+    pathPrefix("users") {
+      path("access" / LongNumber) { id =>
+        get {
+          val result = Future {
+            SiteACL.fromNeo4jGraph(id)
+          }
+          onComplete(result) {
+            case Success(mayBeSiteACL) =>
+              mayBeSiteACL match {
+                case Some(userGroup) => complete(StatusCodes.OK, userGroup)
+                case None => complete(StatusCodes.BadRequest, s"Failed to get user access with id $id")
+              }
+            case Failure(ex) =>
+              logger.error(s"Failed to get user access, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to get access, Message: ${ex.getMessage}")
+          }
+        } ~
+          delete {
+            val result = Future {
+              Neo4jRepository.deleteEntity(id)
+            }
+            onComplete(result) {
+              case Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
+              case Failure(ex) =>
+                logger.error(s"Failed to delete user access, Message: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Failed to delete user access, Message: ${ex.getMessage}")
+            }
+          }
+      } ~
+        path("access") {
+          get{
+            val result = Future {
+              val nodeList = Neo4jRepository.getNodesByLabel(SiteACL.label)
+              val listOfSiteACL = nodeList.flatMap(node => SiteACL.fromNeo4jGraph(node.getId))
+              Page[SiteACL](listOfSiteACL)
+            }
+            onComplete(result) {
+              case Success(page) => complete(StatusCodes.OK, page)
+              case Failure(ex) =>
+                logger.error(s"Failed to get user access, Message: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Failed to get user access")
+            }
+          } ~ post {
+             entity(as[SiteACL]) { siteACL =>
+                val result = Future {
+                  siteACL.toNeo4jGraph(siteACL)
+                }
+                onComplete(result) {
+                  case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
+                  case Failure(ex) =>
+                    logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
+                    complete(StatusCodes.BadRequest, s"Failed save Site access")
+                }
+              }
+
           }
         }
-      }
-    } ~ get {
-      val result = Future {
-        User.fromNeo4jGraph(userId)
-      }
-      onComplete(result) {
-        case Success(mayBeUser) =>
-          mayBeUser match {
-            case Some(user) => complete(StatusCodes.OK, user)
-            case None => complete(StatusCodes.BadRequest, s"Failed to get user with id $userId")
+    } ~
+    pathPrefix("users" / LongNumber) { userId =>
+      pathPrefix("keys") {
+        pathPrefix(LongNumber) { keyId =>
+          get {
+            val key = Future {
+              getKeyById(userId, keyId)
+            }
+            onComplete(key) {
+              case Success(response) =>
+                response match {
+                  case Some(keyPairInfo) => complete(StatusCodes.OK, keyPairInfo)
+                  case None => complete(StatusCodes.BadRequest, "Unable to get the key")
+                }
+              case Failure(ex) =>
+                logger.error(s"Unable to get the key, Reason: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Unable to get the key")
+            }
+
+          } ~ delete {
+            val resposne = Future {
+              logger.debug(s"Deleting Key[$keyId] of User[$userId] ")
+              getKeyById(userId, keyId).flatMap(key => {
+                Neo4jRepository.deleteChildNode(keyId)
+              })
+            }
+            onComplete(resposne) {
+              case Success(result) => complete(StatusCodes.OK, "Deleted Successfully")
+              case Failure(ex) =>
+                logger.error(s"Failed delete, Message: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Failed to delete")
+            }
           }
-        case Failure(ex) =>
-          logger.error(s"Failed to get user, Message: ${ex.getMessage}", ex)
-          complete(StatusCodes.BadRequest, s"Failed to get user, Message: ${ex.getMessage}")
+        } ~ get {
+          val result = Future {
+            User.fromNeo4jGraph(userId) match {
+              case Some(user) => Page[KeyPairInfo](user.publicKeys)
+              case None => Page[KeyPairInfo](List.empty[KeyPairInfo])
+            }
+          }
+          onComplete(result) {
+            case Success(page) => complete(StatusCodes.OK, page)
+            case Failure(ex) =>
+              logger.error(s"Failed get Users, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed get Users")
+          }
+        } ~ post {
+          entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
+            val result = Future {
+
+              FileUtils.createDirectories(UserUtils.getKeyDirPath(userId))
+
+              val resultKeys = sshKeyInfo.keyMaterials.map { case (keyName: String, keyMaterial: String) =>
+                logger.debug(s" ($keyName  --> ($keyMaterial))")
+                val filePath: String = UserUtils.getKeyFilePath(userId, keyName)
+                FileUtils.saveContentToFile(filePath, keyMaterial)
+
+                val keyPairInfo = KeyPairInfo(keyName, keyMaterial, Some(filePath), UploadedKeyPair)
+                logger.debug(s" new Key Pair Info $keyPairInfo")
+                UserUtils.addKeyPair(userId, keyPairInfo)
+                keyPairInfo
+              }
+
+              Page(resultKeys.toList)
+            }
+            onComplete(result) {
+              case Success(page) => complete(StatusCodes.OK, page)
+              case Failure(ex) =>
+                logger.error(s"Failed to add keys, Message: ${ex.getMessage}", ex)
+                complete(StatusCodes.BadRequest, s"Failed to add keys")
+            }
+          }
+        }
+      } ~ get {
+        val result = Future {
+          User.fromNeo4jGraph(userId)
+        }
+        onComplete(result) {
+          case Success(mayBeUser) =>
+            mayBeUser match {
+              case Some(user) => complete(StatusCodes.OK, user)
+              case None => complete(StatusCodes.BadRequest, s"Failed to get user with id $userId")
+            }
+          case Failure(ex) =>
+            logger.error(s"Failed to get user, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed to get user, Message: ${ex.getMessage}")
+        }
+      } ~ delete {
+        val result = Future {
+          Neo4jRepository.deleteEntity(userId)
+        }
+        onComplete(result) {
+          case Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
+          case Failure(ex) =>
+            logger.error(s"Failed to delete user, Message: ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, s"Failed to delete user, Message: ${ex.getMessage}")
+        }
       }
-    } ~ delete {
-      val result = Future {
-        Neo4jRepository.deleteEntity(userId)
-      }
-      onComplete(result) {
-        case Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
-        case Failure(ex) =>
-          logger.error(s"Failed to delete user, Message: ${ex.getMessage}", ex)
-          complete(StatusCodes.BadRequest, s"Failed to delete user, Message: ${ex.getMessage}")
-      }
-    }
-  } ~ pathPrefix("users") {
+    } ~ pathPrefix("users") {
     get {
       pathPrefix(Segment / "keys") { userName =>
         val result = Future {
@@ -397,6 +518,7 @@ object Main extends App {
       }
     }
   }
+
 
   //KeyPair Serivce
   def keyPairRoute: Route = pathPrefix("keypairs") {
