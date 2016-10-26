@@ -45,7 +45,7 @@ object AWSComputeAPI {
           Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).ramSize)),
           Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).rootPartitionSize)),
           awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList,
-          None,
+          createSSHAccessInfo(awsInstance.getKeyName),
           List.empty,
           List.empty,
           Set.empty,
@@ -118,5 +118,11 @@ object AWSComputeAPI {
     } else {
       ImageInfo(None, imageId, "", "", publicValue = false, "", "", "", "", "", "", "", "", "")
     }
+  }
+
+  def createSSHAccessInfo(keyName: String): Option[SSHAccessInfo] = {
+    val node = GraphDBExecutor.getNodeByProperty("KeyPairInfo", "keyName", keyName)
+    val keyPairInfo = node.flatMap { node => KeyPairInfo.fromNeo4jGraph(node.getId) }
+    keyPairInfo.flatMap(info => Some(SSHAccessInfo(None, info, "", 0)))
   }
 }
