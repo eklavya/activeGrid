@@ -46,7 +46,7 @@ object Main extends App {
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
   implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
   implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id","imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
   implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
   implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
@@ -696,13 +696,11 @@ object Main extends App {
         entity(as[Site1]) { site =>
           val buildSite = Future {
             val siteFilters = site.filters
-            siteFilters.foreach { siteFilter =>
+            val instances = siteFilters.flatMap{ siteFilter =>
               val accountInfo = siteFilter.accountInfo
-              accountInfo.regions.foreach { region =>
-                populateSite(site , accountInfo)
-              }
+              AWSComputeAPI.getInstances(accountInfo)
             }
-            site
+            Site1(None,site.siteName,instances,site.filters)
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -772,12 +770,6 @@ object Main extends App {
 
     logger.debug(s"Reurning list of APM Servers $list")
     list
-  }
-  def populateSite(site: Site1, accountInfo: AccountInfo): Site1 = {
-    logger.debug(s"Executing $getClass :: populateSite")
-      val aWSComputeAPI = new AWSComputeAPI
-      site.instances = Some(aWSComputeAPI.getInstances(accountInfo))
-    site
   }
 }
 

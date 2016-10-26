@@ -7,7 +7,7 @@ import org.neo4j.graphdb.Node
 
 case class Site1(override val id : Option[Long],
                  siteName: String,
-                 var instances: Option[List[Instance]],
+                 instances: List[Instance],
                  filters:List[SiteFilter]) extends BaseEntity
 
 object Site1{
@@ -22,7 +22,7 @@ object Site1{
           val node = repository.createNode(site1Label)(neo)
           if(entity.siteName.nonEmpty) node.setProperty("siteName" , entity.siteName)
           if(entity.instances.nonEmpty){
-            entity.instances.get.foreach{
+            entity.instances.foreach{
               instance =>
                 val childNode = instance.toNeo4jGraph(instance)
                 repository.createRelation(site_Instance_Relation , node , childNode)
