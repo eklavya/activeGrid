@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sampathr on 22/9/16.
   */
-case class ImageInfo(override val id: Option[Long],
+  case class ImageInfo(override val id: Option[Long],
                      state: String,
                      ownerId: String,
                      publicValue: Boolean,
