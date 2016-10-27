@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
   * Created by sampathr on 22/9/16.
   */
 case class ImageInfo(override val id: Option[Long],
+                     imageId: String,
                      state: String,
                      ownerId: String,
                      publicValue: Boolean,
@@ -30,6 +31,7 @@ object ImageInfo {
     override def toNeo4jGraph(imageInfo: ImageInfo): Node = {
       logger.debug(s"In toGraph for Image Info: $imageInfo")
       val map = Map("state" -> imageInfo.state,
+        "imageId" -> imageInfo.imageId,
         "ownerId" -> imageInfo.ownerId,
         "publicValue" -> imageInfo.publicValue,
         "architecture" -> imageInfo.architecture,
@@ -62,6 +64,7 @@ object ImageInfo {
       val node = GraphDBExecutor.findNodeById(nodeId)
       val map = GraphDBExecutor.getProperties(node.get, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
       val imageInfo = ImageInfo(Some(node.get.getId),
+        map("imageId").asInstanceOf[String],
         map("state").asInstanceOf[String],
         map("ownerId").asInstanceOf[String],
         map("publicValue").asInstanceOf[Boolean],

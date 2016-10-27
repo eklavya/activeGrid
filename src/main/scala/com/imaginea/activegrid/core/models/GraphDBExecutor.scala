@@ -77,11 +77,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     }
   }
 
-  def deleteEntity[T <: BaseEntity : Manifest](imageId: Long) = withTx { neo =>
-    val node = getNodeById(imageId)(neo)
-    node.delete()
-  }
-
   def getNodesByLabel(label: String): List[Node] = withTx { neo =>
     val list = getAllNodesWithLabel(label)(neo).toList
     logger.debug(s"Size of nodes with label : $label : ${list.size}")
@@ -123,4 +118,10 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     node
   }
 
+  def deleteEntity[T <: BaseEntity : Manifest](id: Long): Unit = {
+    withTx { neo =>
+      val node = getNodeById(id)(neo)
+      node.delete()
+    }
+  }
 }
