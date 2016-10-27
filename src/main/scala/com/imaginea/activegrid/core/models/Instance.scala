@@ -3,10 +3,12 @@ package com.imaginea.activegrid.core.models
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
+import spray.json.DefaultJsonProtocol
 
 /**
   * Created by shareefn on 7/10/16.
   */
+
 case class Instance(override val id: Option[Long],
                     instanceId: Option[String],
                     name: String,
@@ -36,6 +38,10 @@ object Instance {
 
   def apply(name: String): Instance =
     Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser])
+
+  def apply(aws: com.amazonaws.services.ec2.model.Instance): Instance =
+    Instance(None, Option(aws.getInstanceId), aws.getIamInstanceProfile.getArn, Option(aws.getState.getName), Option(aws.getInstanceType), Option(aws.getPlatform), Option(aws.getArchitecture), Option(aws.getPublicDnsName), Option(aws.getLaunchTime.getTime.toLong), None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser])
+
 
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
     val listOfKeys = List("instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName")
