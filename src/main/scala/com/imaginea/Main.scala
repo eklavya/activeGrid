@@ -53,7 +53,7 @@ object Main extends App {
   implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
   implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
   implicit val instanceConnectionFormat = jsonFormat(InstanceConnection.apply, "id", "sourceNodeId", "targetNodeId", "portRanges")
-  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
+  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "ParentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
   implicit val instanceUserFormat = jsonFormat(InstanceUser.apply, "id", "userName", "publicKeys")
   implicit val InstanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
   implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
@@ -62,14 +62,6 @@ object Main extends App {
   implicit val instanceFormat = jsonFormat(Instance.apply, "id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers")
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
-  implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
-
-  implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
-  implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
-  implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
-
-  implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
-  implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
 
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
@@ -254,138 +246,23 @@ object Main extends App {
     }
   }
 
-  def userRoute: Route = pathPrefix("users") {
-    path("groups" / LongNumber) { id =>
-      get {
-        val result = Future {
-          UserGroup.fromNeo4jGraph(id)
-        }
-        onComplete(result) {
-          case Success(mayBeUserGroup) =>
-            mayBeUserGroup match {
-              case Some(userGroup) => complete(StatusCodes.OK, userGroup)
-              case None => complete(StatusCodes.BadRequest, s"Failed to get user group with id $id")
-            }
-          case Failure(ex) =>
-            logger.error(s"Failed to get user group, Message: ${ex.getMessage}", ex)
-            complete(StatusCodes.BadRequest, s"Failed to get user group, Message: ${ex.getMessage}")
-        }
-      } ~
-        delete {
-          val result = Future {
-            Neo4jRepository.deleteEntity(id)
-          }
-          onComplete(result) {
-            case Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
-            case Failure(ex) =>
-              logger.error(s"Failed to delete user group, Message: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Failed to delete user group, Message: ${ex.getMessage}")
-          }
-        }
-    } ~
-      path("groups") {
-        get{
-          val result = Future {
-            val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
-            val listOfUserGroups = nodeList.flatMap(node => UserGroup.fromNeo4jGraph(node.getId))
-            Page[UserGroup](listOfUserGroups)
-          }
-          onComplete(result) {
-            case Success(page) => complete(StatusCodes.OK, page)
-            case Failure(ex) =>
-              logger.error(s"Failed to get users, Message: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Failed to get users")
-          }
-        } ~ post {
-          entity(as[UserGroup]) { userGroup =>
-            val result = Future {
-              userGroup.toNeo4jGraph(userGroup)
-            }
-            onComplete(result) {
-              case Success(status) => complete(StatusCodes.OK, "User group saved  Successfully")
-              case Failure(ex) =>
-                logger.error(s"Failed save user group, Message: ${ex.getMessage}", ex)
-                complete(StatusCodes.BadRequest, s"Failed save user group")
-            }
-          }
-        }
-      }
-  } ~
-    pathPrefix("users") {
-      path("access" / LongNumber) { id =>
+  def userRoute: Route = pathPrefix("users" / LongNumber) { userId =>
+    pathPrefix("keys") {
+      pathPrefix(LongNumber) { keyId =>
         get {
-          val result = Future {
-            SiteACL.fromNeo4jGraph(id)
+          val key = Future {
+            getKeyById(userId, keyId)
           }
-          onComplete(result) {
-            case Success(mayBeSiteACL) =>
-              mayBeSiteACL match {
-                case Some(userGroup) => complete(StatusCodes.OK, userGroup)
-                case None => complete(StatusCodes.BadRequest, s"Failed to get user access with id $id")
+          onComplete(key) {
+            case Success(response) =>
+              response match {
+                case Some(keyPairInfo) => complete(StatusCodes.OK, keyPairInfo)
+                case None => complete(StatusCodes.BadRequest, "Unable to get the key")
               }
             case Failure(ex) =>
-              logger.error(s"Failed to get user access, Message: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Failed to get access, Message: ${ex.getMessage}")
+              logger.error(s"Unable to get the key, Reason: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Unable to get the key")
           }
-        } ~
-          delete {
-            val result = Future {
-              Neo4jRepository.deleteEntity(id)
-            }
-            onComplete(result) {
-              case Success(status) => complete(StatusCodes.OK, "Deleted succesfully")
-              case Failure(ex) =>
-                logger.error(s"Failed to delete user access, Message: ${ex.getMessage}", ex)
-                complete(StatusCodes.BadRequest, s"Failed to delete user access, Message: ${ex.getMessage}")
-            }
-          }
-      } ~
-        path("access") {
-          get{
-            val result = Future {
-              val nodeList = Neo4jRepository.getNodesByLabel(SiteACL.label)
-              val listOfSiteACL = nodeList.flatMap(node => SiteACL.fromNeo4jGraph(node.getId))
-              Page[SiteACL](listOfSiteACL)
-            }
-            onComplete(result) {
-              case Success(page) => complete(StatusCodes.OK, page)
-              case Failure(ex) =>
-                logger.error(s"Failed to get user access, Message: ${ex.getMessage}", ex)
-                complete(StatusCodes.BadRequest, s"Failed to get user access")
-            }
-          } ~ post {
-            entity(as[SiteACL]) { siteACL =>
-              val result = Future {
-                siteACL.toNeo4jGraph(siteACL)
-              }
-              onComplete(result) {
-                case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
-                case Failure(ex) =>
-                  logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
-                  complete(StatusCodes.BadRequest, s"Failed save Site access")
-              }
-            }
-
-          }
-        }
-    } ~
-    pathPrefix("users" / LongNumber) { userId =>
-      pathPrefix("keys") {
-        pathPrefix(LongNumber) { keyId =>
-          get {
-            val key = Future {
-              getKeyById(userId, keyId)
-            }
-            onComplete(key) {
-              case Success(response) =>
-                response match {
-                  case Some(keyPairInfo) => complete(StatusCodes.OK, keyPairInfo)
-                  case None => complete(StatusCodes.BadRequest, "Unable to get the key")
-                }
-              case Failure(ex) =>
-                logger.error(s"Unable to get the key, Reason: ${ex.getMessage}", ex)
-                complete(StatusCodes.BadRequest, s"Unable to get the key")
-            }
 
           } ~ delete {
             val resposne = Future {
@@ -418,7 +295,7 @@ object Main extends App {
           entity(as[SSHKeyContentInfo]) { sshKeyInfo =>
             val result = Future {
 
-              FileUtils.createDirectories(UserUtils.getKeyDirPath(userId))
+            FileUtils.createDirectories(UserUtils.getKeyDirPath(userId))
 
               val resultKeys = sshKeyInfo.keyMaterials.map { case (keyName: String, keyMaterial: String) =>
                 logger.debug(s" ($keyName  --> ($keyMaterial))")
@@ -518,7 +395,6 @@ object Main extends App {
       }
     }
   }
-
 
   //KeyPair Serivce
   def keyPairRoute: Route = pathPrefix("keypairs") {

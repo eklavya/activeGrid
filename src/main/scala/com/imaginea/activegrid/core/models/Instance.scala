@@ -37,6 +37,9 @@ object Instance {
   def apply(name: String): Instance =
     Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser])
 
+  def apply(instanceId: Option[String], name: String, state: Option[String], instanceType: Option[String], platform: Option[String], architecture: Option[String], publicDnsName: Option[String], launchTime: Option[Long], memoryInfo: Option[StorageInfo], rootDiskInfo: Option[StorageInfo], tags: List[KeyValueInfo], imageInfo : Option[ImageInfo], sshAccessInfo: Option[SSHAccessInfo]): Instance =
+    Instance(None, instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime ,memoryInfo, rootDiskInfo, tags , sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], imageInfo, List.empty[InstanceUser])
+
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
     val listOfKeys = List("instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName")
     val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)

@@ -8,7 +8,8 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sampathr on 22/9/16.
   */
-case class Software(override val id: Option[Long],
+case class
+Software(override val id: Option[Long],
                     version: Option[String],
                     name: String,
                     provider: String,

@@ -38,7 +38,7 @@ object Site {
     val listOfKeys = List("siteName", "groupBy")
     val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
     if (propertyValues.nonEmpty) {
-      val siteName = propertyValues("siteName").asInstanceOf[Option[String]]
+      val siteName = propertyValues.get("siteName").asInstanceOf[Option[String]]
       val groupBy = propertyValues.get("groupBy").asInstanceOf[Option[String]]
       val relationship = "HAS_site"
       val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship)
