@@ -46,7 +46,7 @@ object Main extends App {
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
   implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
   implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
   implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
 
@@ -85,6 +85,57 @@ object Main extends App {
       }
     }
   }
+  implicit object instanceProviderFormat extends RootJsonFormat[InstanceProvider] {
+    override def write(obj: InstanceProvider): JsValue = {
+      logger.info(s"Writing InstanceProvider json : ${obj.instanceProvider.toString}")
+      JsString(obj.instanceProvider.toString)
+    }
+
+    override def read(json: JsValue): InstanceProvider = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => InstanceProvider.toInstanceProvider(str)
+        case _ => throw DeserializationException("Unable to deserialize the Provider data")
+      }
+    }
+  }
+
+  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+
+  implicit object filterTypeFormat extends RootJsonFormat[FilterType] {
+    override def write(obj: FilterType): JsValue = {
+      logger.info(s"Writing FilterType json : ${obj.filterType.toString}")
+      JsString(obj.filterType.toString)
+    }
+
+    override def read(json: JsValue): FilterType = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => FilterType.toFilteType(str)
+        case _ => throw DeserializationException("Unable to deserialize the Provider data")
+      }
+    }
+  }
+
+  implicit object ConditionFormat extends RootJsonFormat[Condition] {
+    override def write(obj: Condition): JsValue = {
+      logger.info(s"Writing Condition json : ${obj.condition.toString}")
+      JsString(obj.condition.toString)
+    }
+
+    override def read(json: JsValue): Condition = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => Condition.toCondition(str)
+        case _ => throw DeserializationException("Unable to deserialize the Condition data")
+      }
+    }
+  }
+
+  implicit val FilterFormat = jsonFormat(Filter.apply, "id", "filterType", "values", "condition")
+  implicit val SiteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName","instances", "filters")
+
 
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
 
@@ -911,7 +962,33 @@ object Main extends App {
     }
 
   }
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
+
+  val discoveryRoutes = pathPrefix("discover") {
+    path("site") {
+      put {
+        entity(as[Site1]) { site =>
+          val buildSite = Future {
+            val siteFilter : List[SiteFilter] = site.filters
+            //site.toNeo4jGraph(site)
+            //site.clear
+            val instanceList: List[Instance] = siteFilter.flatMap { clue =>
+              val accountInfo = clue.accountInfo
+              AWSComputeAPI.getInstances(accountInfo)
+            }
+            Site1(None, site.siteName, instanceList, site.filters)
+          }
+          onComplete(buildSite) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to build Site Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to build Site.")
+          }
+        }
+      }
+    }
+  }
+
+  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
