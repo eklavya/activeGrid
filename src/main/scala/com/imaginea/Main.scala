@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models._
+import com.imaginea.activegrid.core.models.{FilterType, Site1, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
@@ -28,6 +28,34 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
+  implicit object FilterTypeFormat extends RootJsonFormat[FilterType] {
+
+    override def write(obj: FilterType): JsValue = {
+      JsString(obj.filterType.toString)
+    }
+
+    override def read(json: JsValue): FilterType = {
+      json match {
+        case JsString(str) => FilterType.toFilteType(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
+  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
+
+    override def write(obj: InstanceProvider): JsValue = {
+      JsString(obj.instanceProvider.toString)
+    }
+
+    override def read(json: JsValue): InstanceProvider = {
+      json match {
+        case JsString(str) => InstanceProvider.toInstanceProvider(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
     override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
 
@@ -36,40 +64,6 @@ object Main extends App {
       case _ => throw DeserializationException("Enum string expected")
     }
   }
-
-  implicit val KeyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
-  implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
-
-  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
-  implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
-
-  implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
-  implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
-  implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-  implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
-  implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
-
-  implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
-  implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
-  implicit val instanceConnectionFormat = jsonFormat(InstanceConnection.apply, "id", "sourceNodeId", "targetNodeId", "portRanges")
-  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
-  implicit val instanceUserFormat = jsonFormat(InstanceUser.apply, "id", "userName", "publicKeys")
-  implicit val InstanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
-  implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
-  implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
-  implicit val KeyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
-  implicit val instanceFormat = jsonFormat(Instance.apply, "id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers")
-  implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
-  implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
-  implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
-
-  implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
-  implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
-  implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
-
-  implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
-  implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
 
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
@@ -86,7 +80,40 @@ object Main extends App {
     }
   }
 
+
+  implicit val KeyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
+  implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
+  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+  implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
+  implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
+  implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+  implicit val softwarePageFormat = jsonFormat4(Page[Software])
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
+  implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
+  implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
+  implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
+  implicit val instanceConnectionFormat = jsonFormat(InstanceConnection.apply, "id", "sourceNodeId", "targetNodeId", "portRanges")
+  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
+  implicit val instanceUserFormat = jsonFormat(InstanceUser.apply, "id", "userName", "publicKeys")
+  implicit val InstanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
+  implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
+  implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
+  implicit val KeyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
+  implicit val instanceFormat = jsonFormat(Instance.apply, "id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers")
+  implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
+  implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
+  implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
+  implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
+  implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
+  implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
+  implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
+  implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
+  implicit val filterFormat = jsonFormat(Filter.apply,"id","filterType","values")
+  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply , "id","accountId","providerType","ownerAlias","accessKey","secretKey","regionName","regions","networkCIDR")
+  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply,"id","accountInfo","filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
+  implicit val site1Format = jsonFormat(Site1.apply , "id","siteName","instances","filters")
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -284,7 +311,7 @@ object Main extends App {
         }
     } ~
       path("groups") {
-        get{
+        get {
           val result = Future {
             val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
             val listOfUserGroups = nodeList.flatMap(node => UserGroup.fromNeo4jGraph(node.getId))
@@ -308,8 +335,8 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Failed save user group")
             }
           }
-       }
-    }
+        }
+      }
   } ~
     pathPrefix("users") {
       path("access" / LongNumber) { id =>
@@ -341,7 +368,7 @@ object Main extends App {
           }
       } ~
         path("access") {
-          get{
+          get {
             val result = Future {
               val nodeList = Neo4jRepository.getNodesByLabel(SiteACL.label)
               val listOfSiteACL = nodeList.flatMap(node => SiteACL.fromNeo4jGraph(node.getId))
@@ -354,17 +381,17 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Failed to get user access")
             }
           } ~ post {
-             entity(as[SiteACL]) { siteACL =>
-                val result = Future {
-                  siteACL.toNeo4jGraph(siteACL)
-                }
-                onComplete(result) {
-                  case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
-                  case Failure(ex) =>
-                    logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
-                    complete(StatusCodes.BadRequest, s"Failed save Site access")
-                }
+            entity(as[SiteACL]) { siteACL =>
+              val result = Future {
+                siteACL.toNeo4jGraph(siteACL)
               }
+              onComplete(result) {
+                case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
+                case Failure(ex) =>
+                  logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
+                  complete(StatusCodes.BadRequest, s"Failed save Site access")
+              }
+            }
 
           }
         }
@@ -909,9 +936,32 @@ object Main extends App {
         }
       }
     }
-
   }
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
+
+  def discoveryRoutes = pathPrefix("discover") {
+    path("site") {
+      put {
+        entity(as[Site1]) { site =>
+          val buildSite = Future {
+            val siteFilters = site.filters
+            val instances = siteFilters.flatMap{ siteFilter =>
+              val accountInfo = siteFilter.accountInfo
+              AWSComputeAPI.getInstances(accountInfo)
+            }
+            Site1(None,site.siteName,instances,site.filters)
+          }
+          onComplete(buildSite) {
+            case Success(successResponse) => complete(StatusCodes.OK, "Listed successfully")
+            case Failure(exception) =>
+              logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to save the Site.")
+          }
+        }
+      }
+    }
+  }
+
+val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
