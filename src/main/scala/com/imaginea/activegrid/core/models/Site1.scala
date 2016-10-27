@@ -7,7 +7,7 @@ import org.neo4j.graphdb.Node
 
 case class Site1(override val id : Option[Long],
                  siteName: String,
-                 instances: Option[List[Instance]],
+                 instances: List[Instance],
                  filters:List[SiteFilter]) extends BaseEntity
 
 object Site1{
