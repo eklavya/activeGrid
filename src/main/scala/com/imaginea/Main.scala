@@ -9,15 +9,17 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models._
+import com.imaginea.activegrid.core._
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
-import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
+import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat}
 
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.util.parsing.json.JSON
 import scala.util.{Failure, Success}
 
 object Main extends App {
@@ -47,11 +49,11 @@ object Main extends App {
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
   implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
   implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id","imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
   implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
 
-  implicit object FilterTypeFormat extends RootJsonFormat[FilterType]{
+  implicit object FilterTypeFormat extends RootJsonFormat[FilterType] {
 
     override def write(obj: FilterType): JsValue = {
       JsString(obj.filterType.toString)
@@ -60,12 +62,12 @@ object Main extends App {
     override def read(json: JsValue): FilterType = {
       json match {
         case JsString(str) => FilterType.toFilteType(str)
-        case _=> throw DeserializationException("Unable to deserialize Filter Type")
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
   }
 
-  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider]{
+  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
 
     override def write(obj: InstanceProvider): JsValue = {
       JsString(obj.instanceProvider.toString)
@@ -74,7 +76,20 @@ object Main extends App {
     override def read(json: JsValue): InstanceProvider = {
       json match {
         case JsString(str) => InstanceProvider.toInstanceProvider(str)
-        case _=> throw DeserializationException("Unable to deserialize Filter Type")
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
+  implicit object IpProtocolFormat extends RootJsonFormat[IpProtocol] {
+    override def write(obj: IpProtocol): JsValue = {
+      JsString(obj.value.toString)
+    }
+
+    override def read(json: JsValue): IpProtocol = {
+      json match {
+        case JsString(str) => IpProtocol.toProtocol(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
   }
@@ -88,7 +103,87 @@ object Main extends App {
   implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
   implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
   implicit val KeyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
-  implicit val instanceFormat = jsonFormat(Instance.apply, "id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers")
+  implicit val ipPermissionInfoFormat = jsonFormat(IpPermissionInfo.apply, "id", "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
+  implicit val securityGroupInfoFormat = jsonFormat(SecurityGroupInfo.apply, "id", "groupName", "groupId", "ownerId", "description", "IpPermissions", "tags")
+
+  //implicit val instanceFormat = jsonFormat(Instance)
+  implicit object instanceFormat extends RootJsonFormat[Instance] {
+    override def write(obj: Instance): JsValue = "TestString".asInstanceOf[JsValue] //TODO Need to merge code from Naveed
+
+    override def read(json: JsValue): Instance = {
+      json match {
+        case JsObject(str) =>
+          logger.info(s"Json String $str")
+          val jsobj = str
+          logger.info(s"Json Object $jsobj")
+          val map = str
+          logger.info(s"Js Map $map")
+          Instance(
+            getProperty[Long](map, "id"),
+            getProperty[String](map, "instanceId"),
+            getProperty[String](map, "name").get,
+            getProperty[String](map, "state"),
+            getProperty[String](map, "instanceType"),
+            getProperty[String](map, "platform"),
+            getProperty[String](map, "architecture"),
+            getProperty[String](map, "publicDnsName"),
+            getProperty[Long](map, "launchTime"),
+            if (getProperty[String](map, "memoryInfo").nonEmpty) Some(storageInfoFormat.read(getProperty[String](map, "memoryInfo").get.asInstanceOf[JsValue])) else None,
+            if (getProperty[String](map, "rootDiskInfo").nonEmpty) Some(storageInfoFormat.read(getProperty[String](map, "rootDiskInfo").get.asInstanceOf[JsValue])) else None,
+            getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", KeyValueInfoFormat),
+            if (getProperty[String](map, "sshAccessInfo").nonEmpty) Some(sshAccessInfoFormat.read(getProperty[String](map, "sshAccessInfo").get.asInstanceOf[JsValue])) else None,
+            getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
+            getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
+            getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
+            if (getProperty[String](map, "imageInfo").nonEmpty) Some(ImageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue])) else None,
+            getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
+            if (getProperty[String](map, "account").nonEmpty) Some(accountInfoFormat.read(getProperty[String](map, "acoount").get.asInstanceOf[JsValue])) else None,
+            getProperty[String](map, "availabilityZone"),
+            getProperty[String](map, "privateDnsName"),
+            getProperty[String](map, "privateIpAddress"),
+            getProperty[String](map, "publicIpAddress"),
+            getProperty[String](map, "elasticIp"),
+            getProperty[String](map, "monitoring"),
+            getProperty[String](map, "rootDeviceType"),
+            List(),
+            getObjectsFromJson[SecurityGroupInfo](map, "securityGroups", securityGroupInfoFormat),
+            getProperty[Boolean](map, "reservedInstance").get,
+            getProperty[String](map, "region")
+          )
+        case JsString(str) => logger.info(s"coming $str")
+          Instance("nagulmeer")
+      }
+    }
+  }
+
+  def getProperty[T: Manifest](propertyMap: Map[String, JsValue], property: String): Option[T] = {
+    if (propertyMap.contains(property)) {
+      propertyMap(property) match {
+        case JsString(str) => Some(str.asInstanceOf[T])
+        case JsNumber(str) => Some(str.asInstanceOf[T])
+        case JsFalse => Some(false.asInstanceOf[T])
+        case JsTrue => Some(true.asInstanceOf[T])
+      }
+    } else {
+      None
+    }
+  }
+
+  def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
+    if (propertyMap.contains(property)) {
+      val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
+      listOfObjs.elements.foldLeft(List[T]()) {
+        (list, jsString) =>
+          list.::(formateObject.read(jsString))
+      }
+    } else {
+      List.empty[T]
+    }
+  }
+
+  /*implicit val instanceFormat = jsonFormat(Instance.apply,"id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo",
+    "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers", "account","availabilityZone","privateDnsName","privateIpAddress",
+    "publicIpAddress","elasticIP","monitoring","rootDeviceType","blockDeviceMappings","securityGroups","reservedInstance","region")*/
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
@@ -113,11 +208,12 @@ object Main extends App {
       }
     }
   }
-  implicit val filterFormat = jsonFormat(Filter.apply,"id","filterType","values")
-  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply , "id","accountId","providerType","ownerAlias","accessKey","secretKey","regionName","regions","networkCIDR")
-  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply,"id","accountInfo","filters")
+
+  implicit val filterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
+  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply , "id","siteName","instances","filters")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters")
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -315,7 +411,7 @@ object Main extends App {
         }
     } ~
       path("groups") {
-        get{
+        get {
           val result = Future {
             val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
             val listOfUserGroups = nodeList.flatMap(node => UserGroup.fromNeo4jGraph(node.getId))
@@ -372,7 +468,7 @@ object Main extends App {
           }
       } ~
         path("access") {
-          get{
+          get {
             val result = Future {
               val nodeList = Neo4jRepository.getNodesByLabel(SiteACL.label)
               val listOfSiteACL = nodeList.flatMap(node => SiteACL.fromNeo4jGraph(node.getId))
@@ -948,11 +1044,12 @@ object Main extends App {
         entity(as[Site1]) { site =>
           val buildSite = Future {
             val siteFilters = site.filters
-            val instances = siteFilters.flatMap{ siteFilter =>
+            logger.info(s"Parsing instance : ${site.instances}")
+            val instances = siteFilters.flatMap { siteFilter =>
               val accountInfo = siteFilter.accountInfo
               AWSComputeAPI.getInstances(accountInfo)
             }
-            Site1(None,site.siteName,instances,site.filters)
+            Site1(None, site.siteName, instances, site.filters)
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)

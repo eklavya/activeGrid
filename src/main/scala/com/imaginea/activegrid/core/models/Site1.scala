@@ -3,7 +3,6 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.Node
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 
 /**
   * Created by nagulmeeras on 25/10/16.
@@ -54,17 +53,16 @@ object Site1 {
       neo =>
         val node = repository.getNodeById(nodeId)(neo)
         if (repository.hasLabel(node, site1Label)) {
-          val instaces: collection.mutable.MutableList[Instance] = mutable.MutableList.empty[Instance]
-          val filters: collection.mutable.MutableList[SiteFilter] = mutable.MutableList.empty[SiteFilter]
-          node.getRelationships.foreach {
-            relationship =>
+
+          val tupleObj = node.getRelationships.foldLeft(Tuple2[List[Instance], List[SiteFilter]](List.empty[Instance], List.empty[SiteFilter])) {
+            (tuple, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `site_Instance_Relation` => instaces += Instance.fromNeo4jGraph(childNode.getId).get
-                case `site_Filter_Relation` => filters += SiteFilter.fromNeo4jGraph(childNode.getId).get
+                case `site_Instance_Relation` => Tuple2(tuple._1.::(Instance.fromNeo4jGraph(childNode.getId).get), tuple._2)
+                case `site_Filter_Relation` => Tuple2(tuple._1, tuple._2.::(SiteFilter.fromNeo4jGraph(childNode.getId).get))
               }
           }
-          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get , instaces.toList,filters.toList))
+          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get, tupleObj._1, tupleObj._2))
         } else {
           None
         }

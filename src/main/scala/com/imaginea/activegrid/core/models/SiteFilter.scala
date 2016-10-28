@@ -3,7 +3,6 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.Node
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 
 /**
   * Created by nagulmeeras on 25/10/16.
@@ -42,21 +41,18 @@ object SiteFilter {
   def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
     repository.withTx {
       neo =>
-        val node = repository.getNodeById(nodeId) (neo)
+        val node = repository.getNodeById(nodeId)(neo)
         if (repository.hasLabel(node, siteFilterLabel)) {
-          var accountInfo: AccountInfo = null
-          val filterList: collection.mutable.MutableList[Filter] = mutable.MutableList[Filter]()
 
-          node.getRelationships.foreach {
-            relationship =>
+          val tupleObj = node.getRelationships.foldLeft(Tuple2[AnyRef, List[Filter]](AnyRef, List[Filter]())) {
+            (tuple, relationship) =>
               val childNode = relationship.getEndNode
-              if (relationship.getType.name().equals(siteFilter_AccountInfo_Rel))
-                accountInfo = AccountInfo.fromNeo4jGraph(childNode.getId).get
-              else if (relationship.getType.name.equals(siteFilter_Filters_Rel)) {
-                filterList += Filter.fromNeo4jGraph(childNode.getId).get
+              relationship.getType.name match {
+                case `siteFilter_AccountInfo_Rel` => Tuple2(AccountInfo.fromNeo4jGraph(childNode.getId).get, tuple._2)
+                case `siteFilter_Filters_Rel` => Tuple2(tuple._1, tuple._2.::(Filter.fromNeo4jGraph(childNode.getId).get))
               }
           }
-          Some(SiteFilter(Some(node.getId),accountInfo, filterList.toList))
+          Some(SiteFilter(Some(node.getId), tupleObj._1.asInstanceOf[AccountInfo], tupleObj._2))
         } else {
           None
         }
