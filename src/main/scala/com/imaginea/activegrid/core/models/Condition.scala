@@ -26,7 +26,7 @@ case object ENDSWITH extends Condition {
 }
 
 object Condition {
-  implicit def toCondition(name: String): Condition = name match {
+  def toCondition(name: String): Condition = name match {
     case "EQUALS" => EQUALS
     case "CONTAINS" => CONTAINS
     case "STARTSWITH" => STARTSWITH

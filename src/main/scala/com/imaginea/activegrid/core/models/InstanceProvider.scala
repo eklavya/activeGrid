@@ -4,25 +4,25 @@ package com.imaginea.activegrid.core.models
   * Created by shareefn on 25/10/16.
   */
 sealed trait InstanceProvider {
-  def instanceProvider : String
+  def instanceProvider: String
 
   override def toString: String = instanceProvider
 }
 
-case object AWS extends InstanceProvider{
+case object AWS extends InstanceProvider {
   override def instanceProvider: String = "AWS"
 }
 
-case object OPENSTACK extends InstanceProvider{
+case object OPENSTACK extends InstanceProvider {
   override def instanceProvider: String = "OPENSTACK"
 }
 
-case object LAN extends InstanceProvider{
+case object LAN extends InstanceProvider {
   override def instanceProvider: String = "LAN"
 }
 
 case object InstanceProvider {
-  def toInstanceProvider(instanceProvider: String) : InstanceProvider = {
+  def toInstanceProvider(instanceProvider: String): InstanceProvider = {
     instanceProvider match {
       case "AWS" => AWS
       case "OPENSTACK" => OPENSTACK

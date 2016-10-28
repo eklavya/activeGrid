@@ -8,6 +8,7 @@ import org.neo4j.graphdb.Node
 
 trait Neo4jRep[T] {
   def toNeo4jGraph(entity: T): Node
+
   def fromNeo4jGraph(id: Long): Option[T]
 }
 

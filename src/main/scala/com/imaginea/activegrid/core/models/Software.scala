@@ -10,13 +10,13 @@ import org.slf4j.LoggerFactory
   */
 case class
 Software(override val id: Option[Long],
-                    version: Option[String],
-                    name: String,
-                    provider: String,
-                    downloadURL: Option[String],
-                    port: String,
-                    processNames: List[String],
-                    discoverApplications: Boolean) extends BaseEntity
+         version: Option[String],
+         name: String,
+         provider: String,
+         downloadURL: Option[String],
+         port: String,
+         processNames: List[String],
+         discoverApplications: Boolean) extends BaseEntity
 
 object Software {
 

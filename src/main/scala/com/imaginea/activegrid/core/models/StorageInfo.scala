@@ -41,4 +41,5 @@ object StorageInfo {
       StorageInfo.fromNeo4jGraph(id)
     }
   }
+
 }

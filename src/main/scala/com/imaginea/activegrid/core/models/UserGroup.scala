@@ -1,8 +1,8 @@
 package com.imaginea.activegrid.core.models
 
 /**
- * Created by ranjithrajd on 25/10/16.
- */
+  * Created by ranjithrajd on 25/10/16.
+  */
 
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
@@ -10,11 +10,11 @@ import org.slf4j.LoggerFactory
 
 
 /**
- * Created by babjik on 5/10/16.
- */
+  * Created by babjik on 5/10/16.
+  */
 case class UserGroup(override val id: Option[Long]
                      , name: String
-                     , users:Set[User] = Set.empty
+                     , users: Set[User] = Set.empty
                      , accesses: Set[ResourceACL] = Set.empty) extends BaseEntity
 
 
@@ -34,14 +34,14 @@ object UserGroup {
 
       //Iterating the users and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with Users ${userGroup.users}")
-      userGroup.users.foreach{ user =>
+      userGroup.users.foreach { user =>
         val userNode = user.toNeo4jGraph(user)
         Neo4jRepository.createRelation(hasUsers, userGroupNode, userNode)
       }
 
       //Iterating the access and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with ResourceACL ${userGroup.accesses}")
-      userGroup.accesses.foreach{ resource =>
+      userGroup.accesses.foreach { resource =>
         val resourceNode = resource.toNeo4jGraph(resource)
         Neo4jRepository.createRelation(hasResourceAccess, userGroupNode, resourceNode)
       }
@@ -52,6 +52,7 @@ object UserGroup {
       UserGroup.fromNeo4jGraph(nodeId)
     }
   }
+
   def fromNeo4jGraph(nodeId: Long): Option[UserGroup] = {
 
     val nodeOption = Neo4jRepository.findNodeById(nodeId)
