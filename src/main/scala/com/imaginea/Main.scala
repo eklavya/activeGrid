@@ -6,6 +6,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.RouteResult.Complete
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models._
@@ -960,7 +961,17 @@ object Main extends App {
       }
     }
   }
-  val route: Route = discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
+  def serviceEndPoints = pathPrefix("sites") {
+      get {
+        parameter('viewLevel.as[String]) {
+          (viewLevel) => {
+           complete("Need to implement")
+          }
+        }
+
+      }
+  }
+  val route: Route = serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")

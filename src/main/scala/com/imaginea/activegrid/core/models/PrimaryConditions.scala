@@ -5,4 +5,5 @@ package com.imaginea.activegrid.core.models
   */
 class PrimaryConditions {
 
+
 }
