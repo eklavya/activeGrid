@@ -11,20 +11,3 @@ case class PolicyCondition(override val id: Option[Long],
                            conditionType: ConditionType,
                            scaleType: ScaleType,
                            scalingGroup: ScalingGroup) extends BaseEntity
-
-
-/*
-private ApplicationTier applicationTier;
-
-    private MetricType metricType;
-
-    private Double threshold;
-
-    private UnitType unitType;
-
-    private ConditionType conditionType;
-
-    private ScaleType scaleType;
-
-    private ScalingGroup scalingGroup;
- */
