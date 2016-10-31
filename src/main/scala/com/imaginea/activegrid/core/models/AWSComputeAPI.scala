@@ -17,11 +17,8 @@ import scala.collection.immutable.List
 object AWSComputeAPI {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def getInstances(accountInfo: AccountInfo): List[Instance] = {
-      val region = RegionUtils.getRegion(accountInfo.regionName)
-      val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
-      val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
-      val amazonEC2 = AWSInstanceHelper(aWSCredentials1, region)
+  def getInstances(amazonEC2: AmazonEC2 , accountInfo: AccountInfo): List[Instance] = {
+
       val awsInstancesResult = getAWSInstances(amazonEC2)
       val totalsecurityGroups = amazonEC2.describeSecurityGroups.getSecurityGroups.foldLeft(Map[String, SecurityGroup]())((map, sg) => map + ((sg.getGroupId, sg)))
       val addresses = amazonEC2.describeAddresses.getAddresses.foldLeft(Map[String, Address]())((map, address) => map + ((address.getInstanceId, address)))
@@ -169,4 +166,27 @@ object AWSComputeAPI {
         }
     }.toList
   }
+  def getComputeAPI(accountInfo: AccountInfo): AmazonEC2 ={
+    val region = RegionUtils.getRegion(accountInfo.regionName)
+    val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
+    val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
+    AWSInstanceHelper(aWSCredentials1, region)
+  }
+
+  def getReservedInstances(amazonEC2: AmazonEC2) : List[ReservedInstanceDetails] = {
+    amazonEC2.describeReservedInstances.getReservedInstances.foldLeft(List[ReservedInstanceDetails]()){
+      (list , reservedInstance) =>
+        list.::(ReservedInstanceDetails(
+          None,
+          Option(reservedInstance.getInstanceType),
+          Option(reservedInstance.getReservedInstancesId),
+          Option(reservedInstance.getAvailabilityZone),
+          Option(reservedInstance.getInstanceTenancy),
+          Option(reservedInstance.getOfferingType),
+          Option(reservedInstance.getProductDescription),
+          Option(reservedInstance.getInstanceCount)
+        ))
+    }
+  }
+
 }

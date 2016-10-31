@@ -112,11 +112,7 @@ object Main extends App {
 
     override def read(json: JsValue): Instance = {
       json match {
-        case JsObject(str) =>
-          logger.info(s"Json String $str")
-          val jsobj = str
-          logger.info(s"Json Object $jsobj")
-          val map = str
+        case JsObject(map) =>
           logger.info(s"Js Map $map")
           Instance(
             getProperty[Long](map, "id"),
@@ -151,7 +147,7 @@ object Main extends App {
             getProperty[String](map, "region")
           )
         case JsString(str) => logger.info(s"coming $str")
-          Instance("nagulmeer")
+          Instance("Test")
       }
     }
   }
@@ -190,7 +186,7 @@ object Main extends App {
   implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
   implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
-
+  implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply , "id","instanceType","reservedInstancesId","availabilityZone","tenancy","offeringType","productDescription","count")
   implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
   implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
 
@@ -213,7 +209,7 @@ object Main extends App {
   implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
   implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances","reservedInstanceDetails","filters")
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -1045,11 +1041,14 @@ object Main extends App {
           val buildSite = Future {
             val siteFilters = site.filters
             logger.info(s"Parsing instance : ${site.instances}")
-            val instances = siteFilters.flatMap { siteFilter =>
+            val computedResult = siteFilters.foldLeft(Tuple2(List[Instance](),List[ReservedInstanceDetails]())){
+              (tuple ,siteFilter) =>
               val accountInfo = siteFilter.accountInfo
-              AWSComputeAPI.getInstances(accountInfo)
+              val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
+              val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
+              Tuple2(tuple._1.:::(AWSComputeAPI.getInstances(amazonEC2 , accountInfo)) , tuple._2.:::(reservedInstanceDetails))
             }
-            Site1(None, site.siteName, instances, site.filters)
+            Site1(None, site.siteName, computedResult._1, computedResult._2 ,site.filters)
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)

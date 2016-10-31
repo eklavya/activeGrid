@@ -11,6 +11,7 @@ import scala.collection.JavaConversions._
 case class Site1(override val id: Option[Long],
                  siteName: String,
                  instances: List[Instance],
+                 reservedInstanceDetails : List[ReservedInstanceDetails],
                  filters: List[SiteFilter]) extends BaseEntity
 
 object Site1 {
@@ -62,7 +63,7 @@ object Site1 {
                 case `site_Filter_Relation` => Tuple2(tuple._1, tuple._2.::(SiteFilter.fromNeo4jGraph(childNode.getId).get))
               }
           }
-          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get, tupleObj._1, tupleObj._2))
+          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get, tupleObj._1, List.empty[ReservedInstanceDetails], tupleObj._2))
         } else {
           None
         }
