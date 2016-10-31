@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 case class Site1(override val id: Option[Long],
                  siteName: String,
                  instances: List[Instance],
-                 reservedInstanceDetails : List[ReservedInstanceDetails],
+                 reservedInstanceDetails: List[ReservedInstanceDetails],
                  filters: List[SiteFilter]) extends BaseEntity
 
 object Site1 {
@@ -19,6 +19,7 @@ object Site1 {
   val site1Label = "Site1"
   val site_Instance_Relation = "HAS_INSTANCE"
   val site_Filter_Relation = "HAS_SITE_FILTER"
+  val site_ReservedInstance_Relation = "HAS_RESERVED_INSTANCE"
 
   implicit class Site1Impl(site1: Site1) extends Neo4jRep[Site1] {
     override def toNeo4jGraph(entity: Site1): Node = {
@@ -40,6 +41,13 @@ object Site1 {
                 repository.createRelation(site_Filter_Relation, node, childNode)
             }
           }
+          if (entity.reservedInstanceDetails.nonEmpty) {
+            entity.reservedInstanceDetails.foreach {
+              res_instance =>
+                val childNode = res_instance.toNeo4jGraph(res_instance)
+                repository.createRelation(site_ReservedInstance_Relation, node, childNode)
+            }
+          }
           node
       }
     }
@@ -55,15 +63,16 @@ object Site1 {
         val node = repository.getNodeById(nodeId)(neo)
         if (repository.hasLabel(node, site1Label)) {
 
-          val tupleObj = node.getRelationships.foldLeft(Tuple2[List[Instance], List[SiteFilter]](List.empty[Instance], List.empty[SiteFilter])) {
+          val tupleObj = node.getRelationships.foldLeft(Tuple3[List[Instance], List[SiteFilter], List[ReservedInstanceDetails]](List.empty[Instance], List.empty[SiteFilter], List.empty[ReservedInstanceDetails])) {
             (tuple, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `site_Instance_Relation` => Tuple2(tuple._1.::(Instance.fromNeo4jGraph(childNode.getId).get), tuple._2)
-                case `site_Filter_Relation` => Tuple2(tuple._1, tuple._2.::(SiteFilter.fromNeo4jGraph(childNode.getId).get))
+                case `site_Instance_Relation` => Tuple3(tuple._1.::(Instance.fromNeo4jGraph(childNode.getId).get), tuple._2, tuple._3)
+                case `site_Filter_Relation` => Tuple3(tuple._1, tuple._2.::(SiteFilter.fromNeo4jGraph(childNode.getId).get), tuple._3)
+                case `site_ReservedInstance_Relation` => Tuple3(tuple._1, tuple._2, tuple._3.::(ReservedInstanceDetails.fromNeo4jGraph(childNode.getId).get))
               }
           }
-          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get, tupleObj._1, List.empty[ReservedInstanceDetails], tupleObj._2))
+          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get, tupleObj._1, tupleObj._3, tupleObj._2))
         } else {
           None
         }

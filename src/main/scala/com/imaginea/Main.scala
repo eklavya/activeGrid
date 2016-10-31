@@ -9,7 +9,6 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models._
-import com.imaginea.activegrid.core._
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
@@ -19,7 +18,6 @@ import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObjec
 
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.util.parsing.json.JSON
 import scala.util.{Failure, Success}
 
 object Main extends App {
@@ -1040,6 +1038,7 @@ object Main extends App {
         entity(as[Site1]) { site =>
           val buildSite = Future {
             val siteFilters = site.filters
+            site.toNeo4jGraph(site)
             logger.info(s"Parsing instance : ${site.instances}")
             val computedResult = siteFilters.foldLeft(Tuple2(List[Instance](),List[ReservedInstanceDetails]())){
               (tuple ,siteFilter) =>
@@ -1056,6 +1055,19 @@ object Main extends App {
               logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save the Site.")
           }
+        }
+      }
+    }~path("site"/LongNumber){
+      siteId =>
+      get{
+        val siteObj = Future{
+          Site1.fromNeo4jGraph(siteId)
+        }
+        onComplete(siteObj){
+          case Success(response) => complete(StatusCodes.OK,response)
+          case Failure(exception) =>
+            logger.error(s"Unable to get Site Object ${exception.getMessage}",exception)
+            complete(StatusCodes.BadRequest , "Unable to get Site")
         }
       }
     }
