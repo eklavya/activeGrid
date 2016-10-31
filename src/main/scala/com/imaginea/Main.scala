@@ -242,7 +242,9 @@ object Main extends App {
   }
   implicit val FilterFormat = jsonFormat(Filter.apply, "id", "filterType", "values", "condition")
   implicit val SiteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters")
+  implicit val LoadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceId", "availabilityZones")
+  implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters", "loadBalancers", "scalingGroups")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -1076,11 +1078,16 @@ object Main extends App {
             val siteFilter: List[SiteFilter] = site.filters
             //site.toNeo4jGraph(site)
             //site.clear
-            val instanceList: List[Instance] = siteFilter.flatMap { clue =>
-              val accountInfo = clue.accountInfo
-              AWSComputeAPI.getInstances(accountInfo)
+            val (instanceList: List[Instance], loadBalancers: List[LoadBalancer], scalingGroups: List[ScalingGroup]) =
+            siteFilter.foldLeft(Tuple3(List.empty[Instance], List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+              (tuple,sitefilter) => {
+                val accountInfo = sitefilter.accountInfo
+                val Tuple3(prevInstanceList, prevLoadBalancers, prevScalingGroups) = tuple
+                val Tuple3(curInstanceList, curLoadBalancers, curScalingGroups) = Tuple3(AWSComputeAPI.getInstances(accountInfo), AWSComputeAPI.getLoadBalancers(accountInfo), AWSComputeAPI.getAutoScalingGroups(accountInfo))
+                Tuple3(prevInstanceList++curInstanceList, prevLoadBalancers++curLoadBalancers, prevScalingGroups++curScalingGroups)
+              }
             }
-            Site1(None, site.siteName, instanceList, site.filters)
+            Site1(None, site.siteName, instanceList, site.filters, loadBalancers, scalingGroups)
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)

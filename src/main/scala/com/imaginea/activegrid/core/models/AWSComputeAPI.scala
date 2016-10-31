@@ -2,8 +2,12 @@ package com.imaginea.activegrid.core.models
 
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.regions.{Region, RegionUtils}
+import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
+import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import com.amazonaws.services.ec2.model._
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
+import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancing, AmazonElasticLoadBalancingClient}
+import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -122,7 +126,6 @@ object AWSComputeAPI {
     val description = snapshot.getDescription
     val volumeSize = snapshot.getVolumeSize
     val tags = createKeyValueInfo(snapshot.getTags.toList)
-
     SnapshotInfo(None, snapshotId, volumeId, state, startTime, progress, ownerId, ownerAlias, description, volumeSize, tags)
   }
 
@@ -189,6 +192,52 @@ object AWSComputeAPI {
   def getAWSInstances(amazonEC2: AmazonEC2): List[model.Instance] = {
     amazonEC2.describeInstances.getReservations.toList.flatMap {
       reservation => reservation.getInstances
+    }
+  }
+
+  def getLoadBalancers(accountInfo: AccountInfo): List[LoadBalancer] = {
+    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName)
+    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
+    val aWSCredentials = getAWSCredentials(aWSContextBuilder)
+    val amazonELB: AmazonElasticLoadBalancing = new AmazonElasticLoadBalancingClient(aWSCredentials)
+    amazonELB.setRegion(aWSRegion)
+    val lbDescriptions = amazonELB.describeLoadBalancers().getLoadBalancerDescriptions.toList
+    createLoadBalancer(lbDescriptions)
+  }
+
+  def createLoadBalancer(lbDescriptions: List[LoadBalancerDescription]): List[LoadBalancer] = {
+    lbDescriptions.map { lbDesc =>
+      val name = lbDesc.getLoadBalancerName
+      val vpcId = lbDesc.getVPCId
+      val availabilityZones = lbDesc.getAvailabilityZones.toList
+      val instanceIds = lbDesc.getInstances.map{ awsInstance => awsInstance.getInstanceId}.toList
+      LoadBalancer(None, name, vpcId, None, instanceIds, availabilityZones)
+    }
+  }
+
+  def getAutoScalingGroups(accountInfo: AccountInfo): List[ScalingGroup] = {
+    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName)
+    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
+    val aWSCredentials = getAWSCredentials(aWSContextBuilder)
+    val amazonASG: AmazonAutoScalingClient = new AmazonAutoScalingClient(aWSCredentials)
+    amazonASG.setRegion(aWSRegion)
+    val asGroups = amazonASG.describeAutoScalingGroups().getAutoScalingGroups.toList
+    createScalingGroups(asGroups)
+  }
+
+  def createScalingGroups(asGroups: List[AutoScalingGroup]): List[ScalingGroup] = {
+    asGroups.map { asg =>
+      val name = asg.getAutoScalingGroupName
+      val status = asg.getStatus
+      val launchConfigurationName = asg.getLaunchConfigurationName
+      val availabilityZones = asg.getAvailabilityZones.toList
+      val loadBalancerNames = asg.getLoadBalancerNames.toList
+      val desiredCapacity = asg.getDesiredCapacity
+      val maxCapacity = asg.getMaxSize
+      val minCapacity = asg.getMinSize
+      val instanceIds = asg.getInstances.map{ awsInstance => awsInstance.getInstanceId}.toList
+      val tags = asg.getTags.map{ t => KeyValueInfo(None, t.getKey, t.getValue) }.toList
+      ScalingGroup(None, name, launchConfigurationName, status, availabilityZones, instanceIds, loadBalancerNames, tags, desiredCapacity, maxCapacity, minCapacity)
     }
   }
 
