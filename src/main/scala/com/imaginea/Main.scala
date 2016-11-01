@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models._
+import com.imaginea.activegrid.core.models.{InstanceGroup, _}
 import com.imaginea.activegrid.core.utils.{ActiveGridUtils, Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
@@ -91,6 +91,20 @@ object Main extends App {
       }
     }
   }
+
+  implicit object GroupTypeFormat extends RootJsonFormat[GroupType] {
+    override def write(obj: GroupType): JsValue = {
+      JsString(obj.groupType.toString)
+    }
+
+    override def read(json: JsValue): GroupType = {
+      json match {
+        case JsString(str) => GroupType.toGroupType(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
 
   implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
   implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
@@ -187,6 +201,7 @@ object Main extends App {
   implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply, "id", "instanceType", "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
   implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
   implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
+  implicit val InstanceGroupFormat = jsonFormat(InstanceGroup.apply, "id", "groupType", "name", "instances")
 
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
@@ -1071,19 +1086,45 @@ object Main extends App {
               complete(StatusCodes.BadRequest, "Unable to get Site")
           }
         }
-    }~path("regions"){
-      get{
-        parameter("provider"){
+    } ~ path("regions") {
+      get {
+        parameter("provider") {
           provider =>
             logger.info(s"Coming Provider $provider")
-            val regions = Future{ActiveGridUtils.getRegions(InstanceProvider.toInstanceProvider(provider))}
-            onComplete(regions){
-              case Success(response) => complete(StatusCodes.OK , response)
+            val regions = Future {
+              ActiveGridUtils.getRegions(InstanceProvider.toInstanceProvider(provider))
+            }
+            onComplete(regions) {
+              case Success(response) => complete(StatusCodes.OK, response)
               case Failure(exception) =>
                 logger.error(s"Unable to get regions ${exception.getMessage}", exception)
-                complete(StatusCodes.BadRequest , "Unable to get Regions")
+                complete(StatusCodes.BadRequest, "Unable to get Regions")
             }
         }
+      }
+    } ~ pathPrefix("site" / LongNumber) {
+      siteId => pathPrefix("group" / LongNumber) {
+        groupId =>
+          logger.info(s"Site ID : $siteId , Group ID : $groupId")
+          val instanceGroup = Future {
+            InstanceGroup.fromNeo4jGraph(groupId)
+          }
+          onComplete(instanceGroup) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to get Instance Group ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get Instance Group")
+          }
+      }
+    } ~ get {
+      pathPrefix("site" / LongNumber) {
+        siteId =>
+          pathPrefix("groups" / Segment) {
+            groupType =>
+              //TODO have to write Groups logic in Site
+              logger.info(s"Site Id : $siteId , Group Type : $groupType")
+              complete("Done")
+          }
       }
     }
   }
