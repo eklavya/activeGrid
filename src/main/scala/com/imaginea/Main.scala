@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models._
-import com.imaginea.activegrid.core.utils.{Constants, FileUtils}
+import com.imaginea.activegrid.core.utils.{ActiveGridUtils, Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -184,7 +184,7 @@ object Main extends App {
   implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
   implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
-  implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply , "id","instanceType","reservedInstancesId","availabilityZone","tenancy","offeringType","productDescription","count")
+  implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply, "id", "instanceType", "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
   implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
   implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
 
@@ -207,7 +207,7 @@ object Main extends App {
   implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
   implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances","reservedInstanceDetails","filters")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters")
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -1038,16 +1038,17 @@ object Main extends App {
         entity(as[Site1]) { site =>
           val buildSite = Future {
             val siteFilters = site.filters
-            site.toNeo4jGraph(site)
             logger.info(s"Parsing instance : ${site.instances}")
-            val computedResult = siteFilters.foldLeft(Tuple2(List[Instance](),List[ReservedInstanceDetails]())){
-              (tuple ,siteFilter) =>
-              val accountInfo = siteFilter.accountInfo
-              val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
-              val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
-              Tuple2(tuple._1.:::(AWSComputeAPI.getInstances(amazonEC2 , accountInfo)) , tuple._2.:::(reservedInstanceDetails))
+            val computedResult = siteFilters.foldLeft(Tuple2(List[Instance](), List[ReservedInstanceDetails]())) {
+              (tuple, siteFilter) =>
+                val accountInfo = siteFilter.accountInfo
+                val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
+                val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
+                Tuple2(tuple._1.:::(AWSComputeAPI.getInstances(amazonEC2, accountInfo)), tuple._2.:::(reservedInstanceDetails))
             }
-            Site1(None, site.siteName, computedResult._1, computedResult._2 ,site.filters)
+            val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters)
+            site1.toNeo4jGraph(site1)
+            site1
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1057,17 +1058,31 @@ object Main extends App {
           }
         }
       }
-    }~path("site"/LongNumber){
+    } ~ path("site" / LongNumber) {
       siteId =>
-      get{
-        val siteObj = Future{
-          Site1.fromNeo4jGraph(siteId)
+        get {
+          val siteObj = Future {
+            Site1.fromNeo4jGraph(siteId)
+          }
+          onComplete(siteObj) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to get Site Object ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get Site")
+          }
         }
-        onComplete(siteObj){
-          case Success(response) => complete(StatusCodes.OK,response)
-          case Failure(exception) =>
-            logger.error(s"Unable to get Site Object ${exception.getMessage}",exception)
-            complete(StatusCodes.BadRequest , "Unable to get Site")
+    }~path("regions"){
+      get{
+        parameter("provider"){
+          provider =>
+            logger.info(s"Coming Provider $provider")
+            val regions = Future{ActiveGridUtils.getRegions(InstanceProvider.toInstanceProvider(provider))}
+            onComplete(regions){
+              case Success(response) => complete(StatusCodes.OK , response)
+              case Failure(exception) =>
+                logger.error(s"Unable to get regions ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest , "Unable to get Regions")
+            }
         }
       }
     }
