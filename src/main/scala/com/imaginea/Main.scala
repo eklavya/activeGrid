@@ -56,7 +56,8 @@ object Main extends App {
   implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
   implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
   implicit val KeyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
-  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider]{
+
+  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
 
     override def write(obj: InstanceProvider): JsValue = {
       JsString(obj.instanceProvider.toString)
@@ -65,15 +66,17 @@ object Main extends App {
     override def read(json: JsValue): InstanceProvider = {
       json match {
         case JsString(str) => InstanceProvider.toInstanceProvider(str)
-        case _=> throw DeserializationException("Unable to deserialize Filter Type")
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
   }
-  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply , "id","accountId","providerType","ownerAlias","accessKey","secretKey","regionName","regions","networkCIDR")
+
+  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
   implicit val snapshotInfoFormat = jsonFormat11(SnapshotInfo.apply)
   implicit val volumeInfoFormat = jsonFormat11(VolumeInfo.apply)
   implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
-  implicit object ipProtocolFormat extends RootJsonFormat[IpProtocol]{
+
+  implicit object ipProtocolFormat extends RootJsonFormat[IpProtocol] {
 
     override def write(obj: IpProtocol): JsValue = {
       JsString(obj.value.toString)
@@ -82,19 +85,21 @@ object Main extends App {
     override def read(json: JsValue): IpProtocol = {
       json match {
         case JsString(str) => IpProtocol.toProtocol(str)
-        case _=> throw DeserializationException("Unable to deserialize Filter Type")
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
   }
+
   implicit val ipPermissionInfoFormat = jsonFormat6(IpPermissionInfo.apply)
   implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
+
   implicit object InstanceFormat extends RootJsonFormat[Instance] {
 
     def write(i: Instance): JsValue = {
 
       val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo",
-      "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers", "account", "availabilityZone", "privateDnsName",
-      "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings", "securityGroups", "reservedInstance", "region")
+        "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers", "account", "availabilityZone", "privateDnsName",
+        "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings", "securityGroups", "reservedInstance", "region")
 
       val fields = new collection.mutable.ListBuffer[(String, JsValue)]
       fields ++= longToJsField(fieldNames(1), i.id)
@@ -131,7 +136,7 @@ object Main extends App {
     }
 
     def read(value: JsValue) = value match {
-      case _ => deserializationError("Color expected")
+      case _ => deserializationError("Instance expected")
     }
 
     def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
@@ -147,18 +152,21 @@ object Main extends App {
         case None => rest
       }
     }
+
     def objectToJsValue[T](fieldName: String, obj: Option[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
       obj match {
         case Some(x) => (fieldName, jsonFormat.write(x.asInstanceOf[T])) :: rest
         case None => rest
       }
     }
+
     def listToJsValue[T](fieldName: String, objList: List[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      objList.map{ obj => (fieldName, jsonFormat.write(obj))
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
       }
     }
+
     def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      objList.map{ obj => (fieldName, jsonFormat.write(obj))
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
       }.toList
     }
   }
@@ -171,6 +179,7 @@ object Main extends App {
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
   implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
   implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
+
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
       logger.info(s"Writing APMProvider json : ${obj.provider.toString}")
@@ -185,6 +194,7 @@ object Main extends App {
       }
     }
   }
+
   implicit object filterTypeFormat extends RootJsonFormat[FilterType] {
     override def write(obj: FilterType): JsValue = {
       logger.info(s"Writing FilterType json : ${obj.filterType.toString}")
@@ -199,6 +209,7 @@ object Main extends App {
       }
     }
   }
+
   implicit object ConditionFormat extends RootJsonFormat[Condition] {
     override def write(obj: Condition): JsValue = {
       logger.info(s"Writing Condition json : ${obj.condition.toString}")
@@ -213,12 +224,14 @@ object Main extends App {
       }
     }
   }
+
   implicit val FilterFormat = jsonFormat(Filter.apply, "id", "filterType", "values", "condition")
   implicit val SiteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
-  implicit val LoadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceId", "availabilityZones")
+  implicit val LoadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
   implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters", "loadBalancers", "scalingGroups")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
+
   def appSettingServiceRoutes = post {
     path("appsettings") {
       entity(as[AppSettings]) {
@@ -1053,11 +1066,11 @@ object Main extends App {
             //site.clear
             val (instanceList: List[Instance], loadBalancers: List[LoadBalancer], scalingGroups: List[ScalingGroup]) =
             siteFilter.foldLeft(Tuple3(List.empty[Instance], List.empty[LoadBalancer], List.empty[ScalingGroup])) {
-              (tuple,sitefilter) => {
+              (tuple, sitefilter) => {
                 val accountInfo = sitefilter.accountInfo
                 val Tuple3(prevInstanceList, prevLoadBalancers, prevScalingGroups) = tuple
                 val Tuple3(curInstanceList, curLoadBalancers, curScalingGroups) = Tuple3(AWSComputeAPI.getInstances(accountInfo), AWSComputeAPI.getLoadBalancers(accountInfo), AWSComputeAPI.getAutoScalingGroups(accountInfo))
-                Tuple3(prevInstanceList++curInstanceList, prevLoadBalancers++curLoadBalancers, prevScalingGroups++curScalingGroups)
+                Tuple3(prevInstanceList ++ curInstanceList, prevLoadBalancers ++ curLoadBalancers, prevScalingGroups ++ curScalingGroups)
               }
             }
             Site1(None, site.siteName, instanceList, site.filters, loadBalancers, scalingGroups)

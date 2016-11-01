@@ -6,8 +6,8 @@ import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import com.amazonaws.services.ec2.model._
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
-import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancing, AmazonElasticLoadBalancingClient}
 import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
+import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancing, AmazonElasticLoadBalancingClient}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -100,7 +100,7 @@ object AWSComputeAPI {
     val volumeType = volume.getVolumeType
     val snapshotCount = snapshots.size
 
-    if(snapshots.nonEmpty) {
+    if (snapshots.nonEmpty) {
       val currentSnapshot = snapshots.reduceLeft { (current, next) =>
         if (next.getStartTime.compareTo(current.getStartTime) > 0 && next.getProgress.equals("100%"))
           next
@@ -210,7 +210,7 @@ object AWSComputeAPI {
       val name = lbDesc.getLoadBalancerName
       val vpcId = lbDesc.getVPCId
       val availabilityZones = lbDesc.getAvailabilityZones.toList
-      val instanceIds = lbDesc.getInstances.map{ awsInstance => awsInstance.getInstanceId}.toList
+      val instanceIds = lbDesc.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
       LoadBalancer(None, name, vpcId, None, instanceIds, availabilityZones)
     }
   }
@@ -235,8 +235,8 @@ object AWSComputeAPI {
       val desiredCapacity = asg.getDesiredCapacity
       val maxCapacity = asg.getMaxSize
       val minCapacity = asg.getMinSize
-      val instanceIds = asg.getInstances.map{ awsInstance => awsInstance.getInstanceId}.toList
-      val tags = asg.getTags.map{ t => KeyValueInfo(None, t.getKey, t.getValue) }.toList
+      val instanceIds = asg.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
+      val tags = asg.getTags.map { t => KeyValueInfo(None, t.getKey, t.getValue) }.toList
       ScalingGroup(None, name, launchConfigurationName, status, availabilityZones, instanceIds, loadBalancerNames, tags, desiredCapacity, maxCapacity, minCapacity)
     }
   }
