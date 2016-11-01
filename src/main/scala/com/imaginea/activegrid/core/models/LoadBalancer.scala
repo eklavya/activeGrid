@@ -15,28 +15,8 @@ case class LoadBalancer(override val id: Option[Long],
                         instanceIds: List[String],
                         availabilityZones: List[String]) extends BaseEntity
 
-
 object LoadBalancer {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-
-  def fromNeo4jGraph(id: Long): Option[LoadBalancer] = {
-    val mayBeNode = Neo4jRepository.findNodeById(id)
-    mayBeNode match {
-      case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "name", "vpcId", "region", "instanceIds", "availabilityZones")
-
-        val loadBalancer = LoadBalancer(
-          Some(node.getId),
-          ActiveGridUtils.getValueFromMapAs[String](map, "name"),
-          ActiveGridUtils.getValueFromMapAs[String](map, "vpcId"),
-          ActiveGridUtils.getValueFromMapAs[String](map, "region"),
-          map("instanceIds").asInstanceOf[Array[String]].toList,
-          map("availabilityZones").asInstanceOf[Array[String]].toList
-        )
-        Some(loadBalancer)
-      case None => None
-    }
-  }
 
   implicit class RichLoadBalancer(loadBalancer: LoadBalancer) extends Neo4jRep[LoadBalancer] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -59,6 +39,25 @@ object LoadBalancer {
 
     override def fromNeo4jGraph(id: Long): Option[LoadBalancer] = {
       LoadBalancer.fromNeo4jGraph(id)
+    }
+  }
+
+  def fromNeo4jGraph(id: Long): Option[LoadBalancer] = {
+    val mayBeNode = Neo4jRepository.findNodeById(id)
+    mayBeNode match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node, "name", "vpcId", "region", "instanceIds", "availabilityZones")
+
+        val loadBalancer = LoadBalancer(
+          Some(node.getId),
+          ActiveGridUtils.getValueFromMapAs[String](map, "name"),
+          ActiveGridUtils.getValueFromMapAs[String](map, "vpcId"),
+          ActiveGridUtils.getValueFromMapAs[String](map, "region"),
+          map("instanceIds").asInstanceOf[Array[String]].toList,
+          map("availabilityZones").asInstanceOf[Array[String]].toList
+        )
+        Some(loadBalancer)
+      case None => None
     }
   }
 
