@@ -24,19 +24,7 @@ case class Instance(override val id: Option[Long],
                     estimatedConnections: List[InstanceConnection],
                     processes: Set[ProcessInfo],
                     image: Option[ImageInfo],
-                    existingUsers: List[InstanceUser],
-                    account: Option[AccountInfo],
-                    availabilityZone: Option[String],
-                    privateDnsName: Option[String],
-                    privateIpAddress: Option[String],
-                    publicIpAddress: Option[String],
-                    elasticIP: Option[String],
-                    monitoring: Option[String],
-                    rootDeviceType: Option[String],
-                    blockDeviceMappings: List[InstanceBlockDeviceMappingInfo],
-                    securityGroups: List[SecurityGroupInfo],
-                    reservedInstance: Boolean,
-                    region: Option[String]
+                    existingUsers: List[InstanceUser]
                    ) extends BaseEntity
 
 object Instance {
@@ -44,10 +32,13 @@ object Instance {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def apply(name: String, tags: List[KeyValueInfo], processes: Set[ProcessInfo]): Instance =
-    Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List(), List(), false, None)
+    Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser])
 
   def apply(name: String): Instance =
-    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List(), List(), false, None)
+    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser])
+
+  def apply(instanceId: Option[String], name: String, state: Option[String], instanceType: Option[String], platform: Option[String], architecture: Option[String], publicDnsName: Option[String], launchTime: Option[Long], memoryInfo: Option[StorageInfo], rootDiskInfo: Option[StorageInfo], tags: List[KeyValueInfo], imageInfo : Option[ImageInfo], sshAccessInfo: Option[SSHAccessInfo]): Instance =
+    Instance(None, instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime ,memoryInfo, rootDiskInfo, tags , sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], imageInfo, List.empty[InstanceUser])
 
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
     val listOfKeys = List("instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName")
@@ -108,7 +99,7 @@ object Instance {
       }.toSet
 
       Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo,
-        tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers, None, None, None, None, None, None, None, None, List(), List(), false, None))
+        tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers))
     }
     else {
       logger.warn(s"could not get graph properties for Instance node with $nodeId")
