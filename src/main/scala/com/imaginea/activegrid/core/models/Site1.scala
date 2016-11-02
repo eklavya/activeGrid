@@ -12,7 +12,8 @@ case class Site1(override val id: Option[Long],
                  siteName: String,
                  instances: List[Instance],
                  reservedInstanceDetails: List[ReservedInstanceDetails],
-                 filters: List[SiteFilter]) extends BaseEntity
+                 filters: List[SiteFilter],
+                 groupsList : List[InstanceGroup]) extends BaseEntity
 
 object Site1 {
   val repository = Neo4jRepository
@@ -20,6 +21,7 @@ object Site1 {
   val site_Instance_Relation = "HAS_INSTANCE"
   val site_Filter_Relation = "HAS_SITE_FILTER"
   val site_ReservedInstance_Relation = "HAS_RESERVED_INSTANCE"
+  val site_InstanceGroup_Relation = "HAS_INSTANCE_GROUP"
 
   implicit class Site1Impl(site1: Site1) extends Neo4jRep[Site1] {
     override def toNeo4jGraph(entity: Site1): Node = {
@@ -48,6 +50,13 @@ object Site1 {
                 repository.createRelation(site_ReservedInstance_Relation, node, childNode)
             }
           }
+          if(entity.groupsList.nonEmpty){
+            entity.groupsList.foreach{
+              group =>
+                val childNode = group.toNeo4jGraph(group)
+                repository.createRelation(site_InstanceGroup_Relation , node , childNode)
+            }
+          }
           node
       }
     }
@@ -72,7 +81,7 @@ object Site1 {
                 case `site_ReservedInstance_Relation` => Tuple3(tuple._1, tuple._2, tuple._3.::(ReservedInstanceDetails.fromNeo4jGraph(childNode.getId).get))
               }
           }
-          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get, tupleObj._1, tupleObj._3, tupleObj._2))
+          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get, tupleObj._1, tupleObj._3, tupleObj._2 , List.empty[InstanceGroup]))
         } else {
           None
         }

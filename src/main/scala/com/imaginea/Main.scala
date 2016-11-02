@@ -12,6 +12,7 @@ import com.imaginea.activegrid.core.models.{InstanceGroup, _}
 import com.imaginea.activegrid.core.utils.{ActiveGridUtils, Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
+import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat}
@@ -222,7 +223,7 @@ object Main extends App {
   implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
   implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "groupsList")
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -1061,7 +1062,7 @@ object Main extends App {
                 val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
                 Tuple2(tuple._1.:::(AWSComputeAPI.getInstances(amazonEC2, accountInfo)), tuple._2.:::(reservedInstanceDetails))
             }
-            val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters)
+            val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, List())
             site1.toNeo4jGraph(site1)
             site1
           }
@@ -1121,9 +1122,69 @@ object Main extends App {
         siteId =>
           pathPrefix("groups" / Segment) {
             groupType =>
-              //TODO have to write Groups logic in Site
+              val response = Future {
+                val site = Site1.fromNeo4jGraph(siteId)
+                if (site.nonEmpty) {
+                  site.get.groupsList.filter(group => group.groupType.get.equals(groupType))
+                } else {
+                  throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+                }
+              }
+              onComplete(response) {
+                case Success(groups) => complete(StatusCodes.OK, groups)
+                case Failure(exception) =>
+                  logger.error(s"Unable to get Instance Groups ${exception.getMessage}", exception)
+                  complete(StatusCodes.BadRequest, "Unable to get Instance Groups")
+              }
               logger.info(s"Site Id : $siteId , Group Type : $groupType")
               complete("Done")
+          }
+      }
+    } ~ put {
+      path("site" / LongNumber / "group") {
+        siteId =>
+          entity(as[InstanceGroup]) {
+            instanceGroup =>
+              val response = Future {
+                val site = Site1.fromNeo4jGraph(siteId)
+                if (site.nonEmpty) {
+                  val groups = site.get.groupsList
+                  val groupToSave = groups.find(group => instanceGroup.name.equals(group.name))
+                  if (groupToSave.nonEmpty) {
+                    groupToSave.get.instances++instanceGroup.instances
+                    groupToSave.get.toNeo4jGraph(groupToSave.get)
+                  } else {
+                    instanceGroup.toNeo4jGraph(instanceGroup)
+                  }
+                } else {
+                  throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+                }
+              }
+              logger.info(s"Site Id : $siteId ")
+              onComplete(response) {
+                case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+                case Failure(exception) =>
+                  logger.error(s"Unable to save the Instance group ${exception.getMessage}", exception)
+                  complete(StatusCodes.BadRequest, "Unable save the instance group")
+              }
+          }
+      }
+    } ~ get {
+      path("tags" / LongNumber) {
+        siteId =>
+          val tags = Future {
+            val site = Site1.fromNeo4jGraph(siteId)
+            if (site.nonEmpty) {
+              site.get.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
+            } else {
+              throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+            }
+          }
+          onComplete(tags){
+            case Success(response) => complete(StatusCodes.OK , response)
+            case Failure(exception) =>
+              logger.error(s"Unable to get the Tags with Given Site ID : $siteId  ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest , "Unable to get tags")
           }
       }
     }
