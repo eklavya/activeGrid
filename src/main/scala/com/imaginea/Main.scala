@@ -971,6 +971,10 @@ object Main extends App {
 
       }
   }
+
+
+
+
   val route: Route = serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))

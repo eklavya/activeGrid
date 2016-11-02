@@ -6,8 +6,9 @@ package com.imaginea.activegrid.core.models
 
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.regions.{Region, RegionUtils}
-import com.amazonaws.services.ec2.model.{DescribeImagesRequest, Image}
+import com.amazonaws.services.ec2.model.{Filter, _}
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
+import com.google.common.collect.{Lists, Maps}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -57,6 +58,89 @@ object AWSComputeAPI {
     }
     instances
   }
+
+
+  def getInstances1(accountInfo: AccountInfo): List[Instance] = {
+
+
+    val region = RegionUtils.getRegion(accountInfo.regionName)
+    val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
+    val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
+    val amazonEC2 = AWSInstanceHelper(aWSCredentials1, region)
+    val awsInstancesResult = getAWSInstances(amazonEC2)
+    val imageIds1 = awsInstancesResult.foldLeft(List.empty[String])((list, awsInstance) => list.::(awsInstance.getImageId))
+
+    val volumeIds = awsInstancesResult.foldLeft(List.empty[String])((list,awsInstance)=> list ++: awsInstance.getBlockDeviceMappings.map(blk => blk.getEbs.getVolumeId).toList)
+
+
+    val volumesMap = getVolumesInfo(volumeIds, amazonEC2)
+
+    //val securityGroups = amazonEC2.describeSecurityGroups()
+    //val addresses = amazonEC2.describeAddresses()
+    val imageIds = awsInstancesResult.foldLeft(List[String]())((list, awsInstance) => list.::(awsInstance.getImageId))
+    val imagesMap = getImageInformation(amazonEC2, imageIds)
+
+    //val imageInfoMap = getImageInfoMap(imagesMap )
+
+    val instances: List[Instance] = awsInstancesResult.map {
+      awsInstance =>
+        val imageInfo = getImageInfo(awsInstance.getImageId, imagesMap)
+        val instance = new Instance(None,
+          Some(awsInstance.getInstanceId),
+          awsInstance.getKeyName,
+          Some(awsInstance.getState.toString),
+          Option(awsInstance.getInstanceType),
+          Option(awsInstance.getPlatform),
+          Option(awsInstance.getArchitecture),
+          Option(awsInstance.getPublicDnsName),
+          Option(awsInstance.getLaunchTime.getTime),
+          Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).ramSize)),
+          Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).rootPartitionSize)),
+          awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList,
+          createSSHAccessInfo(awsInstance.getKeyName),
+          List.empty,
+          List.empty,
+          Set.empty,
+          Some(imageInfo),
+          List.empty
+        )
+        logger.debug(s"Instance OBJ:$instance")
+        instance
+    }
+    instances
+  }
+
+  def getVolumesInfo(volumeIds: List[String], amazonEC2: AmazonEC2): Map[String, Volume] = {
+
+    if (volumeIds.size != 0) {
+      val describeVolumesRequest: DescribeVolumesRequest = new DescribeVolumesRequest
+      describeVolumesRequest.setVolumeIds(volumeIds)
+      val volumesResult: DescribeVolumesResult = amazonEC2.describeVolumes(describeVolumesRequest)
+      volumesResult.getVolumes.map {
+        volume => (volume.getVolumeId, volume)
+      }.toMap[String, Volume]
+    } else {
+      Map.empty[String, Volume]
+    }
+  }
+
+/*  def getSnapshots(volumeIds:List[String], amazonEC2: AmazonEC2): Map[String, List[Snapshot]] = {
+    val snapshotsMap: Map[String, util.List[Snapshot]] = Maps.newHashMap
+    val describeSnapshotsRequest: DescribeSnapshotsRequest = new DescribeSnapshotsRequest
+    val filter: Filter = new Filter("volume-id", volumeIds)
+    val describeSnapshotsResult: DescribeSnapshotsResult = amazonEC2.describeSnapshots(describeSnapshotsRequest.withFilters(filter))
+    import scala.collection.JavaConversions._
+    for (snapshot <- describeSnapshotsResult.getSnapshots) {
+      val volumeId: String = snapshot.getVolumeId
+      var snapshotList: List[Snapshot] = snapshotsMap.get(volumeId)
+      if (snapshotList == null) {
+        snapshotList = Lists.newArrayList
+        snapshotsMap.put(volumeId, snapshotList)
+      }
+      snapshotList.add(snapshot)
+    }
+    return snapshotsMap
+  }*/
 
   private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
     new AWSCredentials() {
