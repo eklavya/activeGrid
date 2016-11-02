@@ -11,7 +11,7 @@ case class   AWSSite(override val id: Option[Long],
               filters: Option[List[SiteFilter]],
               keyPairs: Option[List[KeyPairInfo]],
               groupsList: Option[List[Instance]],
-              appliacations: Option[List[ApplicationSettings]],
+              appliacations: Option[List[Application]],
               groupBy: Option[String],
               loadBalancers: List[LoadBalancer],
               scalingGroups: List[ScalingGroup],
@@ -25,10 +25,10 @@ object AWSSite {
     // Need to implement
     val label = "AWSSite"
 
-    override def fromNeo4jGraph(nodeId: Long): Option[List[Node]] = {
+    override def fromNeo4jGraph(nodeId: Long): Option[AWSSite] = {
       Neo4jRepository.withTx {
         neo => {
-         Neo4jRepository.getNodesByLabel(label)
+         Some(Neo4jRepository.findNodeById(nodeId).asInstanceOf[AWSSite])
         }
       }
     }

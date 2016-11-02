@@ -6,14 +6,12 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.RouteResult.Complete
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
-import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
@@ -67,15 +65,15 @@ object Main extends App {
     }
   }
 
-  implicit object InstanceProviderFormat extends RootJsonFormat[ViewLevel]{
+  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider]{
 
-    override def write(obj: ViewLevel): JsValue = {
+    override def write(obj: InstanceProvider): JsValue = {
       JsString(obj.toString)
     }
 
-    override def read(json: JsValue): ViewLevel = {
+    override def read(json: JsValue): InstanceProvider = {
       json match {
-        case JsString(str) => ViewLevelProvider.toInstanceProvider(str)
+        case JsString(str) => InstanceProvider.toInstanceProvider(str)
         case _=> throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
@@ -115,12 +113,79 @@ object Main extends App {
       }
     }
   }
+  implicit object metricTypeFormat extends RootJsonFormat[MetricType] {
+    override def write(obj: MetricType): JsValue = {
+      logger.info(s"Writing Metrictype json : ${obj.metricType}")
+      JsString(obj.metricType)
+    }
+
+    override def read(json: JsValue): MetricType = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => MetricType.toMetricType(str)
+        case _ => throw DeserializationException("Unable to deserialize the Provider data")
+      }
+    }
+  }
+  implicit object UntiTypeFormat extends RootJsonFormat[UnitType] {
+    override def write(obj: UnitType): JsValue = {
+      logger.info(s"Writing UnitType json : ${obj.unitType}")
+      JsString(obj.unitType)
+    }
+
+    override def read(json: JsValue): UnitType = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => UnitType.toUnitType(str)
+        case _ => throw DeserializationException("Unable to deserialize the Unit type data")
+      }
+    }
+  }
+  implicit object ConditionTypeFormat extends RootJsonFormat[ConditionType] {
+    override def write(obj: ConditionType): JsValue = {
+      logger.info(s"Writing ConditionType json : ${obj.conditionType}")
+      JsString(obj.conditionType)
+    }
+
+    override def read(json: JsValue): ConditionType = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => ConditionType.toconditionType(str)
+        case _ => throw DeserializationException("Unable to deserialize the Condition type data")
+      }
+    }
+  }
+  implicit object ScaleTypeFormat extends RootJsonFormat[ScaleType]{
+    override def write(obj:ScaleType) :JsValue = {
+      JsString(obj.scaleType)
+    }
+    override def read(json: JsValue): ScaleType = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => ScaleType.toScaleType(str)
+        case _ => throw DeserializationException("Unable to deserialize the scale type data")
+      }
+    }
+
+  }
+
   implicit val filterFormat = jsonFormat(Filter.apply,"id","filterType","values")
   implicit val accountInfoFormat = jsonFormat(AccountInfo.apply , "id","accountId","providerType","ownerAlias","accessKey","secretKey","regionName","regions","networkCIDR")
   implicit val siteFilterFormat = jsonFormat(SiteFilter.apply,"id","accountInfo","filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply , "id","siteName","instances","filters")
-  implicit val awsSiteParameter = jsonFormat(AWSSite.apply,"id","name","instances","filters","keyPairs","groupsList","appliacations","groupBy","loadBalancers","scalingGroups","reservedInstanceDetails","scalingPolicies")
+  implicit val toupleFormat = jsonFormat(Tuple.apply,"id","key","value")
+  implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply,"id","name","vpcId","region","sinstanceIds","availabilityZones")
+  implicit val scalaingGroupFormat = jsonFormat(ScalingGroup.apply, "id","name","launchConfigurationName","status","availabilityZones","instanceIds","loadBalancerNames","tags","desiredCapacity","maxCapacity","minCapacity")
+  implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply, "id","instanceType","reservedInstancesId","availabilityZone","tenancy","offeringType","productDescription","count")
+  implicit val applicationFTierormat = jsonFormat(ApplicationTier.apply,  "id","name","description","instances","apmServer")
+  implicit val applicationFormat = jsonFormat(Application.apply,  "id","name","description","version","instaces","software","tiers","aPMServerDetails","responseTime")
+  implicit val policyConditionFormat = jsonFormat(PolicyCondition.apply,"id","applicationTier","metricType","threshold","unitType","conditionType","scaleType","scalingGroup")
+  implicit val autoScalingPolicyFormat = jsonFormat(AutoScalingPolicy.apply, "id","application","primaryConditions","secondaryConditions","lastAppliedAt")
+  implicit val awsSiteFormat = jsonFormat(AWSSite.apply,"id","name","instances","filters","keyPairs","groupsList","appliacations","groupBy","loadBalancers","scalingGroups","reservedInstanceDetails","scalingPolicies")
+
+
+
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -965,16 +1030,14 @@ object Main extends App {
   }
   def serviceEndPoints = pathPrefix("sites") {
       get {
-        result => Future {
-          parameter('viewLevel.as[String]) {
-            (viewLevel) => {
+         val result = Future {
+              val viewLevel =  parameter('viewLevel.as[String]).toString
               val sites = Neo4jRepository.getNodesByLabel("AWSSites")
               val siteViewFilter = new SiteViewFilter()
               sites.map{ site => siteViewFilter.filterInstance(site.asInstanceOf[AWSSite], ViewLevelProvider.toInstanceProvider(viewLevel)) }
             }
-          }
-        } onComplete(result) {
-            case Success(sitesList) => complete(StatusCodes.OK,sitesList)
+          onComplete(result) {
+            case Success(successResponse) => complete(StatusCodes.OK,successResponse)
             case Failure(ex) => logger.error("Unable to retrieve sites information",ex)
               complete(StatusCodes.BadRequest,"Failed to get results")
           }
