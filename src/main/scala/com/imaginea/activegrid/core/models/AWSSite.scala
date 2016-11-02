@@ -5,7 +5,7 @@ import org.neo4j.graphdb.Node
 /**
   * Created by sivag on 28/10/16.
   */
-class AWSSite(override val id: Option[Long],
+case class   AWSSite(override val id: Option[Long],
               name: String,
               instances: Option[List[Instance]],
               filters: Option[List[SiteFilter]],
@@ -20,21 +20,17 @@ class AWSSite(override val id: Option[Long],
              ) extends BaseEntity
 
 object AWSSite {
-
-  implicit class AWSSiteNeo4jWrapper(aWSSite: AWSSite) extends Neo4jRep[AWSSite] {
+  implicit class AWSSiteNeo4jWrapper(aWSSite: Option[AWSSite]) extends Neo4jRep[AWSSite] {
     override def toNeo4jGraph(entity: AWSSite): Node = ???
-
     // Need to implement
-    val label = "Instance"
+    val label = "AWSSite"
 
-    override def fromNeo4jGraph(nodeId: Long): Option[AWSSite] = {
+    override def fromNeo4jGraph(nodeId: Long): Option[List[Node]] = {
       Neo4jRepository.withTx {
         neo => {
-          val instances = Neo4jRepository.getNodesByLabel(label)
-
+         Neo4jRepository.getNodesByLabel(label)
         }
       }
     }
   }
-
 }

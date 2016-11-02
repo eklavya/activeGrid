@@ -13,6 +13,7 @@ import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
+import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
@@ -66,15 +67,15 @@ object Main extends App {
     }
   }
 
-  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider]{
+  implicit object InstanceProviderFormat extends RootJsonFormat[ViewLevel]{
 
-    override def write(obj: InstanceProvider): JsValue = {
-      JsString(obj.instanceProvider.toString)
+    override def write(obj: ViewLevel): JsValue = {
+      JsString(obj.toString)
     }
 
-    override def read(json: JsValue): InstanceProvider = {
+    override def read(json: JsValue): ViewLevel = {
       json match {
-        case JsString(str) => InstanceProvider.toInstanceProvider(str)
+        case JsString(str) => ViewLevelProvider.toInstanceProvider(str)
         case _=> throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
@@ -119,6 +120,7 @@ object Main extends App {
   implicit val siteFilterFormat = jsonFormat(SiteFilter.apply,"id","accountInfo","filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply , "id","siteName","instances","filters")
+  implicit val awsSiteParameter = jsonFormat(AWSSite.apply,"id","name","instances","filters","keyPairs","groupsList","appliacations","groupBy","loadBalancers","scalingGroups","reservedInstanceDetails","scalingPolicies")
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -963,12 +965,19 @@ object Main extends App {
   }
   def serviceEndPoints = pathPrefix("sites") {
       get {
-        parameter('viewLevel.as[String]) {
-          (viewLevel) => {
-           complete("Need to implement")
+        result => Future {
+          parameter('viewLevel.as[String]) {
+            (viewLevel) => {
+              val sites = Neo4jRepository.getNodesByLabel("AWSSites")
+              val siteViewFilter = new SiteViewFilter()
+              sites.map{ site => siteViewFilter.filterInstance(site.asInstanceOf[AWSSite], ViewLevelProvider.toInstanceProvider(viewLevel)) }
+            }
           }
-        }
-
+        } onComplete(result) {
+            case Success(sitesList) => complete(StatusCodes.OK,sitesList)
+            case Failure(ex) => logger.error("Unable to retrieve sites information",ex)
+              complete(StatusCodes.BadRequest,"Failed to get results")
+          }
       }
   }
 
@@ -1031,5 +1040,6 @@ object Main extends App {
     logger.debug(s"Reurning list of APM Servers $list")
     list
   }
+
 }
 
