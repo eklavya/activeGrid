@@ -47,11 +47,11 @@ object Main extends App {
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
   implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
   implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id","imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
   implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
 
-  implicit object FilterTypeFormat extends RootJsonFormat[FilterType]{
+  implicit object FilterTypeFormat extends RootJsonFormat[FilterType] {
 
     override def write(obj: FilterType): JsValue = {
       JsString(obj.filterType.toString)
@@ -60,12 +60,12 @@ object Main extends App {
     override def read(json: JsValue): FilterType = {
       json match {
         case JsString(str) => FilterType.toFilteType(str)
-        case _=> throw DeserializationException("Unable to deserialize Filter Type")
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
   }
 
-  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider]{
+  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
 
     override def write(obj: InstanceProvider): JsValue = {
       JsString(obj.toString)
@@ -74,7 +74,7 @@ object Main extends App {
     override def read(json: JsValue): InstanceProvider = {
       json match {
         case JsString(str) => InstanceProvider.toInstanceProvider(str)
-        case _=> throw DeserializationException("Unable to deserialize Filter Type")
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
   }
@@ -113,6 +113,7 @@ object Main extends App {
       }
     }
   }
+
   implicit object metricTypeFormat extends RootJsonFormat[MetricType] {
     override def write(obj: MetricType): JsValue = {
       logger.info(s"Writing Metrictype json : ${obj.metricType}")
@@ -127,6 +128,7 @@ object Main extends App {
       }
     }
   }
+
   implicit object UntiTypeFormat extends RootJsonFormat[UnitType] {
     override def write(obj: UnitType): JsValue = {
       logger.info(s"Writing UnitType json : ${obj.unitType}")
@@ -141,6 +143,7 @@ object Main extends App {
       }
     }
   }
+
   implicit object ConditionTypeFormat extends RootJsonFormat[ConditionType] {
     override def write(obj: ConditionType): JsValue = {
       logger.info(s"Writing ConditionType json : ${obj.conditionType}")
@@ -155,10 +158,12 @@ object Main extends App {
       }
     }
   }
-  implicit object ScaleTypeFormat extends RootJsonFormat[ScaleType]{
-    override def write(obj:ScaleType) :JsValue = {
+
+  implicit object ScaleTypeFormat extends RootJsonFormat[ScaleType] {
+    override def write(obj: ScaleType): JsValue = {
       JsString(obj.scaleType)
     }
+
     override def read(json: JsValue): ScaleType = {
       logger.info(s"Reading json value : ${json.toString}")
       json match {
@@ -169,22 +174,20 @@ object Main extends App {
 
   }
 
-  implicit val filterFormat = jsonFormat(Filter.apply,"id","filterType","values")
-  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply , "id","accountId","providerType","ownerAlias","accessKey","secretKey","regionName","regions","networkCIDR")
-  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply,"id","accountInfo","filters")
+  implicit val filterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
+  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply , "id","siteName","instances","filters")
-  implicit val toupleFormat = jsonFormat(Tuple.apply,"id","key","value")
-  implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply,"id","name","vpcId","region","sinstanceIds","availabilityZones")
-  implicit val scalaingGroupFormat = jsonFormat(ScalingGroup.apply, "id","name","launchConfigurationName","status","availabilityZones","instanceIds","loadBalancerNames","tags","desiredCapacity","maxCapacity","minCapacity")
-  implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply, "id","instanceType","reservedInstancesId","availabilityZone","tenancy","offeringType","productDescription","count")
-  implicit val applicationFTierormat = jsonFormat(ApplicationTier.apply,  "id","name","description","instances","apmServer")
-  implicit val applicationFormat = jsonFormat(Application.apply,  "id","name","description","version","instaces","software","tiers","aPMServerDetails","responseTime")
-  implicit val policyConditionFormat = jsonFormat(PolicyCondition.apply,"id","applicationTier","metricType","threshold","unitType","conditionType","scaleType","scalingGroup")
-  implicit val autoScalingPolicyFormat = jsonFormat(AutoScalingPolicy.apply, "id","application","primaryConditions","secondaryConditions","lastAppliedAt")
-  implicit val awsSiteFormat = jsonFormat(AWSSite.apply,"id","name","instances","filters","keyPairs","groupsList","appliacations","groupBy","loadBalancers","scalingGroups","reservedInstanceDetails","scalingPolicies")
-
-
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters")
+  implicit val toupleFormat = jsonFormat(Tuple.apply, "id", "key", "value")
+  implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "sinstanceIds", "availabilityZones")
+  implicit val scalaingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
+  implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply, "id", "instanceType", "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
+  implicit val applicationFTierormat = jsonFormat(ApplicationTier.apply, "id", "name", "description", "instances", "apmServer")
+  implicit val applicationFormat = jsonFormat(Application.apply, "id", "name", "description", "version", "instaces", "software", "tiers", "aPMServerDetails", "responseTime")
+  implicit val policyConditionFormat = jsonFormat(PolicyCondition.apply, "id", "applicationTier", "metricType", "threshold", "unitType", "conditionType", "scaleType", "scalingGroup")
+  implicit val autoScalingPolicyFormat = jsonFormat(AutoScalingPolicy.apply, "id", "application", "primaryConditions", "secondaryConditions", "lastAppliedAt")
+  implicit val awsSiteFormat = jsonFormat(AWSSite.apply, "id", "name", "instances", "filters", "keyPairs", "groupsList", "appliacations", "groupBy", "loadBalancers", "scalingGroups", "reservedInstanceDetails", "scalingPolicies")
 
 
   def appSettingServiceRoutes = post {
@@ -383,7 +386,7 @@ object Main extends App {
         }
     } ~
       path("groups") {
-        get{
+        get {
           val result = Future {
             val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
             val listOfUserGroups = nodeList.flatMap(node => UserGroup.fromNeo4jGraph(node.getId))
@@ -407,8 +410,8 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Failed save user group")
             }
           }
-       }
-    }
+        }
+      }
   } ~
     pathPrefix("users") {
       path("access" / LongNumber) { id =>
@@ -440,7 +443,7 @@ object Main extends App {
           }
       } ~
         path("access") {
-          get{
+          get {
             val result = Future {
               val nodeList = Neo4jRepository.getNodesByLabel(SiteACL.label)
               val listOfSiteACL = nodeList.flatMap(node => SiteACL.fromNeo4jGraph(node.getId))
@@ -453,17 +456,17 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Failed to get user access")
             }
           } ~ post {
-             entity(as[SiteACL]) { siteACL =>
-                val result = Future {
-                  siteACL.toNeo4jGraph(siteACL)
-                }
-                onComplete(result) {
-                  case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
-                  case Failure(ex) =>
-                    logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
-                    complete(StatusCodes.BadRequest, s"Failed save Site access")
-                }
+            entity(as[SiteACL]) { siteACL =>
+              val result = Future {
+                siteACL.toNeo4jGraph(siteACL)
               }
+              onComplete(result) {
+                case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
+                case Failure(ex) =>
+                  logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
+                  complete(StatusCodes.BadRequest, s"Failed save Site access")
+              }
+            }
 
           }
         }
@@ -1009,14 +1012,15 @@ object Main extends App {
       }
     }
   }
+
   def discoveryRoutes = pathPrefix("discover") {
     path("site") {
       put {
         entity(as[Site1]) { site =>
           val buildSite = Future {
-            val instances = site.filters.flatMap{ siteFilter =>  AWSComputeAPI.getInstances(siteFilter.accountInfo)
+            val instances = site.filters.flatMap { siteFilter => AWSComputeAPI.getInstances(siteFilter.accountInfo)
             }
-            Site1(None,site.siteName,instances,site.filters)
+            Site1(None, site.siteName, instances, site.filters)
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1028,23 +1032,25 @@ object Main extends App {
       }
     }
   }
+
   def serviceEndPoints = pathPrefix("sites") {
-      get {
-         val result = Future {
-              val viewLevel =  parameter('viewLevel.as[String]).toString
-              val sites = Neo4jRepository.getNodesByLabel("AWSSites")
-              val siteViewFilter = new SiteViewFilter()
-              sites.map{ site => siteViewFilter.filterInstance(site.asInstanceOf[AWSSite], ViewLevelProvider.toInstanceProvider(viewLevel)) }
-            }
+    get {
+      parameter('viewLevel.as[String]) {
+        (viewLevel) =>
+          val result = Future {
+            val sites = Neo4jRepository.getNodesByLabel("AWSSites")
+            val siteViewFilter = new SiteViewFilter()
+            sites.map { site => siteViewFilter.filterInstance(site.asInstanceOf[AWSSite], ViewLevelProvider.toInstanceProvider(viewLevel)) }
+          }
           onComplete(result) {
-            case Success(successResponse) => complete(StatusCodes.OK,successResponse)
-            case Failure(ex) => logger.error("Unable to retrieve sites information",ex)
-              complete(StatusCodes.BadRequest,"Failed to get results")
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) => logger.error("Unable to retrieve sites information", ex)
+              complete(StatusCodes.BadRequest, "Failed to get results")
           }
       }
+
+    }
   }
-
-
 
 
   val route: Route = serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
