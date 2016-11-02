@@ -758,7 +758,7 @@ object Main extends App {
     path("images" / "view") {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {
-          val imageLabel: String = "ImagesInfo"
+          val imageLabel: String = "ImageInfo"
           val nodesList = GraphDBExecutor.getNodesByLabel(imageLabel)
           val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
 
@@ -1081,6 +1081,46 @@ object Main extends App {
               logger.error(s"Unable to build Site Failed with : ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to build Site.")
           }
+        }
+      }
+    } ~ path("keypairs" / LongNumber) { siteId =>
+      get {
+        val listOfKeyPairs = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site)=>
+             val keyPairs = site.instances.flatMap { instance =>
+                instance.sshAccessInfo.flatMap(x => Some(x.keyPair))
+              }
+              Page[KeyPairInfo](keyPairs)
+            case None =>
+              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+              Page[KeyPairInfo](List.empty[KeyPairInfo])
+          }
+        }
+        onComplete(listOfKeyPairs) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(ex) =>
+            logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to get List of KeyPairs")
+        }
+      }
+    } ~ path("site" / LongNumber) { siteId =>
+      get {
+        val filteredSite = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site) => Some(Site1(Some(siteId), site.siteName, site.instances, site.filters, site.loadBalancers, site.scalingGroups))
+            case None =>
+              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+              None
+          }
+        }
+        onComplete(filteredSite) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(ex) =>
+            logger.error(s"Unable to get Filtered Site; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to get Filtered Site")
         }
       }
     }

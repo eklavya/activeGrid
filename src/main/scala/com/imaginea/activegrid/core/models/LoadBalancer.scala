@@ -17,6 +17,7 @@ case class LoadBalancer(override val id: Option[Long],
 
 object LoadBalancer {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  val label = "LoadBalancer"
 
   def fromNeo4jGraph(id: Long): Option[LoadBalancer] = {
     val mayBeNode = Neo4jRepository.findNodeById(id)
@@ -38,8 +39,6 @@ object LoadBalancer {
   }
 
   implicit class RichLoadBalancer(loadBalancer: LoadBalancer) extends Neo4jRep[LoadBalancer] {
-    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    val label = "LoadBalancer"
 
     override def toNeo4jGraph(entity: LoadBalancer): Node = {
       logger.debug(s"toGraph for LoadBalancer $entity")
@@ -51,7 +50,6 @@ object LoadBalancer {
         "availabilityZones" -> entity.availabilityZones.toArray
       )
       val node = Neo4jRepository.saveEntity[LoadBalancer](label, entity.id, map)
-
       logger.debug(s"node - $node")
       node
     }

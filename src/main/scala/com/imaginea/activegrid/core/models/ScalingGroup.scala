@@ -27,7 +27,6 @@ object ScalingGroup {
     mayBeNode match {
       case Some(node) =>
         val map = Neo4jRepository.getProperties(node, "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "desiredCapacity", "maxCapacity", "minCapacity")
-
         val relationship_keyValueInfo = "HAS_keyValueInfo"
         val childNodeIds_keyVal: List[Long] = GraphDBExecutor.getChildNodeIds(id, relationship_keyValueInfo)
         val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
@@ -69,19 +68,17 @@ object ScalingGroup {
         "minCapacity" -> entity.minCapacity
       )
       val node = Neo4jRepository.saveEntity[ScalingGroup](label, entity.id, map)
-
       val relationship_keyVal = "HAS_keyValueInfo"
       entity.tags.foreach { tag =>
         val tagNode = tag.toNeo4jGraph(tag)
         GraphDBExecutor.setGraphRelationship(node, tagNode, relationship_keyVal)
       }
-
       logger.debug(s"node - $node")
       node
     }
 
     override def fromNeo4jGraph(id: Long): Option[ScalingGroup] = {
-      fromNeo4jGraph(id)
+      ScalingGroup.fromNeo4jGraph(id)
     }
   }
 
