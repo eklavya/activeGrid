@@ -67,7 +67,6 @@ object GraphDBExecutor extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     try {
       val node = getNodeById(parentNodeId)(neo)
       val list = node.getRelationships(relation, Direction.OUTGOING).map(rel => rel.getEndNode.getId).toList
-      logger.debug(s"$list")
       list
     }
     catch {

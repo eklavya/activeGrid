@@ -14,7 +14,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
-import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
+import spray.json._
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -39,17 +39,14 @@ object Main extends App {
 
   implicit val KeyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
   implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
-
   implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
   implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
-
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
   implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
   implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
   implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
-
   implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
   implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
   implicit val instanceConnectionFormat = jsonFormat(InstanceConnection.apply, "id", "sourceNodeId", "targetNodeId", "portRanges")
@@ -59,15 +56,127 @@ object Main extends App {
   implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
   implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
   implicit val KeyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
-  implicit val instanceFormat = jsonFormat(Instance.apply, "id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers")
+
+  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
+
+    override def write(obj: InstanceProvider): JsValue = {
+      JsString(obj.instanceProvider.toString)
+    }
+
+    override def read(json: JsValue): InstanceProvider = {
+      json match {
+        case JsString(str) => InstanceProvider.toInstanceProvider(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
+  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+  implicit val snapshotInfoFormat = jsonFormat11(SnapshotInfo.apply)
+  implicit val volumeInfoFormat = jsonFormat11(VolumeInfo.apply)
+  implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
+
+  implicit object ipProtocolFormat extends RootJsonFormat[IpProtocol] {
+
+    override def write(obj: IpProtocol): JsValue = {
+      JsString(obj.value.toString)
+    }
+
+    override def read(json: JsValue): IpProtocol = {
+      json match {
+        case JsString(str) => IpProtocol.toProtocol(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
+  implicit val ipPermissionInfoFormat = jsonFormat6(IpPermissionInfo.apply)
+  implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
+
+  implicit object InstanceFormat extends RootJsonFormat[Instance] {
+
+    def write(i: Instance): JsValue = {
+
+      val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo",
+        "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers", "account", "availabilityZone", "privateDnsName",
+        "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings", "securityGroups", "reservedInstance", "region")
+
+      val fields = new collection.mutable.ListBuffer[(String, JsValue)]
+      fields ++= longToJsField(fieldNames(1), i.id)
+      fields ++= stringToJsField(fieldNames(2), i.state)
+      fields ++= stringToJsField(fieldNames(3), i.state)
+      fields ++= List((fieldNames(4), JsString(i.name)))
+      fields ++= stringToJsField(fieldNames(5), i.instanceType)
+      fields ++= stringToJsField(fieldNames(6), i.platform)
+      fields ++= stringToJsField(fieldNames(7), i.architecture)
+      fields ++= stringToJsField(fieldNames(8), i.publicDnsName)
+      fields ++= longToJsField(fieldNames(9), i.launchTime)
+      fields ++= objectToJsValue[StorageInfo](fieldNames(10), i.memoryInfo, storageInfoFormat)
+      fields ++= objectToJsValue[StorageInfo](fieldNames(11), i.rootDiskInfo, storageInfoFormat)
+      fields ++= listToJsValue[KeyValueInfo](fieldNames(12), i.tags, KeyValueInfoFormat)
+      fields ++= objectToJsValue[SSHAccessInfo](fieldNames(13), i.sshAccessInfo, sshAccessInfoFormat)
+      fields ++= listToJsValue[InstanceConnection](fieldNames(14), i.liveConnections, instanceConnectionFormat)
+      fields ++= listToJsValue[InstanceConnection](fieldNames(15), i.estimatedConnections, instanceConnectionFormat)
+      fields ++= setToJsValue[ProcessInfo](fieldNames(16), i.processes, processInfoFormat)
+      fields ++= objectToJsValue[ImageInfo](fieldNames(17), i.image, ImageFormat)
+      fields ++= listToJsValue[InstanceUser](fieldNames(18), i.existingUsers, instanceUserFormat)
+      fields ++= objectToJsValue[AccountInfo](fieldNames(19), i.account, accountInfoFormat)
+      fields ++= stringToJsField(fieldNames(20), i.availabilityZone)
+      fields ++= stringToJsField(fieldNames(21), i.privateDnsName)
+      fields ++= stringToJsField(fieldNames(22), i.privateIpAddress)
+      fields ++= stringToJsField(fieldNames(23), i.publicIpAddress)
+      fields ++= stringToJsField(fieldNames(24), i.elasticIP)
+      fields ++= stringToJsField(fieldNames(25), i.monitoring)
+      fields ++= stringToJsField(fieldNames(26), i.rootDeviceType)
+      fields ++= listToJsValue[InstanceBlockDeviceMappingInfo](fieldNames(27), i.blockDeviceMappings, instanceBlockingFormat)
+      fields ++= listToJsValue[SecurityGroupInfo](fieldNames(28), i.securityGroups, securityGroupsFormat)
+      fields ++= List((fieldNames(29), JsBoolean(i.reservedInstance)))
+      fields ++= stringToJsField(fieldNames(30), i.region)
+      JsObject(fields: _*)
+    }
+
+    def read(value: JsValue) = value match {
+      case _ => deserializationError("Instance expected")
+    }
+
+    def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      fieldValue match {
+        case Some(x) => (fieldName, JsString(x)) :: rest
+        case None => rest
+      }
+    }
+
+    def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      fieldValue match {
+        case Some(x) => (fieldName, JsNumber(x)) :: rest
+        case None => rest
+      }
+    }
+
+    def objectToJsValue[T](fieldName: String, obj: Option[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      obj match {
+        case Some(x) => (fieldName, jsonFormat.write(x.asInstanceOf[T])) :: rest
+        case None => rest
+      }
+    }
+
+    def listToJsValue[T](fieldName: String, objList: List[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
+      }
+    }
+
+    def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
+      }.toList
+    }
+  }
+
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
-
   implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
   implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
-
   implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
   implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
 
@@ -86,6 +195,41 @@ object Main extends App {
     }
   }
 
+  implicit object filterTypeFormat extends RootJsonFormat[FilterType] {
+    override def write(obj: FilterType): JsValue = {
+      logger.info(s"Writing FilterType json : ${obj.filterType.toString}")
+      JsString(obj.filterType.toString)
+    }
+
+    override def read(json: JsValue): FilterType = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => FilterType.toFilteType(str)
+        case _ => throw DeserializationException("Unable to deserialize the Provider data")
+      }
+    }
+  }
+
+  implicit object ConditionFormat extends RootJsonFormat[Condition] {
+    override def write(obj: Condition): JsValue = {
+      logger.info(s"Writing Condition json : ${obj.condition.toString}")
+      JsString(obj.condition.toString)
+    }
+
+    override def read(json: JsValue): Condition = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => Condition.toCondition(str)
+        case _ => throw DeserializationException("Unable to deserialize the Condition data")
+      }
+    }
+  }
+
+  implicit val FilterFormat = jsonFormat(Filter.apply, "id", "filterType", "values", "condition")
+  implicit val SiteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
+  implicit val LoadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
+  implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters", "loadBalancers", "scalingGroups")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
 
   def appSettingServiceRoutes = post {
@@ -284,7 +428,7 @@ object Main extends App {
         }
     } ~
       path("groups") {
-        get{
+        get {
           val result = Future {
             val nodeList = Neo4jRepository.getNodesByLabel(UserGroup.label)
             val listOfUserGroups = nodeList.flatMap(node => UserGroup.fromNeo4jGraph(node.getId))
@@ -308,8 +452,8 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Failed save user group")
             }
           }
-       }
-    }
+        }
+      }
   } ~
     pathPrefix("users") {
       path("access" / LongNumber) { id =>
@@ -341,7 +485,7 @@ object Main extends App {
           }
       } ~
         path("access") {
-          get{
+          get {
             val result = Future {
               val nodeList = Neo4jRepository.getNodesByLabel(SiteACL.label)
               val listOfSiteACL = nodeList.flatMap(node => SiteACL.fromNeo4jGraph(node.getId))
@@ -354,17 +498,17 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Failed to get user access")
             }
           } ~ post {
-             entity(as[SiteACL]) { siteACL =>
-                val result = Future {
-                  siteACL.toNeo4jGraph(siteACL)
-                }
-                onComplete(result) {
-                  case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
-                  case Failure(ex) =>
-                    logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
-                    complete(StatusCodes.BadRequest, s"Failed save Site access")
-                }
+            entity(as[SiteACL]) { siteACL =>
+              val result = Future {
+                siteACL.toNeo4jGraph(siteACL)
               }
+              onComplete(result) {
+                case Success(status) => complete(StatusCodes.OK, "Site access saved  Successfully")
+                case Failure(ex) =>
+                  logger.error(s"Failed save Site access, Message: ${ex.getMessage}", ex)
+                  complete(StatusCodes.BadRequest, s"Failed save Site access")
+              }
+            }
 
           }
         }
@@ -614,7 +758,7 @@ object Main extends App {
     path("images" / "view") {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {
-          val imageLabel: String = "ImagesTest2"
+          val imageLabel: String = "ImageInfo"
           val nodesList = GraphDBExecutor.getNodesByLabel(imageLabel)
           val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
 
@@ -911,11 +1055,90 @@ object Main extends App {
     }
 
   }
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
+
+  val discoveryRoutes = pathPrefix("discover") {
+    path("site") {
+      put {
+        entity(as[Site1]) { site =>
+          val buildSite = Future {
+            val siteFilter: List[SiteFilter] = site.filters
+            //site.toNeo4jGraph(site)
+            //site.clear
+            val (instanceList: List[Instance], loadBalancers: List[LoadBalancer], scalingGroups: List[ScalingGroup]) =
+            siteFilter.foldLeft(Tuple3(List.empty[Instance], List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+              (tuple, sitefilter) => {
+                val accountInfo = sitefilter.accountInfo
+                val Tuple3(prevInstanceList, prevLoadBalancers, prevScalingGroups) = tuple
+                val Tuple3(curInstanceList, curLoadBalancers, curScalingGroups) = Tuple3(AWSComputeAPI.getInstances(accountInfo), AWSComputeAPI.getLoadBalancers(accountInfo), AWSComputeAPI.getAutoScalingGroups(accountInfo))
+                Tuple3(prevInstanceList ++ curInstanceList, prevLoadBalancers ++ curLoadBalancers, prevScalingGroups ++ curScalingGroups)
+              }
+            }
+            Site1(None, site.siteName, instanceList, site.filters, loadBalancers, scalingGroups)
+          }
+          onComplete(buildSite) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to build Site Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to build Site.")
+          }
+        }
+      }
+    } ~ path("keypairs" / LongNumber) { siteId =>
+      get {
+        val listOfKeyPairs = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site) =>
+              val keyPairs = site.instances.flatMap { instance =>
+                instance.sshAccessInfo.flatMap(x => Some(x.keyPair))
+              }
+              Page[KeyPairInfo](keyPairs)
+            case None =>
+              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+              Page[KeyPairInfo](List.empty[KeyPairInfo])
+          }
+        }
+        onComplete(listOfKeyPairs) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(ex) =>
+            logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to get List of KeyPairs")
+        }
+      }
+    } ~ path("site" / LongNumber / Segment) { (siteId, view) =>
+      get {
+        val filteredSite = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site) =>
+              val viewType = ViewType.toViewType(view)
+              val listOfFilteredInstances = site.instances.map { instance =>
+                viewType match {
+                  case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("SUMMARY"))
+                  case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("SUMMARY"))
+                  case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
+                }
+              }
+              Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.filters, site.loadBalancers, site.scalingGroups))
+            case None =>
+              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+              None
+          }
+        }
+        onComplete(filteredSite) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(ex) =>
+            logger.error(s"Unable to get Filtered Site; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to get Filtered Site")
+        }
+      }
+    }
+  }
+
+  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
-
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
     User.fromNeo4jGraph(userId) match {
@@ -967,5 +1190,55 @@ object Main extends App {
     logger.debug(s"Reurning list of APM Servers $list")
     list
   }
-}
 
+  def filterInstanceViewList(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, List.empty[InstanceBlockDeviceMappingInfo], instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
+  }
+
+  def filterInstanceViewArchitecture(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, instance.liveConnections, List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          instance.processes, instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, List.empty[InstanceBlockDeviceMappingInfo], instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
+  }
+
+  def filterInstanceViewOperations(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, instance.liveConnections, instance.estimatedConnections,
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          instance.processes, instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, instance.blockDeviceMappings, instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
+  }
+}

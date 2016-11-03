@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -8,28 +9,30 @@ import org.slf4j.LoggerFactory
   * Created by sampathr on 22/9/16.
   */
 case class ImageInfo(override val id: Option[Long],
-                     state: String,
-                     ownerId: String,
+                     imageId: Option[String],
+                     state: Option[String],
+                     ownerId: Option[String],
                      publicValue: Boolean,
-                     architecture: String,
-                     imageType: String,
-                     platform: String,
-                     imageOwnerAlias: String,
-                     name: String,
-                     description: String,
-                     rootDeviceType: String,
-                     rootDeviceName: String,
-                     version: String) extends BaseEntity
+                     architecture: Option[String],
+                     imageType: Option[String],
+                     platform: Option[String],
+                     imageOwnerAlias: Option[String],
+                     name: Option[String],
+                     description: Option[String],
+                     rootDeviceType: Option[String],
+                     rootDeviceName: Option[String],
+                     version: Option[String]) extends BaseEntity
 
 object ImageInfo {
 
   implicit class ImageInfoImpl(imageInfo: ImageInfo) extends Neo4jRep[ImageInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    val label = "ImagesTest2"
+    val label = "ImageInfo"
 
     override def toNeo4jGraph(imageInfo: ImageInfo): Node = {
       logger.debug(s"In toGraph for Image Info: $imageInfo")
-      val map = Map("state" -> imageInfo.state,
+      val map = Map("imageId" -> imageInfo.imageId,
+        "state" -> imageInfo.state,
         "ownerId" -> imageInfo.ownerId,
         "publicValue" -> imageInfo.publicValue,
         "architecture" -> imageInfo.architecture,
@@ -60,20 +63,21 @@ object ImageInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
       val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node.get, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+      val map = GraphDBExecutor.getProperties(node.get, "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
       val imageInfo = ImageInfo(Some(node.get.getId),
-        map("state").asInstanceOf[String],
-        map("ownerId").asInstanceOf[String],
+        ActiveGridUtils.getValueFromMapAs[String](map, "imageId"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "state"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "ownerId"),
         map("publicValue").asInstanceOf[Boolean],
-        map("architecture").asInstanceOf[String],
-        map("imageType").asInstanceOf[String],
-        map("platform").asInstanceOf[String],
-        map("imageOwnerAlias").asInstanceOf[String],
-        map("name").asInstanceOf[String],
-        map("description").asInstanceOf[String],
-        map("rootDeviceType").asInstanceOf[String],
-        map("rootDeviceName").asInstanceOf[String],
-        map("version").asInstanceOf[String])
+        ActiveGridUtils.getValueFromMapAs[String](map, "architecture"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "imageType"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "platform"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "imageOwnerAlias"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "name"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "description"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "rootDeviceType"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "rootDeviceName"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "version"))
       Some(imageInfo)
     } catch {
       case ex: Exception =>
