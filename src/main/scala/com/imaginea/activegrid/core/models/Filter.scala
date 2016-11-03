@@ -32,7 +32,7 @@ object Filter {
   def fromNeo4jGraph(nodeId: Long): Option[Filter] = {
     repository.withTx {
       neo =>
-        val node = repository.getNodeById(nodeId)(neo)
+        val node = repository.getNodeById(nodeId) (neo)
         Some(new Filter(Some(node.getId), FilterType.toFilteType(repository.getProperty[String](node, "filterType").get), repository.getProperty[List[String]](node, "values").get))
     }
   }
