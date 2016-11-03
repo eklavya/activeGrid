@@ -74,8 +74,8 @@ object APMServerDetails {
               (tuple, relationsip) =>
                 val childNode = relationsip.getEndNode
                 relationsip.getType.name match {
-                  case `apmServer_site_relation` => Tuple2(Site.fromNeo4jGraph(childNode.getId), tuple._2)
-                  case `apmServer_header_relation` => Tuple2(tuple._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
+                  case `apmServer_site_relation` => (Site.fromNeo4jGraph(childNode.getId), tuple._2)
+                  case `apmServer_header_relation` => (tuple._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
                 }
             }
             Some(new APMServerDetails(

@@ -48,8 +48,8 @@ object SiteFilter {
             (tuple, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `siteFilter_AccountInfo_Rel` => Tuple2(AccountInfo.fromNeo4jGraph(childNode.getId).get, tuple._2)
-                case `siteFilter_Filters_Rel` => Tuple2(tuple._1, tuple._2.::(Filter.fromNeo4jGraph(childNode.getId).get))
+                case `siteFilter_AccountInfo_Rel` => (AccountInfo.fromNeo4jGraph(childNode.getId).get, tuple._2)
+                case `siteFilter_Filters_Rel` => (tuple._1, tuple._2.::(Filter.fromNeo4jGraph(childNode.getId).get))
               }
           }
           Some(SiteFilter(Some(node.getId), tupleObj._1.asInstanceOf[AccountInfo], tupleObj._2))

@@ -46,15 +46,15 @@ object InstanceBlockDeviceMappingInfo {
       neo =>
         val node = repository.getNodeById(nodeId)(neo)
         if (repository.hasLabel(node, ibd_VolumeInfo_Relation)) {
-          val tupleObj = node.getRelationships.foldLeft(Tuple1[AnyRef](AnyRef)) {
-            (tuple, relationship) =>
+          val volumeInfoObj = node.getRelationships.foldLeft(Option[AnyRef](AnyRef)) {
+            (reference, relationship) =>
               val childNode = relationship.getEndNode
-              Tuple1(VolumeInfo.fromNeo4jGraph(childNode.getId))
+              VolumeInfo.fromNeo4jGraph(childNode.getId)
           }
           Some(InstanceBlockDeviceMappingInfo(
             Some(nodeId),
             repository.getProperty[String](node, "deviceName").get,
-            tupleObj._1.asInstanceOf[VolumeInfo],
+            volumeInfoObj.asInstanceOf[VolumeInfo],
             repository.getProperty[String](node, "status").get,
             repository.getProperty[String](node, "attachTime").get,
             repository.getProperty[Boolean](node, "deleteOnTermination").get,

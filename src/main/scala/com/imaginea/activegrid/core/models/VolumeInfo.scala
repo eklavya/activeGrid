@@ -65,8 +65,8 @@ object VolumeInfo {
             (tuple, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `volumeInfo_Tag_Relation` => Tuple2(tuple._1.::(KeyValueInfo.fromNeo4jGraph(childNode.getId)), tuple._2)
-                case `volumeInfo_SnapshotInfo_Relation` => Tuple2(tuple._1, SnapshotInfo.fromNeo4jGraph(childNode.getId))
+                case `volumeInfo_Tag_Relation` => (tuple._1.::(KeyValueInfo.fromNeo4jGraph(childNode.getId)), tuple._2)
+                case `volumeInfo_SnapshotInfo_Relation` => (tuple._1, SnapshotInfo.fromNeo4jGraph(childNode.getId))
               }
           }
           Some(VolumeInfo(Some(nodeId),
