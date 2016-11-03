@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sivag on 28/10/16.
   */
-case class Application(override val id: Option[Long],,
+case class Application(override val id: Option[Long],
                        name: String,
                        description: String,
                        version: String,

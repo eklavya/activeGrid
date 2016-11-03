@@ -16,7 +16,7 @@ case object DETAILED extends ViewLevel{
   override def level: String = "DETAILED"
 }
 
-case object InstanceProvider {
+case object ViewLevelProvider {
   def toInstanceProvider(viewLevel: String) : ViewLevel = {
     viewLevel match {
       case "SUMMARY" => SUMMARY

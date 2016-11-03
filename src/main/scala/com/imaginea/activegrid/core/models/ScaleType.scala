@@ -17,7 +17,7 @@ case object SCALE_DOWN extends ScaleType {
   override def scaleType: String = "SCALE_DOWN"
 }
 
-case object ConditionType {
+case object ScaleType {
   def toScaleType(scaleType: String): ScaleType = {
     scaleType match {
       case "SCALE_UP" => SCALE_UP
