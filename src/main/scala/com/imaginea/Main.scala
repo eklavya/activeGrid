@@ -1051,7 +1051,7 @@ object Main extends App {
 
     }
   }
-  def deleteServiceEndPoint = pathPrefix("sites" / LongNumber) {
+  def deleteService = path("sites" / LongNumber) {
     siteId => delete {
             val maybeDelete = Future { val result =   Neo4jRepository.deleteEntity(siteId) }
           onComplete(maybeDelete) {
@@ -1062,63 +1062,74 @@ object Main extends App {
           }
     }
   }
-
-
-  val route: Route = deleteServiceEndPoint ~ serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
-
-  val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
-  logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
-
-
-  def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    User.fromNeo4jGraph(userId) match {
-      case Some(user) => user.publicKeys.dropWhile(_.id.get != keyId).headOption
-      case None => None
+  def deleteInstance  = path("sites"/ LongNumber/ "instances"/ Segment) {
+    (siteId, instanceId) => delete {
+      val maybeDelete = Future { SiteManagerImpl.deleteIntanceFromSite(siteId,instanceId)}
+      onComplete(maybeDelete) {
+        case Success(delete) => complete(StatusCodes.OK, "Deleted successfully")
+        case Failure(ex) =>
+          logger.info("Failed to delete entity", ex)
+          complete(StatusCodes.BadRequest, "Deletion failed")
+      }
     }
   }
 
-  def getOrCreateKeyPair(keyName: String, keyMaterial: String, keyFilePath: Option[String], status: KeyPairStatus, defaultUser: Option[String], passPhase: Option[String]): KeyPairInfo = {
-    val mayBeKeyPair = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
+      val route: Route = deleteService ~ serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
 
-    mayBeKeyPair match {
-      case Some(keyPairInfo) =>
-        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
-      case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
-    }
-  }
+      val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
+      logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
 
-  def saveKeyPair(keyPairInfo: KeyPairInfo): Option[KeyPairInfo] = {
-    val filePath = getKeyFilePath(keyPairInfo.keyName)
-    try {
-      FileUtils.createDirectories(getKeyFilesDir)
-      FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
-      // TODO: change permissions to 600
-    } catch {
-      case e: Throwable => logger.error(e.getMessage, e)
-    }
-    val node = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
-    KeyPairInfo.fromNeo4jGraph(node.getId)
-  }
 
-  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
-
-  def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
-
-  def getAPMServers: mutable.MutableList[APMServerDetails] = {
-    logger.debug(s"Executing $getClass :: getAPMServers")
-    val nodes = APMServerDetails.getAllEntities
-    logger.debug(s"Getting all entities and size is :${nodes.size}")
-    val list = mutable.MutableList.empty[APMServerDetails]
-    nodes.foreach {
-      node =>
-        val aPMServerDetails = APMServerDetails.fromNeo4jGraph(node.getId)
-        aPMServerDetails match {
-          case Some(serverDetails) => list.+=(serverDetails)
-          case _ => logger.warn(s"Node not found with ID: ${node.getId}")
+      def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
+        User.fromNeo4jGraph(userId) match {
+          case Some(user) => user.publicKeys.dropWhile(_.id.get != keyId).headOption
+          case None => None
         }
-    }
-    logger.debug(s"Reurning list of APM Servers $list")
-    list
+      }
+
+      def getOrCreateKeyPair(keyName: String, keyMaterial: String, keyFilePath: Option[String], status: KeyPairStatus, defaultUser: Option[String], passPhase: Option[String]): KeyPairInfo = {
+        val mayBeKeyPair = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
+
+        mayBeKeyPair match {
+          case Some(keyPairInfo) =>
+            KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
+          case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
+        }
+      }
+
+      def saveKeyPair(keyPairInfo: KeyPairInfo): Option[KeyPairInfo] = {
+        val filePath = getKeyFilePath(keyPairInfo.keyName)
+        try {
+          FileUtils.createDirectories(getKeyFilesDir)
+          FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
+          // TODO: change permissions to 600
+        } catch {
+          case e: Throwable => logger.error(e.getMessage, e)
+        }
+        val node = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
+        KeyPairInfo.fromNeo4jGraph(node.getId)
+      }
+
+      def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
+
+      def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
+
+      def getAPMServers: mutable.MutableList[APMServerDetails] = {
+        logger.debug(s"Executing $getClass :: getAPMServers")
+        val nodes = APMServerDetails.getAllEntities
+        logger.debug(s"Getting all entities and size is :${nodes.size}")
+        val list = mutable.MutableList.empty[APMServerDetails]
+        nodes.foreach {
+          node =>
+            val aPMServerDetails = APMServerDetails.fromNeo4jGraph(node.getId)
+            aPMServerDetails match {
+              case Some(serverDetails) => list.+=(serverDetails)
+              case _ => logger.warn(s"Node not found with ID: ${node.getId}")
+            }
+        }
+        logger.debug(s"Reurning list of APM Servers $list")
+        list
+      }
   }
 
 }

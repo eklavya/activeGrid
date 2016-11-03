@@ -99,6 +99,18 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   }
 
+  def deleteRelation(instanceId: Long, parentEntity: BaseEntity, relation: String): Unit = withTx { implicit neo =>
+    import scala.collection.JavaConversions._;
+    parentEntity.id match {
+      case Some(id) => val parent = getNodeById(id)
+        val relationList = parent.getRelationships(Direction.OUTGOING).toList.filter(relation => relation.getType.name.equals(relation))
+        relationList.foreach(relation => relation.getNodes.toList.foreach {
+          node => if (node.getId == instanceId) node.delete() }
+        )
+
+    }
+  }
+
   def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
     try {
       Some(getNodeById(id))
