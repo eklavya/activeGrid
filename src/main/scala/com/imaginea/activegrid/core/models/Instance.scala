@@ -24,24 +24,36 @@ case class Instance(override val id: Option[Long],
                     estimatedConnections: List[InstanceConnection],
                     processes: Set[ProcessInfo],
                     image: Option[ImageInfo],
-                    existingUsers: List[InstanceUser]
+                    existingUsers: List[InstanceUser],
+                    account: Option[AccountInfo],
+                    availabilityZone: Option[String],
+                    privateDnsName: Option[String],
+                    privateIpAddress: Option[String],
+                    publicIpAddress: Option[String],
+                    elasticIP: Option[String],
+                    monitoring: Option[String],
+                    rootDeviceType: Option[String],
+                    blockDeviceMappings: List[InstanceBlockDeviceMappingInfo],
+                    securityGroups: List[SecurityGroupInfo],
+                    reservedInstance: Boolean,
+                    region: Option[String]
                    ) extends BaseEntity
 
 object Instance {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
+  def apply(instanceId: Option[String], name: String, state: Option[String], instanceType: Option[String], platform: Option[String], architecture: Option[String], publicDnsName: Option[String], launchTime: Option[Long], memoryInfo: Option[StorageInfo], rootDiskInfo: Option[StorageInfo], tags: List[KeyValueInfo], imageInfo: Option[ImageInfo], sshAccessInfo: Option[SSHAccessInfo]): Instance =
+    Instance(None, instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo, tags, sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], imageInfo, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
+
   def apply(name: String, tags: List[KeyValueInfo], processes: Set[ProcessInfo]): Instance =
-    Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser])
+    Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, false, None)
 
   def apply(name: String): Instance =
-    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser])
-
-  def apply(instanceId: Option[String], name: String, state: Option[String], instanceType: Option[String], platform: Option[String], architecture: Option[String], publicDnsName: Option[String], launchTime: Option[Long], memoryInfo: Option[StorageInfo], rootDiskInfo: Option[StorageInfo], tags: List[KeyValueInfo], imageInfo : Option[ImageInfo], sshAccessInfo: Option[SSHAccessInfo]): Instance =
-    Instance(None, instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime ,memoryInfo, rootDiskInfo, tags , sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], imageInfo, List.empty[InstanceUser])
+    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, false, None)
 
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
-    val listOfKeys = List("instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName")
+    val listOfKeys = List("instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "availabilityZone", "privateDnsName", "privateIpAddress", "publicIpAddress", "elasticIP", "monitoring", "rootDeviceType", "reservedInstance", "region")
     val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
     if (propertyValues.nonEmpty) {
       val instanceId = propertyValues.get("instanceId").asInstanceOf[Option[String]]
@@ -51,6 +63,15 @@ object Instance {
       val platform = propertyValues.get("platform").asInstanceOf[Option[String]]
       val architecture = propertyValues.get("architecture").asInstanceOf[Option[String]]
       val publicDnsName = propertyValues.get("publicDnsName").asInstanceOf[Option[String]]
+      val availabilityZone = propertyValues.get("availabilityZone").asInstanceOf[Option[String]]
+      val privateDnsName = propertyValues.get("privateDnsName").asInstanceOf[Option[String]]
+      val privateIpAddress = propertyValues.get("privateIpAddress").asInstanceOf[Option[String]]
+      val publicIpAddress = propertyValues.get("publicIpAddress").asInstanceOf[Option[String]]
+      val elasticIP = propertyValues.get("elasticIP").asInstanceOf[Option[String]]
+      val monitoring = propertyValues.get("monitoring").asInstanceOf[Option[String]]
+      val rootDeviceType = propertyValues.get("rootDeviceType").asInstanceOf[Option[String]]
+      val reservedInstance = propertyValues.get("reservedInstance").toString.toBoolean
+      val region = propertyValues.get("region").asInstanceOf[Option[String]]
       //TO DO
       //val launchTime: Date = new Date(propertyValues.get("launchTime").get.toString.toLong)
       val launchTime: Option[Long] = Some(100)
@@ -99,7 +120,8 @@ object Instance {
       }.toSet
 
       Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo,
-        tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers))
+        tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers,
+        None, availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, List.empty, List.empty, reservedInstance, region))
     }
     else {
       logger.warn(s"could not get graph properties for Instance node with $nodeId")
@@ -119,7 +141,17 @@ object Instance {
         "platform" -> entity.platform.getOrElse(GraphDBExecutor.NO_VAL),
         "architecture" -> entity.architecture.getOrElse(GraphDBExecutor.NO_VAL),
         "publicDnsName" -> entity.publicDnsName.getOrElse(GraphDBExecutor.NO_VAL),
-        "launchTime" -> entity.launchTime.getOrElse(GraphDBExecutor.NO_VAL))
+        "launchTime" -> entity.launchTime.getOrElse(GraphDBExecutor.NO_VAL),
+        "availabilityZone" -> entity.availabilityZone.getOrElse(GraphDBExecutor.NO_VAL),
+        "privateDnsName" -> entity.privateDnsName.getOrElse(GraphDBExecutor.NO_VAL),
+        "privateIpAddress" -> entity.privateIpAddress.getOrElse(GraphDBExecutor.NO_VAL),
+        "publicIpAddress" -> entity.publicIpAddress.getOrElse(GraphDBExecutor.NO_VAL),
+        "elasticIP" -> entity.elasticIP.getOrElse(GraphDBExecutor.NO_VAL),
+        "monitoring" -> entity.monitoring.getOrElse(GraphDBExecutor.NO_VAL),
+        "rootDeviceType" -> entity.rootDeviceType.getOrElse(GraphDBExecutor.NO_VAL),
+        "reservedInstance" -> entity.reservedInstance,
+        "region" -> entity.region.getOrElse(GraphDBExecutor.NO_VAL)
+      )
       val node = GraphDBExecutor.createGraphNodeWithPrimitives[Instance](label, mapPrimitives)
 
       entity.memoryInfo match {
