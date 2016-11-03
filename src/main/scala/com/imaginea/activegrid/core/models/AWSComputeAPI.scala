@@ -50,7 +50,6 @@ object AWSComputeAPI {
       val nodeName = publicDnsName.get
       val memoryInfo = Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(instance.getInstanceType).ramSize))
       val rootDiskInfo = Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(instance.getInstanceType).rootPartitionSize))
-      import scala.collection.JavaConversions._
       val tags: List[KeyValueInfo] = createKeyValueInfo(instance.getTags.toList)
       val imageInfo = createImageInfo(instance.getImageId, imagesMap)
       val sshAccessInfo = createSSHAccessInfo(instance.getKeyName)

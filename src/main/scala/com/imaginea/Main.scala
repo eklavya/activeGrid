@@ -1088,8 +1088,8 @@ object Main extends App {
         val listOfKeyPairs = Future {
           val mayBeSite = Site1.fromNeo4jGraph(siteId)
           mayBeSite match {
-            case Some(site)=>
-             val keyPairs = site.instances.flatMap { instance =>
+            case Some(site) =>
+              val keyPairs = site.instances.flatMap { instance =>
                 instance.sshAccessInfo.flatMap(x => Some(x.keyPair))
               }
               Page[KeyPairInfo](keyPairs)
@@ -1105,12 +1105,21 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to get List of KeyPairs")
         }
       }
-    } ~ path("site" / LongNumber) { siteId =>
+    } ~ path("site" / LongNumber / Segment) { (siteId, view) =>
       get {
         val filteredSite = Future {
           val mayBeSite = Site1.fromNeo4jGraph(siteId)
           mayBeSite match {
-            case Some(site) => Some(Site1(Some(siteId), site.siteName, site.instances, site.filters, site.loadBalancers, site.scalingGroups))
+            case Some(site) =>
+              val viewType = ViewType.toViewType(view)
+              val listOfFilteredInstances = site.instances.map { instance =>
+                viewType match {
+                  case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("SUMMARY"))
+                  case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("SUMMARY"))
+                  case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
+                }
+              }
+              Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.filters, site.loadBalancers, site.scalingGroups))
             case None =>
               logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
               None
@@ -1130,7 +1139,6 @@ object Main extends App {
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
-
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
     User.fromNeo4jGraph(userId) match {
@@ -1181,5 +1189,56 @@ object Main extends App {
     }
     logger.debug(s"Reurning list of APM Servers $list")
     list
+  }
+
+  def filterInstanceViewList(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, List.empty[InstanceBlockDeviceMappingInfo], instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
+  }
+
+  def filterInstanceViewArchitecture(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, instance.liveConnections, List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          instance.processes, instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, List.empty[InstanceBlockDeviceMappingInfo], instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
+  }
+
+  def filterInstanceViewOperations(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, instance.liveConnections, instance.estimatedConnections,
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          instance.processes, instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, instance.blockDeviceMappings, instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
   }
 }
