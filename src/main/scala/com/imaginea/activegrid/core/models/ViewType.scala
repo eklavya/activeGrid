@@ -21,7 +21,7 @@ case object ViewType {
     override def viewType: String = "architecture"
   }
 
-  def toViewType(viewType : String) : ViewType = {
+  def toViewType(viewType: String): ViewType = {
     viewType match {
       case "list" => LIST
       case "operations" => OPERATIONS

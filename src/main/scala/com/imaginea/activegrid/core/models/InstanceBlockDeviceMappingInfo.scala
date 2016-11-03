@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 
@@ -16,24 +17,21 @@ case class InstanceBlockDeviceMappingInfo(override val id: Option[Long],
                                           usage: Int) extends BaseEntity
 
 object InstanceBlockDeviceMappingInfo {
-  val repository = Neo4jRepository
   val instanceBlockDeviceMappingInfoLabel = "InstanceBlockDeviceMappingInfo"
   val ibd_VolumeInfo_Relation = "HAS_VOLUME_INFO"
+  val logger = LoggerFactory.getLogger(getClass)
 
   implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo) extends Neo4jRep[InstanceBlockDeviceMappingInfo] {
     override def toNeo4jGraph(entity: InstanceBlockDeviceMappingInfo): Node = {
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(instanceBlockDeviceMappingInfoLabel) (neo)
-          node.setProperty("deviceName", entity.deviceName)
-          node.setProperty("status", entity.status)
-          node.setProperty("attachTime", entity.attachTime)
-          node.setProperty("deleteOnTermination", entity.deleteOnTermination)
-          node.setProperty("usage", entity.usage)
-          val childNode = entity.volume.toNeo4jGraph(entity.volume)
-          repository.createRelation(ibd_VolumeInfo_Relation, node, childNode)
-          node
-      }
+      val map = Map("deviceName" -> entity.deviceName,
+        "status" -> entity.status,
+        "attachTime" -> entity.attachTime,
+        "deleteOnTermination" -> entity.deleteOnTermination,
+        "usage" -> entity.usage)
+      val node = Neo4jRepository.saveEntity[InstanceBlockDeviceMappingInfo](instanceBlockDeviceMappingInfoLabel, entity.id, map)
+      val childNode = entity.volume.toNeo4jGraph(entity.volume)
+      Neo4jRepository.createRelation(ibd_VolumeInfo_Relation, node, childNode)
+      node
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[InstanceBlockDeviceMappingInfo] = {
@@ -42,26 +40,29 @@ object InstanceBlockDeviceMappingInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[InstanceBlockDeviceMappingInfo] = {
-    repository.withTx {
-      neo =>
-        val node = repository.getNodeById(nodeId)(neo)
-        if (repository.hasLabel(node, ibd_VolumeInfo_Relation)) {
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        if (Neo4jRepository.hasLabel(node, ibd_VolumeInfo_Relation)) {
           val volumeInfoObj = node.getRelationships.foldLeft(Option[AnyRef](AnyRef)) {
             (reference, relationship) =>
               val childNode = relationship.getEndNode
               VolumeInfo.fromNeo4jGraph(childNode.getId)
           }
+          val map = Neo4jRepository.getProperties(node, "deviceName", "status", "attachTime", "deleteOnTermination", "usage")
+
           Some(InstanceBlockDeviceMappingInfo(
             Some(nodeId),
-            repository.getProperty[String](node, "deviceName").get,
+            map("deviceName").asInstanceOf[String],
             volumeInfoObj.asInstanceOf[VolumeInfo],
-            repository.getProperty[String](node, "status").get,
-            repository.getProperty[String](node, "attachTime").get,
-            repository.getProperty[Boolean](node, "deleteOnTermination").get,
-            repository.getProperty[Int](node, "usage").get))
+            map("status").asInstanceOf[String],
+            map("attachTime").asInstanceOf[String],
+            map("deleteOnTermination").asInstanceOf[Boolean],
+            map("usage").asInstanceOf[Int]))
         } else {
           None
         }
+      case None => None
     }
   }
 }

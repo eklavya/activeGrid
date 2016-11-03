@@ -4,6 +4,7 @@ import com.amazonaws.regions.RegionUtils
 import com.imaginea.activegrid.core.models.InstanceProvider
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConversions._
 
 /**
@@ -16,10 +17,10 @@ object ActiveGridUtils {
     map.get(key).map(_.asInstanceOf[T])
   }
 
-  def getRegions(instanceProvider: InstanceProvider) : List[String] ={
-    RegionUtils.getRegions.foldLeft(List.empty[String]){
-      (list , region ) =>
-        list.::(region.getName)
+  def getRegions(instanceProvider: InstanceProvider): List[String] = {
+    RegionUtils.getRegions.foldLeft(List.empty[String]) {
+      (list, region) =>
+        region.getName :: list
     }
   }
 }

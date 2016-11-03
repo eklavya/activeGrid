@@ -43,7 +43,7 @@ object InstanceGroup {
       case Some(node) =>
         val instances = node.getRelationships.foldLeft(List.empty[Instance]) {
           (list, relationship) =>
-            list.::(Instance.fromNeo4jGraph(relationship.getEndNode.getId).get)
+            Instance.fromNeo4jGraph(relationship.getEndNode.getId).get :: list
         }
 
         Some(InstanceGroup(Some(node.getId),

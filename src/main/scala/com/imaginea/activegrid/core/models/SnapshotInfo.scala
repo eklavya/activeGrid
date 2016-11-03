@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 
@@ -20,31 +21,29 @@ case class SnapshotInfo(override val id: Option[Long],
                         tags: List[KeyValueInfo]) extends BaseEntity
 
 object SnapshotInfo {
-  val repository = Neo4jRepository
   val snapshotInfoLabel = "SnapshotInfo"
   val snapshotInfo_KeyValue_Relation = "HAS_KEY_VALUE"
+  val logger = LoggerFactory.getLogger(getClass)
 
   implicit class SnapshotInfoImpl(snapshotInfo: SnapshotInfo) extends Neo4jRep[SnapshotInfo] {
     override def toNeo4jGraph(entity: SnapshotInfo): Node = {
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(snapshotInfoLabel)(neo)
-          node.setProperty("snapshotId", entity.snapshotId)
-          node.setProperty("volumeId", entity.volumeId)
-          node.setProperty("state", entity.state)
-          node.setProperty("startTime", entity.startTime)
-          node.setProperty("progress", entity.progress)
-          node.setProperty("ownerId", entity.ownerId)
-          node.setProperty("ownerAlias", entity.ownerAlias)
-          node.setProperty("description", entity.description)
-          node.setProperty("volumeSize", entity.volumeSize)
-          entity.tags.foreach {
-            tag =>
-              val tagNode = tag.toNeo4jGraph(tag)
-              repository.createRelation(snapshotInfo_KeyValue_Relation, node, tagNode)
-          }
-          node
+      logger.debug(s"Executing $getClass :: toNeo4jGraph")
+      val map = Map("snapshotId" -> entity.snapshotId,
+        "volumeId" -> entity.volumeId,
+        "state" -> entity.state,
+        "startTime" -> entity.startTime,
+        "progress" -> entity.progress,
+        "ownerId" -> entity.ownerId,
+        "ownerAlias" -> entity.ownerAlias,
+        "description" -> entity.description,
+        "volumeSize" -> entity.volumeSize)
+      val node = Neo4jRepository.saveEntity[SnapshotInfo](snapshotInfoLabel, entity.id, map)
+      entity.tags.foreach {
+        tag =>
+          val tagNode = tag.toNeo4jGraph(tag)
+          Neo4jRepository.createRelation(snapshotInfo_KeyValue_Relation, node, tagNode)
       }
+      node
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[SnapshotInfo] = {
@@ -53,29 +52,32 @@ object SnapshotInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[SnapshotInfo] = {
-    repository.withTx {
-      neo =>
-        val node = repository.getNodeById(nodeId)(neo)
-        if (repository.hasLabel(node, snapshotInfoLabel)) {
+    logger.debug(s"Executing $getClass :: fromNeo4jGraph")
+    val maybeNode = Neo4jRepository.findNodeById(nodeId)
+    maybeNode match {
+      case Some(node) =>
+        if (Neo4jRepository.hasLabel(node, snapshotInfoLabel)) {
+          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress", "ownerId", "ownerAlias", "description", "volumeSize")
           val keyValueInfo = node.getRelationships.foldLeft(List.empty[AnyRef]) {
             (list, relationship) =>
-              list.::(KeyValueInfo.fromNeo4jGraph(relationship.getEndNode.getId))
+              KeyValueInfo.fromNeo4jGraph(relationship.getEndNode.getId) :: list
           }
           Some(SnapshotInfo(
             Some(nodeId),
-            repository.getProperty[String](node, "snapshotId").get,
-            repository.getProperty[String](node, "volumeId").get,
-            repository.getProperty[String](node, "state").get,
-            repository.getProperty[String](node, "startTime").get,
-            repository.getProperty[String](node, "progress").get,
-            repository.getProperty[String](node, "ownerId").get,
-            repository.getProperty[String](node, "ownerAlias").get,
-            repository.getProperty[String](node, "description").get,
-            repository.getProperty[Int](node, "volumeSize").get,
+            map("snapshotId").asInstanceOf[String],
+            map("volumeId").asInstanceOf[String],
+            map("state").asInstanceOf[String],
+            map("startTime").asInstanceOf[String],
+            map("progress").asInstanceOf[String],
+            map("ownerId").asInstanceOf[String],
+            map("ownerAlias").asInstanceOf[String],
+            map("description").asInstanceOf[String],
+            map("volumeSize").asInstanceOf[Int],
             keyValueInfo.asInstanceOf[List[KeyValueInfo]]))
         } else {
           None
         }
+      case None => None
     }
   }
 }

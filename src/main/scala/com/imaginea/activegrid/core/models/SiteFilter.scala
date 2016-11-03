@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.models
 
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, NotFoundException}
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 
@@ -16,9 +17,11 @@ object SiteFilter {
   val siteFilterLabel = "SiteFilter"
   val siteFilter_AccountInfo_Rel = "HAS_ACCOUNT_INFO"
   val siteFilter_Filters_Rel = "HAS_FILTERS"
+  val logger = LoggerFactory.getLogger(getClass)
 
   implicit class SiteFilterImpl(siteFilter: SiteFilter) extends Neo4jRep[SiteFilter] {
     override def toNeo4jGraph(entity: SiteFilter): Node = {
+      logger.debug(s"Executing $getClass :: toNeo4jGraph")
       repository.withTx {
         neo =>
           val node = repository.createNode(siteFilterLabel)(neo)
@@ -39,22 +42,29 @@ object SiteFilter {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
+    logger.debug(s"Executing $getClass :: fromNeo4jGraph")
     repository.withTx {
       neo =>
-        val node = repository.getNodeById(nodeId)(neo)
-        if (repository.hasLabel(node, siteFilterLabel)) {
+        try {
+          val node = repository.getNodeById(nodeId)(neo)
+          if (repository.hasLabel(node, siteFilterLabel)) {
 
-          val tupleObj = node.getRelationships.foldLeft(Tuple2[AnyRef, List[Filter]](AnyRef, List[Filter]())) {
-            (tuple, relationship) =>
-              val childNode = relationship.getEndNode
-              relationship.getType.name match {
-                case `siteFilter_AccountInfo_Rel` => (AccountInfo.fromNeo4jGraph(childNode.getId).get, tuple._2)
-                case `siteFilter_Filters_Rel` => (tuple._1, tuple._2.::(Filter.fromNeo4jGraph(childNode.getId).get))
-              }
+            val tupleObj = node.getRelationships.foldLeft(Tuple2[AnyRef, List[Filter]](AnyRef, List[Filter]())) {
+              (tuple, relationship) =>
+                val childNode = relationship.getEndNode
+                relationship.getType.name match {
+                  case `siteFilter_AccountInfo_Rel` => (AccountInfo.fromNeo4jGraph(childNode.getId).get, tuple._2)
+                  case `siteFilter_Filters_Rel` => (tuple._1, Filter.fromNeo4jGraph(childNode.getId).get :: tuple._2)
+                }
+            }
+            Some(SiteFilter(Some(node.getId), tupleObj._1.asInstanceOf[AccountInfo], tupleObj._2))
+          } else {
+            None
           }
-          Some(SiteFilter(Some(node.getId), tupleObj._1.asInstanceOf[AccountInfo], tupleObj._2))
-        } else {
-          None
+        } catch {
+          case nfe: NotFoundException =>
+            logger.warn(nfe.getMessage, nfe)
+            None
         }
     }
   }

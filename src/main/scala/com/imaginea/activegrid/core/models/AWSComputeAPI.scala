@@ -26,7 +26,7 @@ object AWSComputeAPI {
     val awsInstancesResult = getAWSInstances(amazonEC2)
     val totalsecurityGroups = amazonEC2.describeSecurityGroups.getSecurityGroups.foldLeft(Map[String, SecurityGroup]())((map, sg) => map + ((sg.getGroupId, sg)))
     val addresses = amazonEC2.describeAddresses.getAddresses.foldLeft(Map[String, Address]())((map, address) => map + ((address.getInstanceId, address)))
-    val imageIds = awsInstancesResult.foldLeft(List[String]())((list, awsInstance) => list.::(awsInstance.getImageId))
+    val imageIds = awsInstancesResult.foldLeft(List[String]())((list, awsInstance) => awsInstance.getImageId :: list)
     val imagesMap = getImageInformation(amazonEC2, imageIds)
     val volumesMap: Map[String, Volume] = Map.empty[String, Volume]
     val snapshotsMap: Map[String, List[Snapshot]] = Map.empty
@@ -182,7 +182,7 @@ object AWSComputeAPI {
   def getReservedInstances(amazonEC2: AmazonEC2): List[ReservedInstanceDetails] = {
     amazonEC2.describeReservedInstances.getReservedInstances.foldLeft(List[ReservedInstanceDetails]()) {
       (list, reservedInstance) =>
-        list.::(ReservedInstanceDetails(
+        ReservedInstanceDetails(
           None,
           Option(reservedInstance.getInstanceType),
           Option(reservedInstance.getReservedInstancesId),
@@ -191,7 +191,7 @@ object AWSComputeAPI {
           Option(reservedInstance.getOfferingType),
           Option(reservedInstance.getProductDescription),
           Option(reservedInstance.getInstanceCount)
-        ))
+        ) :: list
     }
   }
 

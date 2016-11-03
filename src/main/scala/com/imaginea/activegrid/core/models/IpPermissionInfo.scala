@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 /**
   * Created by nagulmeeras on 27/10/16.
@@ -13,21 +14,17 @@ case class IpPermissionInfo(override val id: Option[Long],
                             ipRanges: List[String]) extends BaseEntity
 
 object IpPermissionInfo {
-  val repository = Neo4jRepository
   val ipPermissionLabel = "IpPermissionInfo"
+  val logger = LoggerFactory.getLogger(getClass)
 
   implicit class IpPermissionInfoImpl(ipPermissionInfo: IpPermissionInfo) extends Neo4jRep[IpPermissionInfo] {
     override def toNeo4jGraph(entity: IpPermissionInfo): Node = {
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(ipPermissionLabel) (neo)
-          node.setProperty("fromPort", entity.fromPort)
-          node.setProperty("toPort", entity.toPort)
-          node.setProperty("ipProtocol", entity.ipProtocol.value)
-          node.setProperty("groupIds", entity.groupIds.toArray)
-          node.setProperty("ipRanges", entity.ipRanges.toArray)
-          node
-      }
+      val map = Map("fromPort" -> entity.fromPort,
+        "toPort" -> entity.toPort,
+        "ipProtocol" -> entity.ipProtocol,
+        "groupIds" -> entity.groupIds,
+        "ipRanges" -> entity.ipRanges)
+      Neo4jRepository.saveEntity[IpPermissionInfo](ipPermissionLabel, entity.id, map)
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
@@ -36,19 +33,21 @@ object IpPermissionInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
-    repository.withTx {
-      neo =>
-        val node = repository.getNodeById(nodeId) (neo)
-        if (repository.hasLabel(node, ipPermissionLabel)) {
+    val maybeNode = Neo4jRepository.findNodeById(nodeId)
+    maybeNode match {
+      case Some(node) =>
+        if (Neo4jRepository.hasLabel(node, ipPermissionLabel)) {
+          val map = Neo4jRepository.getProperties(node, "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
           Some(IpPermissionInfo(Some(nodeId),
-            repository.getProperty[Int](node, "fromPort").get,
-            repository.getProperty[Int](node, "oPort").get,
-            IpProtocol.toProtocol(repository.getProperty[String](node, "ipProtocol").get),
-            repository.getProperty[Set[String]](node, "fromPort").get,
-            repository.getProperty[List[String]](node, "fromPort").get))
+            map("fromPort").asInstanceOf[Int],
+            map("toPort").asInstanceOf[Int],
+            IpProtocol.toProtocol(map("ipProtocol").asInstanceOf[String]),
+            map("groupIds").asInstanceOf[Set[String]],
+            map("ipRanges").asInstanceOf[List[String]]))
         } else {
           None
         }
+      case None => None
     }
   }
 }

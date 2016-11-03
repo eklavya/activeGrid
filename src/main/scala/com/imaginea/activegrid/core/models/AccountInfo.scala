@@ -1,6 +1,8 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 /**
   * Created by nagulmeeras on 25/10/16.
@@ -16,24 +18,22 @@ case class AccountInfo(override val id: Option[Long],
                        networkCIDR: String) extends BaseEntity
 
 object AccountInfo {
-  val repository = Neo4jRepository
   val accountInfoLabel = "AccountInfo"
+  val logger = LoggerFactory.getLogger(getClass)
 
   implicit class AccountInfoImpl(accountInfo: AccountInfo) extends Neo4jRep[AccountInfo] {
-    override def toNeo4jGraph(entity: AccountInfo): Node = {
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(accountInfoLabel)(neo)
-          if (entity.providerType != null) node.setProperty("providerType", entity.providerType.toString)
-          if (entity.ownerAlias.nonEmpty) node.setProperty("ownerAlias", entity.ownerAlias.get)
-          if (entity.accessKey.nonEmpty) node.setProperty("accessKey", entity.accessKey)
-          if (entity.secretKey.nonEmpty) node.setProperty("secretKey", entity.secretKey)
-          if (entity.regionName.nonEmpty) node.setProperty("regionName", entity.regionName)
-          if (entity.regions.nonEmpty) node.setProperty("regions", entity.regions.toArray)
-          if (entity.networkCIDR.nonEmpty) node.setProperty("networkCIDR", entity.networkCIDR)
+    logger.debug(s"Executing $getClass :: toNeo4jGraph")
 
-          node
-      }
+    override def toNeo4jGraph(entity: AccountInfo): Node = {
+      val map = Map("providerType" -> entity.providerType.toString,
+        "ownerAlias" -> entity.ownerAlias,
+        "accessKey" -> entity.accessKey,
+        "secretKey" -> entity.secretKey,
+        "regionName" -> entity.regionName,
+        "regions" -> entity.regions,
+        "networkCIDR" -> entity.networkCIDR)
+      Neo4jRepository.saveEntity[AccountInfo](accountInfoLabel, entity.id, map)
+
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[AccountInfo] = {
@@ -42,19 +42,26 @@ object AccountInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[AccountInfo] = {
-    repository.withTx {
-      neo =>
-        val node = repository.getNodeById(nodeId)(neo)
-        Some(new AccountInfo(Some(node.getId),
-          repository.getProperty[String](node, "accountId"),
-          InstanceProvider.toInstanceProvider(repository.getProperty[String](node, "providerType").get),
-          repository.getProperty[String](node, "ownerAlias"),
-          repository.getProperty[String](node, "accessKey").get,
-          repository.getProperty[String](node, "secretKey").get,
-          repository.getProperty[String](node, "regionName").get,
-          repository.getProperty[List[String]](node, "regions").get,
-          repository.getProperty[String](node, "networkCIDR").get
-        ))
+    logger.debug(s"Executing $getClass :: fromNeo4jGraph")
+    val maybeNode = Neo4jRepository.findNodeById(nodeId)
+    maybeNode match {
+      case Some(node) =>
+        if (Neo4jRepository.hasLabel(node, accountInfoLabel)) {
+          val map = Neo4jRepository.getProperties(node, "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+          Some(new AccountInfo(Some(node.getId),
+            ActiveGridUtils.getValueFromMapAs[String](map, "accountId"),
+            InstanceProvider.toInstanceProvider(map("providerType").asInstanceOf[String]),
+            ActiveGridUtils.getValueFromMapAs[String](map, "ownerAlias"),
+            map("accessKey").asInstanceOf[String],
+            map("secretKey").asInstanceOf[String],
+            map("regionName").asInstanceOf[String],
+            map("regions").asInstanceOf[List[String]],
+            map("networkCIDR").asInstanceOf[String]
+          ))
+        } else {
+          None
+        }
+      case None => None
     }
   }
 }

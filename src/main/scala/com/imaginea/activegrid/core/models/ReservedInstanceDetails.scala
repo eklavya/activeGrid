@@ -1,6 +1,8 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 /**
   * Created by nagulmeeras on 31/10/16.
@@ -15,24 +17,19 @@ case class ReservedInstanceDetails(override val id: Option[Long],
                                    count: Option[Int]) extends BaseEntity
 
 object ReservedInstanceDetails {
-  val repository = Neo4jRepository
   val reservedInstanceDetailsLabel = "ReservedInstanceDetails"
+  val logger = LoggerFactory.getLogger(getClass)
 
   implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails) extends Neo4jRep[ReservedInstanceDetails] {
     override def toNeo4jGraph(entity: ReservedInstanceDetails): Node = {
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(reservedInstanceDetailsLabel) (neo)
-          if (entity.instanceType.nonEmpty) node.setProperty("instanceType", entity.instanceType.get)
-          if (entity.reservedInstancesId.nonEmpty) node.setProperty("reservedInstancesId", entity.reservedInstancesId.get)
-          if (entity.availabilityZone.nonEmpty) node.setProperty("availabilityZone", entity.availabilityZone.get)
-          if (entity.tenancy.nonEmpty) node.setProperty("tenancy", entity.tenancy.get)
-          if (entity.offeringType.nonEmpty) node.setProperty("offeringType", entity.offeringType.get)
-          if (entity.productDescription.nonEmpty) node.setProperty("productDescription", entity.productDescription.get)
-          if (entity.count.nonEmpty) node.setProperty("count", entity.count.get)
-
-          node
-      }
+      val map = Map("instanceType" -> entity.instanceType,
+        "reservedInstancesId" -> entity.reservedInstancesId,
+        "availabilityZone" -> entity.availabilityZone,
+        "tenancy" -> entity.tenancy,
+        "offeringType" -> entity.offeringType,
+        "productDescription" -> entity.productDescription,
+        "count" -> entity.count)
+      Neo4jRepository.saveEntity[ReservedInstanceDetails](reservedInstanceDetailsLabel, entity.id, map)
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[ReservedInstanceDetails] = {
@@ -41,21 +38,24 @@ object ReservedInstanceDetails {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[ReservedInstanceDetails] = {
-    repository.withTx {
-      neo =>
-        val node = repository.getNodeById(nodeId) (neo)
-        if (repository.hasLabel(node, reservedInstanceDetailsLabel)) {
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        if (Neo4jRepository.hasLabel(node, reservedInstanceDetailsLabel)) {
+          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
+
           Some(ReservedInstanceDetails(Some(nodeId),
-            repository.getProperty[String](node, "instanceType"),
-            repository.getProperty[String](node, "reservedInstancesId"),
-            repository.getProperty[String](node, "availabilityZone"),
-            repository.getProperty[String](node, "tenancy"),
-            repository.getProperty[String](node, "offeringType"),
-            repository.getProperty[String](node, "productDescription"),
-            repository.getProperty[Int](node, "count")))
+            ActiveGridUtils.getValueFromMapAs[String](map, "instanceType"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "reservedInstancesId"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "availabilityZone"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "tenancy"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "offeringType"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "productDescription"),
+            ActiveGridUtils.getValueFromMapAs[Int](map, "count")))
         } else {
           None
         }
+      case None => None
     }
   }
 }
