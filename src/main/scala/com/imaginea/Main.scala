@@ -1051,9 +1051,20 @@ object Main extends App {
 
     }
   }
+  def deleteServiceEndPoint = pathPrefix("sites" / LongNumber) {
+    siteId => delete {
+            val maybeDelete = Future { val result =   Neo4jRepository.deleteEntity(siteId) }
+          onComplete(maybeDelete) {
+            case Success(delete) => complete(StatusCodes.OK,"Deleted successfully")
+            case Failure(ex) =>
+              logger.info("Failed to delete entity",ex)
+              complete(StatusCodes.BadRequest,"Deletion failed")
+          }
+    }
+  }
 
 
-  val route: Route = serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
+  val route: Route = deleteServiceEndPoint ~ serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
 
   val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
   logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
