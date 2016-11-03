@@ -4,24 +4,24 @@ package com.imaginea.activegrid.core.models
   * Created by nagulmeeras on 25/10/16.
   */
 sealed trait ViewLevel {
-  def level : String
-  override def toString: String = level
+  def viewLevel: String
+
+  override def toString: String = super.toString
 }
 
-case object SUMMARY extends ViewLevel{
-  override def level: String = "SUMMARY"
+case object SUMMARY extends ViewLevel {
+  override def viewLevel: String = "SUMMARY"
 }
 
-case object DETAILED extends ViewLevel{
-  override def level: String = "DETAILED"
+case object DETAILED extends ViewLevel {
+  override def viewLevel: String = "DETAILED"
 }
 
-case object ViewLevelProvider {
-  def toInstanceProvider(viewLevel: String) : ViewLevel = {
+case object ViewLevel {
+  def toViewLevel(viewLevel: String): ViewLevel = {
     viewLevel match {
       case "SUMMARY" => SUMMARY
       case "DETAILED" => DETAILED
-
     }
   }
 }

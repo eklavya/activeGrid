@@ -14,7 +14,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
-import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
+import spray.json._
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -88,16 +88,158 @@ object Main extends App {
   implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
   implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
   implicit val KeyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
-  implicit val instanceFormat = jsonFormat(Instance.apply, "id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers")
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
   implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
   implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
+  implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
+  implicit val ipPermissionInfoFormat = jsonFormat6(IpPermissionInfo.apply)
+  implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
 
   implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
   implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
+  implicit val securityGroupInfoFormat = jsonFormat(SecurityGroupInfo.apply, "id", "groupName", "groupId", "ownerId", "description", "IpPermissions", "tags")
+
+  implicit object instanceFormat extends RootJsonFormat[Instance] {
+    override def write(i: Instance): JsValue = {
+      val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo",
+        "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers", "account", "availabilityZone", "privateDnsName",
+        "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings", "securityGroups", "reservedInstance", "region")
+
+      val fields = new collection.mutable.ListBuffer[(String, JsValue)]
+      fields ++= longToJsField(fieldNames(1), i.id)
+      fields ++= stringToJsField(fieldNames(2), i.state)
+      fields ++= stringToJsField(fieldNames(3), i.state)
+      fields ++= List((fieldNames(4), JsString(i.name)))
+      fields ++= stringToJsField(fieldNames(5), i.instanceType)
+      fields ++= stringToJsField(fieldNames(6), i.platform)
+      fields ++= stringToJsField(fieldNames(7), i.architecture)
+      fields ++= stringToJsField(fieldNames(8), i.publicDnsName)
+      fields ++= longToJsField(fieldNames(9), i.launchTime)
+      fields ++= objectToJsValue[StorageInfo](fieldNames(10), i.memoryInfo, storageInfoFormat)
+      fields ++= objectToJsValue[StorageInfo](fieldNames(11), i.rootDiskInfo, storageInfoFormat)
+      fields ++= listToJsValue[KeyValueInfo](fieldNames(12), i.tags, KeyValueInfoFormat)
+      fields ++= objectToJsValue[SSHAccessInfo](fieldNames(13), i.sshAccessInfo, sshAccessInfoFormat)
+      fields ++= listToJsValue[InstanceConnection](fieldNames(14), i.liveConnections, instanceConnectionFormat)
+      fields ++= listToJsValue[InstanceConnection](fieldNames(15), i.estimatedConnections, instanceConnectionFormat)
+      fields ++= setToJsValue[ProcessInfo](fieldNames(16), i.processes, processInfoFormat)
+      fields ++= objectToJsValue[ImageInfo](fieldNames(17), i.image, ImageFormat)
+      fields ++= listToJsValue[InstanceUser](fieldNames(18), i.existingUsers, instanceUserFormat)
+      fields ++= objectToJsValue[AccountInfo](fieldNames(19), i.account, accountInfoFormat)
+      fields ++= stringToJsField(fieldNames(20), i.availabilityZone)
+      fields ++= stringToJsField(fieldNames(21), i.privateDnsName)
+      fields ++= stringToJsField(fieldNames(22), i.privateIpAddress)
+      fields ++= stringToJsField(fieldNames(23), i.publicIpAddress)
+      fields ++= stringToJsField(fieldNames(24), i.elasticIP)
+      fields ++= stringToJsField(fieldNames(25), i.monitoring)
+      fields ++= stringToJsField(fieldNames(26), i.rootDeviceType)
+      fields ++= listToJsValue[InstanceBlockDeviceMappingInfo](fieldNames(27), i.blockDeviceMappings, instanceBlockingFormat)
+      fields ++= listToJsValue[SecurityGroupInfo](fieldNames(28), i.securityGroups, securityGroupsFormat)
+      fields ++= List((fieldNames(29), JsBoolean(i.reservedInstance)))
+      fields ++= stringToJsField(fieldNames(30), i.region)
+      JsObject(fields: _*)
+    }
+
+    override def read(json: JsValue): Instance = {
+      json match {
+        case JsObject(map) =>
+          logger.info(s"Js Map $map")
+          Instance(
+            getProperty[Long](map, "id"),
+            getProperty[String](map, "instanceId"),
+            getProperty[String](map, "name").get,
+            getProperty[String](map, "state"),
+            getProperty[String](map, "instanceType"),
+            getProperty[String](map, "platform"),
+            getProperty[String](map, "architecture"),
+            getProperty[String](map, "publicDnsName"),
+            getProperty[Long](map, "launchTime"),
+            if (getProperty[String](map, "memoryInfo").nonEmpty) Some(storageInfoFormat.read(getProperty[String](map, "memoryInfo").get.asInstanceOf[JsValue])) else None,
+            if (getProperty[String](map, "rootDiskInfo").nonEmpty) Some(storageInfoFormat.read(getProperty[String](map, "rootDiskInfo").get.asInstanceOf[JsValue])) else None,
+            getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", KeyValueInfoFormat),
+            if (getProperty[String](map, "sshAccessInfo").nonEmpty) Some(sshAccessInfoFormat.read(getProperty[String](map, "sshAccessInfo").get.asInstanceOf[JsValue])) else None,
+            getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
+            getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
+            getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
+            if (getProperty[String](map, "imageInfo").nonEmpty) Some(ImageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue])) else None,
+            getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
+            if (getProperty[String](map, "account").nonEmpty) Some(accountInfoFormat.read(getProperty[String](map, "acoount").get.asInstanceOf[JsValue])) else None,
+            getProperty[String](map, "availabilityZone"),
+            getProperty[String](map, "privateDnsName"),
+            getProperty[String](map, "privateIpAddress"),
+            getProperty[String](map, "publicIpAddress"),
+            getProperty[String](map, "elasticIp"),
+            getProperty[String](map, "monitoring"),
+            getProperty[String](map, "rootDeviceType"),
+            List(),
+            getObjectsFromJson[SecurityGroupInfo](map, "securityGroups", securityGroupInfoFormat),
+            getProperty[Boolean](map, "reservedInstance").get,
+            getProperty[String](map, "region")
+          )
+        case JsString(str) => logger.info(s"coming $str")
+          Instance("Test")
+      }
+    }
+
+    def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      fieldValue match {
+        case Some(x) => (fieldName, JsString(x)) :: rest
+        case None => rest
+      }
+    }
+
+    def getProperty[T: Manifest](propertyMap: Map[String, JsValue], property: String): Option[T] = {
+      if (propertyMap.contains(property)) {
+        propertyMap(property) match {
+          case JsString(str) => Some(str.asInstanceOf[T])
+          case JsNumber(str) => Some(str.asInstanceOf[T])
+          case JsFalse => Some(false.asInstanceOf[T])
+          case JsTrue => Some(true.asInstanceOf[T])
+        }
+      } else {
+        None
+      }
+    }
+
+    def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
+      if (propertyMap.contains(property)) {
+        val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
+        listOfObjs.elements.foldLeft(List[T]()) {
+          (list, jsString) =>
+            list.::(formateObject.read(jsString))
+        }
+      } else {
+        List.empty[T]
+      }
+    }
+
+    def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      fieldValue match {
+        case Some(x) => (fieldName, JsNumber(x)) :: rest
+        case None => rest
+      }
+    }
+
+    def objectToJsValue[T](fieldName: String, obj: Option[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      obj match {
+        case Some(x) => (fieldName, jsonFormat.write(x.asInstanceOf[T])) :: rest
+        case None => rest
+      }
+    }
+
+    def listToJsValue[T](fieldName: String, objList: List[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
+      }
+    }
+
+    def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
+      }.toList
+    }
+  }
+
 
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
@@ -178,8 +320,8 @@ object Main extends App {
   implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
   implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters")
   implicit val toupleFormat = jsonFormat(Tuple.apply, "id", "key", "value")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters", "loadBalancers", "scalingGroups")
   implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "sinstanceIds", "availabilityZones")
   implicit val scalaingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
   implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply, "id", "instanceType", "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
@@ -1014,21 +1156,41 @@ object Main extends App {
   }
 
   def discoveryRoutes = pathPrefix("discover") {
-    path("site") {
-      put {
-        entity(as[Site1]) { site =>
-          val buildSite = Future {
-            val instances = site.filters.flatMap { siteFilter => AWSComputeAPI.getInstances(siteFilter.accountInfo)
+    path("site" / LongNumber / "instance" / Segment) { (siteId, instanceId) =>
+      get {
+        parameter("type") { view =>
+          val instanceDetails = Future {
+            val viewType = ViewType.toViewType(view)
+            val siteNode = Site1.fromNeo4jGraph(siteId)
+            siteNode match {
+              case Some(site) => {
+                val instanceFromSite = siteNode.get.instances.find(inst => if(inst.instanceId.nonEmpty) false else inst.instanceId.get.equals(instanceId.toString))
+                instanceFromSite match {
+                  case Some(foundInstance) =>
+                    val resultInstance = viewType match {
+                      case OPERATIONS => filterInstanceViewOperations(foundInstance, ViewLevel.toViewLevel("DETAILED"))
+                      case ARCHITECTURE => filterInstanceViewArchitecture(foundInstance, ViewLevel.toViewLevel("DETAILED"))
+                      case LIST => filterInstanceViewList(foundInstance, ViewLevel.toViewLevel("DETAILED"))
+                    }
+                    Some(resultInstance)
+                  case None =>
+                    logger.warn(s"Unable to find instance with ID: $instanceId")
+                    None
+                }
+              }
+              case None =>
+                logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+                None
             }
-            Site1(None, site.siteName, instances, site.filters)
           }
-          onComplete(buildSite) {
+          onComplete(instanceDetails) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case Failure(exception) =>
-              logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to save the Site.")
+            case Failure(ex) =>
+              logger.error(s"Unable to get Instance Details; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to get Instance Details")
           }
         }
+
       }
     }
   }
@@ -1074,63 +1236,115 @@ object Main extends App {
     }
   }
 
-      val route: Route = deleteService ~ serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
 
-      val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
-      logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
+  val route: Route = deleteService ~ deleteInstance ~ serviceEndPoints ~ discoveryRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes
+
+  val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
+  logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
 
 
-      def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
-        User.fromNeo4jGraph(userId) match {
-          case Some(user) => user.publicKeys.dropWhile(_.id.get != keyId).headOption
-          case None => None
-        }
-      }
-
-      def getOrCreateKeyPair(keyName: String, keyMaterial: String, keyFilePath: Option[String], status: KeyPairStatus, defaultUser: Option[String], passPhase: Option[String]): KeyPairInfo = {
-        val mayBeKeyPair = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
-
-        mayBeKeyPair match {
-          case Some(keyPairInfo) =>
-            KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
-          case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
-        }
-      }
-
-      def saveKeyPair(keyPairInfo: KeyPairInfo): Option[KeyPairInfo] = {
-        val filePath = getKeyFilePath(keyPairInfo.keyName)
-        try {
-          FileUtils.createDirectories(getKeyFilesDir)
-          FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
-          // TODO: change permissions to 600
-        } catch {
-          case e: Throwable => logger.error(e.getMessage, e)
-        }
-        val node = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
-        KeyPairInfo.fromNeo4jGraph(node.getId)
-      }
-
-      def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
-
-      def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
-
-      def getAPMServers: mutable.MutableList[APMServerDetails] = {
-        logger.debug(s"Executing $getClass :: getAPMServers")
-        val nodes = APMServerDetails.getAllEntities
-        logger.debug(s"Getting all entities and size is :${nodes.size}")
-        val list = mutable.MutableList.empty[APMServerDetails]
-        nodes.foreach {
-          node =>
-            val aPMServerDetails = APMServerDetails.fromNeo4jGraph(node.getId)
-            aPMServerDetails match {
-              case Some(serverDetails) => list.+=(serverDetails)
-              case _ => logger.warn(s"Node not found with ID: ${node.getId}")
-            }
-        }
-        logger.debug(s"Reurning list of APM Servers $list")
-        list
-      }
+  def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
+    User.fromNeo4jGraph(userId) match {
+      case Some(user) => user.publicKeys.dropWhile(_.id.get != keyId).headOption
+      case None => None
+    }
   }
+
+  def getOrCreateKeyPair(keyName: String, keyMaterial: String, keyFilePath: Option[String], status: KeyPairStatus, defaultUser: Option[String], passPhase: Option[String]): KeyPairInfo = {
+    val mayBeKeyPair = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
+
+    mayBeKeyPair match {
+      case Some(keyPairInfo) =>
+        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
+      case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
+    }
+  }
+
+  def saveKeyPair(keyPairInfo: KeyPairInfo): Option[KeyPairInfo] = {
+    val filePath = getKeyFilePath(keyPairInfo.keyName)
+    try {
+      FileUtils.createDirectories(getKeyFilesDir)
+      FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
+      // TODO: change permissions to 600
+    } catch {
+      case e: Throwable => logger.error(e.getMessage, e)
+    }
+    val node = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
+    KeyPairInfo.fromNeo4jGraph(node.getId)
+  }
+
+  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
+
+  def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
+
+  def getAPMServers: mutable.MutableList[APMServerDetails] = {
+    logger.debug(s"Executing $getClass :: getAPMServers")
+    val nodes = APMServerDetails.getAllEntities
+    logger.debug(s"Getting all entities and size is :${nodes.size}")
+    val list = mutable.MutableList.empty[APMServerDetails]
+    nodes.foreach {
+      node =>
+        val aPMServerDetails = APMServerDetails.fromNeo4jGraph(node.getId)
+        aPMServerDetails match {
+          case Some(serverDetails) => list.+=(serverDetails)
+          case _ => logger.warn(s"Node not found with ID: ${node.getId}")
+        }
+    }
+    logger.debug(s"Reurning list of APM Servers $list")
+    list
+  }
+
+  def filterInstanceViewList(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, List.empty[InstanceBlockDeviceMappingInfo], instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
+  }
+
+  def filterInstanceViewArchitecture(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, instance.liveConnections, List.empty[InstanceConnection],
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          instance.processes, instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, List.empty[InstanceBlockDeviceMappingInfo], instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
+  }
+
+  def filterInstanceViewOperations(instance: Instance, viewLevel: ViewLevel): Instance = {
+    viewLevel match {
+      case SUMMARY =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, None, None, instance.tags, instance.sshAccessInfo, instance.liveConnections, instance.estimatedConnections,
+          Set.empty[ProcessInfo], None, List.empty[InstanceUser], instance.account, instance.availabilityZone, None, instance.privateIpAddress,
+          instance.publicIpAddress, None, None, None, List.empty[InstanceBlockDeviceMappingInfo], List.empty[SecurityGroupInfo],
+          instance.reservedInstance, instance.region)
+      case DETAILED =>
+        Instance(instance.id, instance.instanceId, instance.name, instance.state, instance.instanceType, None, None, instance.publicDnsName,
+          None, instance.memoryInfo, instance.rootDiskInfo, instance.tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection],
+          instance.processes, instance.image, List.empty[InstanceUser], instance.account, instance.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
+          None, instance.elasticIP, instance.monitoring, instance.rootDeviceType, instance.blockDeviceMappings, instance.securityGroups,
+          instance.reservedInstance, instance.region)
+    }
+  }
+
 
 }
 
