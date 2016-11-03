@@ -28,7 +28,7 @@ object UserGroup {
 
     override def toNeo4jGraph(userGroup: UserGroup): Node = {
 
-      logger.debug(s"UserGroup Node saved into db - ${userGroup}")
+      logger.debug(s"UserGroup Node saved into db - $userGroup")
       val map = Map("name" -> userGroup.name)
       val userGroupNode = Neo4jRepository.saveEntity[UserGroup](UserGroup.label, userGroup.id, map)
 
@@ -60,21 +60,21 @@ object UserGroup {
     nodeOption.map(node => {
       val userGroupMap = Neo4jRepository.getProperties(node, "name")
 
-      logger.debug(s" UserProxy get properties ${userGroupMap}")
+      logger.debug(s" UserProxy get properties $userGroupMap")
 
       val userNodes = Neo4jRepository.getNodesWithRelation(node, hasUsers)
-      val users = userNodes.map(child => {
-        logger.debug(s" UserGroup -> User node ${child}")
+      val users = userNodes.flatMap(child => {
+        logger.debug(s" UserGroup -> User node $child")
         val user: User = null
         user.fromNeo4jGraph(child.getId)
-      }).flatten.toSet
+      }).toSet
 
       val accessNodes = Neo4jRepository.getNodesWithRelation(node, hasResourceAccess)
-      val resources = accessNodes.map(child => {
-        logger.debug(s" UserGroup -> Resource node ${child}")
+      val resources = accessNodes.flatMap(child => {
+        logger.debug(s" UserGroup -> Resource node $child")
         val resource: ResourceACL = null
         resource.fromNeo4jGraph(child.getId)
-      }).flatten.toSet
+      }).toSet
 
       val userGroup = UserGroup(
         id = Some(node.getId),
@@ -82,7 +82,7 @@ object UserGroup {
         users = users,
         accesses = resources
       )
-      logger.debug(s"UserGroup - ${userGroup}")
+      logger.debug(s"UserGroup - $userGroup")
       userGroup
     })
   }

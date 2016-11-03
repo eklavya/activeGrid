@@ -1,8 +1,8 @@
 package com.imaginea.activegrid.core.models
 
+import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
-
-import scala.collection.JavaConversions._
+import org.slf4j.LoggerFactory
 
 /**
   * Created by nagulmeeras on 25/10/16.
@@ -13,84 +13,104 @@ case class Site1(override val id: Option[Long],
                  instances: List[Instance],
                  reservedInstanceDetails: List[ReservedInstanceDetails],
                  filters: List[SiteFilter],
-                 groupsList : List[InstanceGroup]) extends BaseEntity
+                 loadBalancers: List[LoadBalancer],
+                 scalingGroups: List[ScalingGroup],
+                 groupsList: List[InstanceGroup]) extends BaseEntity
 
 object Site1 {
-  val repository = Neo4jRepository
-  val site1Label = "Site1"
-  val site_Instance_Relation = "HAS_INSTANCE"
-  val site_Filter_Relation = "HAS_SITE_FILTER"
-  val site_ReservedInstance_Relation = "HAS_RESERVED_INSTANCE"
-  val site_InstanceGroup_Relation = "HAS_INSTANCE_GROUP"
-
-  implicit class Site1Impl(site1: Site1) extends Neo4jRep[Site1] {
-    override def toNeo4jGraph(entity: Site1): Node = {
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(site1Label)(neo)
-          if (entity.siteName.nonEmpty) node.setProperty("siteName", entity.siteName)
-          if (entity.instances.nonEmpty) {
-            entity.instances.foreach {
-              instance =>
-                val childNode = instance.toNeo4jGraph(instance)
-                repository.createRelation(site_Instance_Relation, node, childNode)
-            }
-          }
-          if (entity.filters.nonEmpty) {
-            entity.filters.foreach {
-              filter =>
-                val childNode = filter.toNeo4jGraph(filter)
-                repository.createRelation(site_Filter_Relation, node, childNode)
-            }
-          }
-          if (entity.reservedInstanceDetails.nonEmpty) {
-            entity.reservedInstanceDetails.foreach {
-              res_instance =>
-                val childNode = res_instance.toNeo4jGraph(res_instance)
-                repository.createRelation(site_ReservedInstance_Relation, node, childNode)
-            }
-          }
-          if(entity.groupsList.nonEmpty){
-            entity.groupsList.foreach{
-              group =>
-                val childNode = group.toNeo4jGraph(group)
-                repository.createRelation(site_InstanceGroup_Relation , node , childNode)
-            }
-          }
-          node
-      }
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
-      Site1.fromNeo4jGraph(nodeId)
-    }
-  }
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  val label = "Site1"
+  val site_LB_Relation = "HAS_LoadBalancer"
+  val site_SG_Relation = "HAS_ScalingGroup"
+  val site_IG_Relation = "HAS_InstanceGroup"
+  val site_RI_Relation = "HAS_ReservedInstance"
+  val site_SF_Relation = "HAS_SiteFilter"
 
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
-    repository.withTx {
-      neo =>
-        val node = repository.getNodeById(nodeId)(neo)
-        if (repository.hasLabel(node, site1Label)) {
+    val listOfKeys = List("siteName")
+    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
+    if (propertyValues.nonEmpty) {
+      val siteName = propertyValues.get("siteName").toString
+      val relationship_inst = "HAS_Instance"
+      val childNodeIds_inst: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_inst)
+      val instances: List[Instance] = childNodeIds_inst.flatMap { childId =>
+        Instance.fromNeo4jGraph(childId)
+      }
 
-          val tupleObj = node.getRelationships.foldLeft(Tuple3[List[Instance], List[SiteFilter], List[ReservedInstanceDetails]](List.empty[Instance], List.empty[SiteFilter], List.empty[ReservedInstanceDetails])) {
-            (tuple, relationship) =>
-              val childNode = relationship.getEndNode
-              relationship.getType.name match {
-                case `site_Instance_Relation` => Tuple3(tuple._1.::(Instance.fromNeo4jGraph(childNode.getId).get), tuple._2, tuple._3)
-                case `site_Filter_Relation` => Tuple3(tuple._1, tuple._2.::(SiteFilter.fromNeo4jGraph(childNode.getId).get), tuple._3)
-                case `site_ReservedInstance_Relation` => Tuple3(tuple._1, tuple._2, tuple._3.::(ReservedInstanceDetails.fromNeo4jGraph(childNode.getId).get))
-              }
-          }
-          Some(Site1(Some(node.getId), repository.getProperty[String](node, "siteName").get, tupleObj._1, tupleObj._3, tupleObj._2 , List.empty[InstanceGroup]))
-        } else {
-          None
-        }
+      val childNodeIds_sf: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, site_SF_Relation)
+      val siteFilters: List[SiteFilter] = childNodeIds_sf.flatMap { childId =>
+        SiteFilter.fromNeo4jGraph(childId)
+      }
+
+      val childNodeIds_lb: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, site_LB_Relation)
+      val loadBalancers: List[LoadBalancer] = childNodeIds_lb.flatMap { childId =>
+        LoadBalancer.fromNeo4jGraph(childId)
+      }
+
+      val childNodeIds_sg: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, site_SG_Relation)
+      val scalingGroups: List[ScalingGroup] = childNodeIds_sg.flatMap { childId =>
+        ScalingGroup.fromNeo4jGraph(childId)
+      }
+
+      val childNodeIds_ig: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, site_IG_Relation)
+      val instanceGroups: List[InstanceGroup] = childNodeIds_ig.flatMap { childId =>
+        InstanceGroup.fromNeo4jGraph(childId)
+      }
+
+      val childNodeIds_rid: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, site_RI_Relation)
+      val reservedInstance: List[ReservedInstanceDetails] = childNodeIds_rid.flatMap { childId =>
+        ReservedInstanceDetails.fromNeo4jGraph(childId)
+      }
+
+      Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups))
+    }
+    else {
+      logger.warn(s"could not get graph properties for Site node with $nodeId")
+      None
     }
   }
+
+  implicit class RichSite1(site1: Site1) extends Neo4jRep[Site1] {
+
+    override def toNeo4jGraph(entity: Site1): Node = {
+      val label = "Site1"
+      val mapPrimitives = Map("siteName" -> entity.siteName)
+      val node = GraphDBExecutor.createGraphNodeWithPrimitives[Site1](label, mapPrimitives)
+      val relationship_inst = "HAS_Instance"
+      entity.instances.foreach { instance =>
+        val instanceNode = instance.toNeo4jGraph(instance)
+        GraphDBExecutor.setGraphRelationship(node, instanceNode, relationship_inst)
+      }
+
+      entity.filters.foreach { filter =>
+        val filterNode = filter.toNeo4jGraph(filter)
+        GraphDBExecutor.setGraphRelationship(node, filterNode, site_SF_Relation)
+      }
+
+      entity.loadBalancers.foreach { lb =>
+        val loadBalancerNode = lb.toNeo4jGraph(lb)
+        GraphDBExecutor.setGraphRelationship(node, loadBalancerNode, site_LB_Relation)
+      }
+      entity.scalingGroups.foreach { sg =>
+        val scalingGroupNode = sg.toNeo4jGraph(sg)
+        GraphDBExecutor.setGraphRelationship(node, scalingGroupNode, site_SG_Relation)
+      }
+
+      entity.reservedInstanceDetails.foreach { ri =>
+        val reservedInstanceNode = ri.toNeo4jGraph(ri)
+        GraphDBExecutor.setGraphRelationship(node, reservedInstanceNode, site_RI_Relation)
+      }
+
+      entity.groupsList.foreach { ig =>
+        val instanceGroupNode = ig.toNeo4jGraph(ig)
+        GraphDBExecutor.setGraphRelationship(node, instanceGroupNode, site_IG_Relation)
+      }
+      node
+    }
+
+    override def fromNeo4jGraph(id: Long): Option[Site1] = {
+      Site1.fromNeo4jGraph(id)
+    }
+  }
+
 }
-
-
-
-
-
-

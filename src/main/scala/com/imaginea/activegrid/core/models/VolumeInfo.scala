@@ -17,7 +17,7 @@ case class VolumeInfo(override val id: Option[Long],
                       tags: List[KeyValueInfo],
                       volumeType: String,
                       snapshotCount: Int,
-                      currentSnapshot: SnapshotInfo) extends BaseEntity
+                      currentSnapshot: Option[SnapshotInfo]) extends BaseEntity
 
 object VolumeInfo {
   val repository = Neo4jRepository
@@ -42,8 +42,10 @@ object VolumeInfo {
               val tagNode = tag.toNeo4jGraph(tag)
               repository.createRelation(volumeInfo_Tag_Relation, node, tagNode)
           }
-          val snapshotInfoNode = entity.currentSnapshot.toNeo4jGraph(entity.currentSnapshot)
-          repository.createRelation(volumeInfo_SnapshotInfo_Relation, node, snapshotInfoNode)
+          if (entity.currentSnapshot.nonEmpty) {
+            val snapshotInfoNode = entity.currentSnapshot.get.toNeo4jGraph(entity.currentSnapshot.get)
+            repository.createRelation(volumeInfo_SnapshotInfo_Relation, node, snapshotInfoNode)
+          }
 
           node
       }
@@ -77,7 +79,7 @@ object VolumeInfo {
             tupleObj._1.asInstanceOf[List[KeyValueInfo]],
             repository.getProperty[String](node, "volumeType").get,
             repository.getProperty[Int](node, "snapshotCount").get,
-            tupleObj._2.asInstanceOf[SnapshotInfo]))
+            Some(tupleObj._2.asInstanceOf[SnapshotInfo])))
         } else {
           None
         }

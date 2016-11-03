@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
   * Created by sampathr on 22/9/16.
   */
 case class ImageInfo(override val id: Option[Long],
-                     imageId: String,
+                     imageId: Option[String],
                      state: Option[String],
                      ownerId: Option[String],
                      publicValue: Boolean,
@@ -27,12 +27,12 @@ object ImageInfo {
 
   implicit class ImageInfoImpl(imageInfo: ImageInfo) extends Neo4jRep[ImageInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    val label = "ImagesTest2"
+    val label = "ImageInfo"
 
     override def toNeo4jGraph(imageInfo: ImageInfo): Node = {
       logger.debug(s"In toGraph for Image Info: $imageInfo")
-      val map = Map("state" -> imageInfo.state,
-        "imageId" -> imageInfo.imageId,
+      val map = Map("imageId" -> imageInfo.imageId,
+        "state" -> imageInfo.state,
         "ownerId" -> imageInfo.ownerId,
         "publicValue" -> imageInfo.publicValue,
         "architecture" -> imageInfo.architecture,
@@ -63,9 +63,9 @@ object ImageInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
       val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node.get, "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+      val map = GraphDBExecutor.getProperties(node.get, "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
       val imageInfo = ImageInfo(Some(node.get.getId),
-        map("imageId").asInstanceOf[String],
+        ActiveGridUtils.getValueFromMapAs[String](map, "imageId"),
         ActiveGridUtils.getValueFromMapAs[String](map, "state"),
         ActiveGridUtils.getValueFromMapAs[String](map, "ownerId"),
         map("publicValue").asInstanceOf[Boolean],
