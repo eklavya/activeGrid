@@ -13,7 +13,7 @@ import scala.collection.JavaConversions._
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def neo4jStoreDir = "./graphdb/activegrid/test"
+  def neo4jStoreDir = "./gra phdb/activegrid/test"
 
   def hasLabel(node: Node, label: String): Boolean = {
     node.hasLabel(label)

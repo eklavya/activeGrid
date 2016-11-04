@@ -15,17 +15,17 @@ object InstanceUser {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def fromNeo4jGraph(nodeId: Long): Option[InstanceUser] = {
-    val listOfKeys = List("userName", "publicKeys")
-    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-    if (propertyValues.nonEmpty) {
-      val userName = propertyValues("userName").toString
-      val publicKeys = propertyValues("publicKeys").asInstanceOf[Array[String]].toList
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node, "userName", "publicKeys")
+        val userName = map("userName").toString
+        val publicKeys = map("publicKeys").asInstanceOf[Array[String]].toList
 
-      Some(InstanceUser(Some(nodeId), userName, publicKeys))
-    }
-    else {
-      logger.warn(s"could not get graph properties for node with $nodeId")
-      None
+        Some(InstanceUser(Some(nodeId), userName, publicKeys))
+      case None =>
+        logger.warn(s"could not find node for InstanceUser with nodeId $nodeId")
+        None
     }
   }
 
@@ -34,7 +34,7 @@ object InstanceUser {
     override def toNeo4jGraph(entity: InstanceUser): Node = {
       val label = "InstanceUser"
       val mapPrimitives = Map("userName" -> entity.userName, "publicKeys" -> entity.publicKeys.toArray)
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[InstanceUser](label, mapPrimitives)
+      val node = Neo4jRepository.saveEntity[InstanceUser](label, entity.id, mapPrimitives)
       node
     }
 

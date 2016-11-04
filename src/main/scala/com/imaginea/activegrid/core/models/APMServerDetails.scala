@@ -16,7 +16,7 @@ case class APMServerDetails(override val id: Option[Long],
                             headers: Option[Map[String, String]]) extends BaseEntity
 
 object APMServerDetails {
-  val neo4JRepository = Neo4JRepository
+  val neo4JRepository = Neo4jRepository
   val logger = LoggerFactory.getLogger(getClass)
   val apmServerDetailsLabel = "APMServerDetails"
   val headersLabel = "Headers"
@@ -25,7 +25,7 @@ object APMServerDetails {
 
   implicit class APMServerDetailImpl(aPMServerDetails: APMServerDetails) extends Neo4jRep[APMServerDetails] {
 
-    override def toNeo4jGraph: Node = {
+    override def toNeo4jGraph(entity: APMServerDetails): Node = {
       logger.debug(s"Executing $getClass ::toNeo4jGraph ")
       neo4JRepository.withTx {
         neo =>
@@ -39,7 +39,7 @@ object APMServerDetails {
             createRelationShip(node, headersNode, apmServer_header_relation)
           }
           if (aPMServerDetails.monitoredSite.nonEmpty) {
-            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph
+            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph(aPMServerDetails.monitoredSite.get)
             createRelationShip(node, siteNode, apmServer_site_relation)
           }
           node
@@ -69,24 +69,22 @@ object APMServerDetails {
         try {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
-            val enityMap = collection.mutable.Map.empty[String, Option[Any]]
-            node.getRelationships.map {
-              relationship =>
-                relationship.getType.name match {
-                  case `apmServer_site_relation` =>
-                    enityMap.put("siteEntity", Site.fromNeo4jGraph(relationship.getEndNode.getId))
 
-                  case `apmServer_header_relation` =>
-                    enityMap.put("headers", Some(relationship.getEndNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String])))))
+            val tupleOfSiteAndHeaders = node.getRelationships.foldLeft(Tuple2[AnyRef, Map[String, String]](AnyRef, Map.empty[String, String])) {
+              (result, relationsip) =>
+                val childNode = relationsip.getEndNode
+                relationsip.getType.name match {
+                  case `apmServer_site_relation` => (Site.fromNeo4jGraph(childNode.getId), result._2)
+                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
                 }
             }
             Some(new APMServerDetails(
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              if (enityMap.contains("siteEntiy")) enityMap("siteEntiy").asInstanceOf[Option[Site]] else None,
+              Option(tupleOfSiteAndHeaders._1.asInstanceOf[Site]),
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
-              if (enityMap.contains("headers")) enityMap("headers").asInstanceOf[Option[Map[String, String]]] else None
+              Option(tupleOfSiteAndHeaders._2)
             ))
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $apmServerDetailsLabel")

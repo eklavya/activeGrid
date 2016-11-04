@@ -14,19 +14,19 @@ object SSHAccessInfo {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def fromNeo4jGraph(nodeId: Long): Option[SSHAccessInfo] = {
-    val listOfKeys = List("userName", "port")
-    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-    if (propertyValues.nonEmpty) {
-      val userName = propertyValues("userName").toString
-      val port = propertyValues("port").toString.toInt
-      val relationship = "HAS_keyPair"
-      val keyPairInfo: Option[KeyPairInfo] = GraphDBExecutor.getChildNodeId(nodeId, relationship).flatMap(id => KeyPairInfo.fromNeo4jGraph(id))
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node, "userName", "port")
+        val userName = map("userName").toString
+        val port = map("port").toString.toInt
+        val relationship = "HAS_keyPair"
+        val keyPairInfo: Option[KeyPairInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship).flatMap(id => KeyPairInfo.fromNeo4jGraph(id))
 
-      Some(SSHAccessInfo(Some(nodeId), keyPairInfo.get, userName, port))
-    }
-    else {
-      logger.warn(s"could not get graph properties for SSHAccessInfo node with $nodeId")
-      None
+        Some(SSHAccessInfo(Some(nodeId), keyPairInfo.get, userName, port))
+      case None =>
+        logger.warn(s"could not find node for SSHAccessInfo with nodeId $nodeId")
+        None
     }
   }
 
@@ -35,10 +35,10 @@ object SSHAccessInfo {
     override def toNeo4jGraph(entity: SSHAccessInfo): Node = {
       val label = "SSHAccessInfo"
       val mapPrimitives = Map("userName" -> entity.userName, "port" -> entity.port)
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[SSHAccessInfo](label, mapPrimitives)
+      val node = Neo4jRepository.saveEntity[SSHAccessInfo](label, entity.id, mapPrimitives)
       val node2 = entity.keyPair.toNeo4jGraph(entity.keyPair)
       val relationship = "HAS_keyPair"
-      GraphDBExecutor.setGraphRelationship(node, node2, relationship)
+      Neo4jRepository.setGraphRelationship(node, node2, relationship)
       node
     }
 

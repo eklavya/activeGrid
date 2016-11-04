@@ -14,17 +14,17 @@ object PortRange {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def fromNeo4jGraph(nodeId: Long): Option[PortRange] = {
-    val listOfKeys = List("fromPort", "toPort")
-    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-    if (propertyValues.nonEmpty) {
-      val fromPort: Int = propertyValues("fromPort").toString.toInt
-      val toPort: Int = propertyValues("toPort").toString.toInt
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node, "fromPort", "toPort")
+        val fromPort: Int = map("fromPort").toString.toInt
+        val toPort: Int = map("toPort").toString.toInt
 
-      Some(PortRange(Some(nodeId), fromPort, toPort))
-    }
-    else {
-      logger.warn(s"could not get graph properties for PortRange node with $nodeId")
-      None
+        Some(PortRange(Some(nodeId), fromPort, toPort))
+      case None =>
+        logger.warn(s"could not find node for PortRange with nodeId $nodeId")
+        None
     }
   }
 
@@ -33,7 +33,7 @@ object PortRange {
     override def toNeo4jGraph(entity: PortRange): Node = {
       val label = "PortRange"
       val mapPrimitives = Map("fromPort" -> entity.fromPort, "toPort" -> entity.toPort)
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[PortRange](label, mapPrimitives)
+      val node = Neo4jRepository.saveEntity[PortRange](label, entity.id, mapPrimitives)
       node
     }
 
