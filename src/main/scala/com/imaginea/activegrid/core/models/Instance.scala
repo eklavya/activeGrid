@@ -47,85 +47,85 @@ object Instance {
     Instance(None, instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo, tags, sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], imageInfo, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
   def apply(name: String, tags: List[KeyValueInfo], processes: Set[ProcessInfo]): Instance =
-    Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, false, None)
+    Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
   def apply(name: String): Instance =
     Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, false, None)
 
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
-    val listOfKeys = List("instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "availabilityZone", "privateDnsName", "privateIpAddress", "publicIpAddress", "elasticIP", "monitoring", "rootDeviceType", "reservedInstance", "region")
-    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-    if (propertyValues.nonEmpty) {
-      val instanceId = propertyValues.get("instanceId").asInstanceOf[Option[String]]
-      val name = propertyValues("name").toString
-      val state = propertyValues.get("state").asInstanceOf[Option[String]]
-      val instanceType = propertyValues.get("instanceType").asInstanceOf[Option[String]]
-      val platform = propertyValues.get("platform").asInstanceOf[Option[String]]
-      val architecture = propertyValues.get("architecture").asInstanceOf[Option[String]]
-      val publicDnsName = propertyValues.get("publicDnsName").asInstanceOf[Option[String]]
-      val availabilityZone = propertyValues.get("availabilityZone").asInstanceOf[Option[String]]
-      val privateDnsName = propertyValues.get("privateDnsName").asInstanceOf[Option[String]]
-      val privateIpAddress = propertyValues.get("privateIpAddress").asInstanceOf[Option[String]]
-      val publicIpAddress = propertyValues.get("publicIpAddress").asInstanceOf[Option[String]]
-      val elasticIP = propertyValues.get("elasticIP").asInstanceOf[Option[String]]
-      val monitoring = propertyValues.get("monitoring").asInstanceOf[Option[String]]
-      val rootDeviceType = propertyValues.get("rootDeviceType").asInstanceOf[Option[String]]
-      val reservedInstance = propertyValues.get("reservedInstance").toString.toBoolean
-      val region = propertyValues.get("region").asInstanceOf[Option[String]]
-      //TO DO
-      //val launchTime: Date = new Date(propertyValues.get("launchTime").get.toString.toLong)
-      val launchTime: Option[Long] = Some(100)
-      //propertyValues.get("launchTime").get.toString.toLong
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node, "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "availabilityZone", "privateDnsName", "privateIpAddress", "publicIpAddress", "elasticIP", "monitoring", "rootDeviceType", "reservedInstance", "region")
+        val instanceId = map.get("instanceId").asInstanceOf[Option[String]]
+        val name = map("name").toString
+        val state = map.get("state").asInstanceOf[Option[String]]
+        val instanceType = map.get("instanceType").asInstanceOf[Option[String]]
+        val platform = map.get("platform").asInstanceOf[Option[String]]
+        val architecture = map.get("architecture").asInstanceOf[Option[String]]
+        val publicDnsName = map.get("publicDnsName").asInstanceOf[Option[String]]
+        val availabilityZone = map.get("availabilityZone").asInstanceOf[Option[String]]
+        val privateDnsName = map.get("privateDnsName").asInstanceOf[Option[String]]
+        val privateIpAddress = map.get("privateIpAddress").asInstanceOf[Option[String]]
+        val publicIpAddress = map.get("publicIpAddress").asInstanceOf[Option[String]]
+        val elasticIP = map.get("elasticIP").asInstanceOf[Option[String]]
+        val monitoring = map.get("monitoring").asInstanceOf[Option[String]]
+        val rootDeviceType = map.get("rootDeviceType").asInstanceOf[Option[String]]
+        val reservedInstance = map.get("reservedInstance").toString.toBoolean
+        val region = map.get("region").asInstanceOf[Option[String]]
+        //TO DO
+        //val launchTime: Date = new Date(map.get("launchTime").get.toString.toLong)
+        val launchTime: Option[Long] = Some(100)
+        //map.get("launchTime").get.toString.toLong
 
-      val relationship_info1 = "HAS_storageInfo1"
-      val memoryInfo: Option[StorageInfo] = GraphDBExecutor.getChildNodeId(nodeId, relationship_info1).flatMap(id => StorageInfo.fromNeo4jGraph(id))
+        val relationship_info1 = "HAS_storageInfo1"
+        val memoryInfo: Option[StorageInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship_info1).flatMap(id => StorageInfo.fromNeo4jGraph(id))
 
-      val relationship_info2 = "HAS_storageInfo2"
-      val rootDiskInfo: Option[StorageInfo] = GraphDBExecutor.getChildNodeId(nodeId, relationship_info2).flatMap(id => StorageInfo.fromNeo4jGraph(id))
+        val relationship_info2 = "HAS_storageInfo2"
+        val rootDiskInfo: Option[StorageInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship_info2).flatMap(id => StorageInfo.fromNeo4jGraph(id))
 
-      val relationship_ssh = "HAS_sshAccessInfo"
-      val sshAccessInfo: Option[SSHAccessInfo] = GraphDBExecutor.getChildNodeId(nodeId, relationship_ssh).flatMap(id => SSHAccessInfo.fromNeo4jGraph(id))
+        val relationship_ssh = "HAS_sshAccessInfo"
+        val sshAccessInfo: Option[SSHAccessInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship_ssh).flatMap(id => SSHAccessInfo.fromNeo4jGraph(id))
 
-      val relationship_image = "HAS_imageInfo"
-      val imageInfo: Option[ImageInfo] = GraphDBExecutor.getChildNodeId(nodeId, relationship_image).flatMap(id => ImageInfo.fromNeo4jGraph(id))
+        val relationship_image = "HAS_imageInfo"
+        val imageInfo: Option[ImageInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship_image).flatMap(id => ImageInfo.fromNeo4jGraph(id))
 
-      val relationship_keyValueInfo = "HAS_keyValueInfo"
-      val childNodeIds_keyVal: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_keyValueInfo)
-      val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
-        KeyValueInfo.fromNeo4jGraph(childId)
-      }
+        val relationship_keyValueInfo = "HAS_keyValueInfo"
+        val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship_keyValueInfo)
+        val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
+          KeyValueInfo.fromNeo4jGraph(childId)
+        }
 
-      val relationship_inst1 = "HAS_instanceConnection1"
-      val childNodeIds_inst1: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_inst1)
-      val liveConnections: List[InstanceConnection] = childNodeIds_inst1.flatMap { childId =>
-        InstanceConnection.fromNeo4jGraph(childId)
-      }
+        val relationship_inst1 = "HAS_instanceConnection1"
+        val childNodeIds_inst1: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship_inst1)
+        val liveConnections: List[InstanceConnection] = childNodeIds_inst1.flatMap { childId =>
+          InstanceConnection.fromNeo4jGraph(childId)
+        }
 
-      val relationship_inst2 = "HAS_instanceConnection2"
-      val childNodeIds_inst2: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_inst2)
-      val estimatedConnections: List[InstanceConnection] = childNodeIds_inst2.flatMap { childId =>
-        InstanceConnection.fromNeo4jGraph(childId)
-      }
+        val relationship_inst2 = "HAS_instanceConnection2"
+        val childNodeIds_inst2: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship_inst2)
+        val estimatedConnections: List[InstanceConnection] = childNodeIds_inst2.flatMap { childId =>
+          InstanceConnection.fromNeo4jGraph(childId)
+        }
 
-      val relationship_user = "HAS_instanceUser"
-      val childNodeIds_user: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_user)
-      val existingUsers: List[InstanceUser] = childNodeIds_user.flatMap { childId =>
-        InstanceUser.fromNeo4jGraph(childId)
-      }
+        val relationship_user = "HAS_instanceUser"
+        val childNodeIds_user: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship_user)
+        val existingUsers: List[InstanceUser] = childNodeIds_user.flatMap { childId =>
+          InstanceUser.fromNeo4jGraph(childId)
+        }
 
-      val relationship_process = "HAS_processInfo"
-      val childNodeIds_process: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_process)
-      val processes: Set[ProcessInfo] = childNodeIds_process.flatMap { childId =>
-        ProcessInfo.fromNeo4jGraph(childId)
-      }.toSet
+        val relationship_process = "HAS_processInfo"
+        val childNodeIds_process: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship_process)
+        val processes: Set[ProcessInfo] = childNodeIds_process.flatMap { childId =>
+          ProcessInfo.fromNeo4jGraph(childId)
+        }.toSet
 
-      Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo,
-        tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers,
-        None, availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, List.empty, List.empty, reservedInstance, region))
-    }
-    else {
-      logger.warn(s"could not get graph properties for Instance node with $nodeId")
-      None
+        Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo,
+          tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers,
+          None, availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, List.empty, List.empty, reservedInstance, region))
+      case None =>
+        logger.warn(s"could not find node for Instance with nodeId $nodeId")
+        None
     }
 
   }
@@ -134,31 +134,31 @@ object Instance {
 
     override def toNeo4jGraph(entity: Instance): Node = {
       val label = "Instance"
-      val mapPrimitives = Map("instanceId" -> entity.instanceId.getOrElse(GraphDBExecutor.NO_VAL),
+      val mapPrimitives = Map("instanceId" -> entity.instanceId,
         "name" -> entity.name,
-        "state" -> entity.state.getOrElse(GraphDBExecutor.NO_VAL),
-        "instanceType" -> entity.instanceType.getOrElse(GraphDBExecutor.NO_VAL),
-        "platform" -> entity.platform.getOrElse(GraphDBExecutor.NO_VAL),
-        "architecture" -> entity.architecture.getOrElse(GraphDBExecutor.NO_VAL),
-        "publicDnsName" -> entity.publicDnsName.getOrElse(GraphDBExecutor.NO_VAL),
-        "launchTime" -> entity.launchTime.getOrElse(GraphDBExecutor.NO_VAL),
-        "availabilityZone" -> entity.availabilityZone.getOrElse(GraphDBExecutor.NO_VAL),
-        "privateDnsName" -> entity.privateDnsName.getOrElse(GraphDBExecutor.NO_VAL),
-        "privateIpAddress" -> entity.privateIpAddress.getOrElse(GraphDBExecutor.NO_VAL),
-        "publicIpAddress" -> entity.publicIpAddress.getOrElse(GraphDBExecutor.NO_VAL),
-        "elasticIP" -> entity.elasticIP.getOrElse(GraphDBExecutor.NO_VAL),
-        "monitoring" -> entity.monitoring.getOrElse(GraphDBExecutor.NO_VAL),
-        "rootDeviceType" -> entity.rootDeviceType.getOrElse(GraphDBExecutor.NO_VAL),
+        "state" -> entity.state,
+        "instanceType" -> entity.instanceType,
+        "platform" -> entity.platform,
+        "architecture" -> entity.architecture,
+        "publicDnsName" -> entity.publicDnsName,
+        "launchTime" -> entity.launchTime,
+        "availabilityZone" -> entity.availabilityZone,
+        "privateDnsName" -> entity.privateDnsName,
+        "privateIpAddress" -> entity.privateIpAddress,
+        "publicIpAddress" -> entity.publicIpAddress,
+        "elasticIP" -> entity.elasticIP,
+        "monitoring" -> entity.monitoring,
+        "rootDeviceType" -> entity.rootDeviceType,
         "reservedInstance" -> entity.reservedInstance,
-        "region" -> entity.region.getOrElse(GraphDBExecutor.NO_VAL)
+        "region" -> entity.region
       )
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[Instance](label, mapPrimitives)
+      val node = Neo4jRepository.saveEntity[Instance](label, entity.id, mapPrimitives)
 
       entity.memoryInfo match {
         case Some(mInfo) =>
           val memoryInfoNode = mInfo.toNeo4jGraph(mInfo)
           val relationship_storage1 = "HAS_storageInfo1"
-          GraphDBExecutor.setGraphRelationship(node, memoryInfoNode, relationship_storage1)
+          Neo4jRepository.setGraphRelationship(node, memoryInfoNode, relationship_storage1)
         case None => logger.debug("entity Instance has no memoryInfo")
       }
 
@@ -166,7 +166,7 @@ object Instance {
         case Some(rInfo) =>
           val rootDiskInfoNode = rInfo.toNeo4jGraph(rInfo)
           val relationship_storage2 = "HAS_storageInfo2"
-          GraphDBExecutor.setGraphRelationship(node, rootDiskInfoNode, relationship_storage2)
+          Neo4jRepository.setGraphRelationship(node, rootDiskInfoNode, relationship_storage2)
         case None => logger.info("entity Instance has no rootDiskInfo")
       }
 
@@ -174,7 +174,7 @@ object Instance {
         case Some(ssh) =>
           val sshAccessInfoNode = ssh.toNeo4jGraph(ssh)
           val relationship_ssh = "HAS_sshAccessInfo"
-          GraphDBExecutor.setGraphRelationship(node, sshAccessInfoNode, relationship_ssh)
+          Neo4jRepository.setGraphRelationship(node, sshAccessInfoNode, relationship_ssh)
         case None => logger.info("entity Instance has no sshAccessInfo")
       }
 
@@ -182,38 +182,38 @@ object Instance {
         case Some(image) =>
           val imageInfoNode = image.toNeo4jGraph(image)
           val relationship_image = "HAS_imageInfo"
-          GraphDBExecutor.setGraphRelationship(node, imageInfoNode, relationship_image)
+          Neo4jRepository.setGraphRelationship(node, imageInfoNode, relationship_image)
         case None => logger.info("entity Instance has no imageInfo")
       }
 
       val relationship_keyVal = "HAS_keyValueInfo"
       entity.tags.foreach { tag =>
         val tagNode = tag.toNeo4jGraph(tag)
-        GraphDBExecutor.setGraphRelationship(node, tagNode, relationship_keyVal)
+        Neo4jRepository.setGraphRelationship(node, tagNode, relationship_keyVal)
       }
 
       val relationship_inst1 = "HAS_instanceConnection1"
       entity.liveConnections.foreach { liveConnection =>
         val liveConnectionNode = liveConnection.toNeo4jGraph(liveConnection)
-        GraphDBExecutor.setGraphRelationship(node, liveConnectionNode, relationship_inst1)
+        Neo4jRepository.setGraphRelationship(node, liveConnectionNode, relationship_inst1)
       }
 
       val relationship_inst2 = "HAS_instanceConnection2"
       entity.estimatedConnections.foreach { estimatedConnection =>
         val estimatedConnectionNode = estimatedConnection.toNeo4jGraph(estimatedConnection)
-        GraphDBExecutor.setGraphRelationship(node, estimatedConnectionNode, relationship_inst2)
+        Neo4jRepository.setGraphRelationship(node, estimatedConnectionNode, relationship_inst2)
       }
 
       val relationship_instuser = "HAS_instanceUser"
       entity.existingUsers.foreach { existingUser =>
         val existingUserNode = existingUser.toNeo4jGraph(existingUser)
-        GraphDBExecutor.setGraphRelationship(node, existingUserNode, relationship_instuser)
+        Neo4jRepository.setGraphRelationship(node, existingUserNode, relationship_instuser)
       }
 
       val relationship_process = "HAS_processInfo"
       entity.processes.foreach { process =>
         val processNode = process.toNeo4jGraph(process)
-        GraphDBExecutor.setGraphRelationship(node, processNode, relationship_process)
+        Neo4jRepository.setGraphRelationship(node, processNode, relationship_process)
       }
       node
     }

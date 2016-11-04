@@ -165,7 +165,7 @@ object AWSComputeAPI {
   }
 
   def createSSHAccessInfo(keyName: String): Option[SSHAccessInfo] = {
-    val node = GraphDBExecutor.getNodeByProperty("KeyPairInfo", "keyName", keyName)
+    val node = Neo4jRepository.getNodeByProperty("KeyPairInfo", "keyName", keyName)
     val keyPairInfo = node.flatMap { node => KeyPairInfo.fromNeo4jGraph(node.getId) }
     keyPairInfo.flatMap { info => Some(SSHAccessInfo(None, info, "", 0)) }
   }

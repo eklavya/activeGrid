@@ -759,7 +759,7 @@ object Main extends App {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {
           val imageLabel: String = "ImageInfo"
-          val nodesList = GraphDBExecutor.getNodesByLabel(imageLabel)
+          val nodesList = Neo4jRepository.getNodesByLabel(imageLabel)
           val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
 
           Page[ImageInfo](imageInfoList)
@@ -790,7 +790,7 @@ object Main extends App {
     } ~ path("images" / LongNumber) { imageId =>
       delete {
         val deleteImages = Future {
-          GraphDBExecutor.deleteEntity[ImageInfo](imageId)
+          Neo4jRepository.deleteEntity(imageId)
         }
 
         onComplete(deleteImages) {
@@ -818,7 +818,7 @@ object Main extends App {
     } ~ path("softwares" / LongNumber) { softwareId =>
       delete {
         val deleteSoftware = Future {
-          GraphDBExecutor.deleteEntity[Software](softwareId)
+          Neo4jRepository.deleteEntity(softwareId)
           "Deleted Successfully"
         }
 
@@ -833,7 +833,7 @@ object Main extends App {
       get {
         val getSoftwares = Future {
           val softwareLabel: String = "SoftwaresTest2"
-          val nodesList = GraphDBExecutor.getNodesByLabel(softwareLabel)
+          val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
           val softwaresList = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
           Page[Software](softwaresList)
         }
@@ -875,7 +875,7 @@ object Main extends App {
         val listOfAllInstanceNodes = Future {
           logger.info("Received GET request for all nodes")
           val label: String = "Instance"
-          val nodesList = GraphDBExecutor.getNodesByLabel(label)
+          val nodesList = Neo4jRepository.getNodesByLabel(label)
           val instanceList = nodesList.flatMap(node => Instance.fromNeo4jGraph(node.getId))
           Page[Instance](instanceList)
         }
@@ -907,7 +907,7 @@ object Main extends App {
             val instance = Instance(name)
             instance.toNeo4jGraph(instance)
           }
-          val instanceNode = GraphDBExecutor.getNodeByProperty("Instance", "name", name)
+          val instanceNode = Neo4jRepository.getNodeByProperty("Instance", "name", name)
           instanceNode match {
             case Some(node) => Instance.fromNeo4jGraph(node.getId).get
             case None =>
