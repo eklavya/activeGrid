@@ -34,7 +34,7 @@ object Software {
         "processNames" -> software.processNames.toArray,
         "discoverApplications" -> software.discoverApplications)
 
-      val softwareNode = GraphDBExecutor.saveEntity[Software](label, map)
+      val softwareNode = Neo4jRepository.saveEntity[Software](label, software.id, map)
       softwareNode
     }
 
@@ -47,8 +47,8 @@ object Software {
   def fromNeo4jGraph(nodeId: Long): Option[Software] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
-      val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+      val node = Neo4jRepository.findNodeById(nodeId)
+      val map = Neo4jRepository.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
       val software = Software(Some(nodeId),
         ActiveGridUtils.getValueFromMapAs[String](map, "version"),
         map("name").asInstanceOf[String],

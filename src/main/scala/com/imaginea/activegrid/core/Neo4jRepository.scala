@@ -13,7 +13,7 @@ import scala.collection.JavaConversions._
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def neo4jStoreDir = "./graphdb/activegriddb"
+  def neo4jStoreDir = "./graphdb/activegrid/test"
 
   def hasLabel(node: Node, label: String): Boolean = {
     node.hasLabel(label)
@@ -54,7 +54,9 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def getNodesByLabel(label: String): List[Node] = withTx { neo =>
-    getAllNodesWithLabel(label)(neo).toList
+    val list = getAllNodesWithLabel(label)(neo).toList
+    logger.debug(s"Size of nodes with label : $label : ${list.size}")
+    list
   }
 
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
@@ -137,4 +139,41 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String) = withTx { neo =>
+    val relType = DynamicRelationshipType.withName(relation)
+    logger.debug(s"setting relationhip : $relation")
+    fromNode --> relType --> toNode
+    /*start --> relType --> end <
+     start.getSingleRelationship(relType, Direction.OUTGOING)*/
+  }
+
+  def getChildNodeId(parentNode: Long, relation: String): Option[Long] = withTx { neo =>
+    val node = getNodeById(parentNode)(neo)
+    try {
+      Some(node.getSingleRelationship(relation, Direction.OUTGOING).getEndNode.getId)
+    }
+    catch {
+      case ex: Exception =>
+        logger.debug(s"does not have relationship $relation")
+        None
+    }
+  }
+
+  def getChildNodeIds(parentNodeId: Long, relation: String): List[Long] = withTx { neo =>
+    try {
+      val node = getNodeById(parentNodeId)(neo)
+      val list = node.getRelationships(relation, Direction.OUTGOING).map(rel => rel.getEndNode.getId).toList
+      list
+    }
+    catch {
+      case ex: Exception =>
+        logger.debug(s"does not have node with NodeId $parentNodeId")
+        List.empty[Long]
+    }
+  }
+
+  def getNodeByProperty(label: String, propertyName: String, propertyVal: Any): Option[Node] = withTx { neo =>
+    val nodes = findNodesByLabelAndProperty(label, propertyName, propertyVal)(neo)
+    nodes.headOption
+  }
 }

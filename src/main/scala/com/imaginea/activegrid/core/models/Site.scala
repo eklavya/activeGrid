@@ -18,12 +18,12 @@ object Site {
 
     override def toNeo4jGraph(entity: Site): Node = {
       val label = "Site"
-      val mapPrimitives = Map("siteName" -> entity.siteName.getOrElse(GraphDBExecutor.NO_VAL), "groupBy" -> entity.groupBy.getOrElse(GraphDBExecutor.NO_VAL))
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[Site](label, mapPrimitives)
+      val mapPrimitives = Map("siteName" -> entity.siteName, "groupBy" -> entity.groupBy)
+      val node = Neo4jRepository.saveEntity[Site](label, entity.id, mapPrimitives)
       val relationship = "HAS_Instance"
       entity.instances.foreach { instance =>
         val instanceNode = instance.toNeo4jGraph(instance)
-        GraphDBExecutor.setGraphRelationship(node, instanceNode, relationship)
+        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship)
       }
       node
     }
@@ -34,21 +34,21 @@ object Site {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[Site] = {
-    val listOfKeys = List("siteName", "groupBy")
-    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-    if (propertyValues.nonEmpty) {
-      val siteName = propertyValues.get("siteName").asInstanceOf[Option[String]]
-      val groupBy = propertyValues.get("groupBy").asInstanceOf[Option[String]]
-      val relationship = "HAS_Instance"
-      val childNodeIds: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship)
-      val instances: List[Instance] = childNodeIds.flatMap { childId =>
-        Instance.fromNeo4jGraph(childId)
-      }
-      Some(Site(Some(nodeId), instances, siteName, groupBy))
-    }
-    else {
-      logger.warn(s"could not get graph properties for Site node with $nodeId")
-      None
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node, "siteName", "groupBy")
+        val siteName = map.get("siteName").asInstanceOf[Option[String]]
+        val groupBy = map.get("groupBy").asInstanceOf[Option[String]]
+        val relationship = "HAS_Instance"
+        val childNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship)
+        val instances: List[Instance] = childNodeIds.flatMap { childId =>
+          Instance.fromNeo4jGraph(childId)
+        }
+        Some(Site(Some(nodeId), instances, siteName, groupBy))
+      case None =>
+        logger.warn(s"could not find node for Site with nodeId $nodeId")
+        None
     }
   }
 }

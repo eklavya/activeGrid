@@ -14,17 +14,17 @@ object StorageInfo {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def fromNeo4jGraph(nodeId: Long): Option[StorageInfo] = {
-    val listOfKeys = List("used", "total")
-    val propertyValues = GraphDBExecutor.getGraphProperties(nodeId, listOfKeys)
-    if (propertyValues.nonEmpty) {
-      val used: Double = propertyValues("used").toString.toDouble
-      val total: Double = propertyValues("total").toString.toDouble
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node, "used", "total")
+        val used: Double = map("used").toString.toDouble
+        val total: Double = map("total").toString.toDouble
 
-      Some(StorageInfo(Some(nodeId), used, total))
-    }
-    else {
-      logger.warn(s"could not get graph properties of StorageInfo node with $nodeId")
-      None
+        Some(StorageInfo(Some(nodeId), used, total))
+      case None =>
+        logger.warn(s"could not find node for StorageInfo with nodeId $nodeId")
+        None
     }
   }
 
@@ -33,7 +33,7 @@ object StorageInfo {
     override def toNeo4jGraph(entity: StorageInfo): Node = {
       val label = "StorageInfo"
       val mapPrimitives = Map("used" -> entity.used, "total" -> entity.total)
-      val node = GraphDBExecutor.createGraphNodeWithPrimitives[StorageInfo](label, mapPrimitives)
+      val node = Neo4jRepository.saveEntity[StorageInfo](label, entity.id, mapPrimitives)
       node
     }
 
