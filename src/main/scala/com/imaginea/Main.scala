@@ -1148,14 +1148,14 @@ object Main extends App {
             val siteFilters = site.filters
             logger.info(s"Parsing instance : ${site.instances}")
             val computedResult = siteFilters.foldLeft(Tuple4(List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
-              (tuple, siteFilter) =>
+              (result, siteFilter) =>
                 val accountInfo = siteFilter.accountInfo
                 val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
                 val instances = AWSComputeAPI.getInstances(amazonEC2, accountInfo)
                 val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
                 val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
                 val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
-                (tuple._1 ::: instances, tuple._2 ::: reservedInstanceDetails , tuple._3 ::: loadBalancers , tuple._4 ::: scalingGroup)
+                (result._1 ::: instances, result._2 ::: reservedInstanceDetails , result._3 ::: loadBalancers , result._4 ::: scalingGroup)
             }
             val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
             site1.toNeo4jGraph(site1)

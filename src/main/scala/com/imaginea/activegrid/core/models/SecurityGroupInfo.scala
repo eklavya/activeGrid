@@ -58,12 +58,12 @@ object SecurityGroupInfo {
       neo =>
         val node = repository.getNodeById(nodeId)(neo)
         if (repository.hasLabel(node, securityGroupInfoLabel)) {
-          val tupleObj = node.getRelationships.foldLeft(Tuple2(List.empty[IpPermissionInfo], List.empty[KeyValueInfo])) {
-            (tuple, relationship) =>
+          val tupleOfIpPermissionAndKeyVal = node.getRelationships.foldLeft(Tuple2(List.empty[IpPermissionInfo], List.empty[KeyValueInfo])) {
+            (result, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `securityGroup_KeyValue_Relation` => (tuple._1, KeyValueInfo.fromNeo4jGraph(childNode.getId).get :: tuple._2)
-                case `securityGroup_IpPermission_Relation` => (IpPermissionInfo.fromNeo4jGraph(childNode.getId).get :: tuple._1, tuple._2)
+                case `securityGroup_KeyValue_Relation` => (result._1, KeyValueInfo.fromNeo4jGraph(childNode.getId).get :: result._2)
+                case `securityGroup_IpPermission_Relation` => (IpPermissionInfo.fromNeo4jGraph(childNode.getId).get :: result._1, result._2)
               }
           }
           Some(SecurityGroupInfo(Some(nodeId),
@@ -71,8 +71,8 @@ object SecurityGroupInfo {
             repository.getProperty[String](node, "groupId"),
             repository.getProperty[String](node, "ownerId"),
             repository.getProperty[String](node, "description"),
-            tupleObj._1,
-            tupleObj._2))
+            tupleOfIpPermissionAndKeyVal._1,
+            tupleOfIpPermissionAndKeyVal._2))
         } else {
           None
         }

@@ -49,15 +49,15 @@ object SiteFilter {
           val node = repository.getNodeById(nodeId)(neo)
           if (repository.hasLabel(node, siteFilterLabel)) {
 
-            val tupleObj = node.getRelationships.foldLeft(Tuple2[AnyRef, List[Filter]](AnyRef, List[Filter]())) {
-              (tuple, relationship) =>
+            val tupleOfAccountAndFilter = node.getRelationships.foldLeft(Tuple2[AnyRef, List[Filter]](AnyRef, List[Filter]())) {
+              (result, relationship) =>
                 val childNode = relationship.getEndNode
                 relationship.getType.name match {
-                  case `siteFilter_AccountInfo_Rel` => (AccountInfo.fromNeo4jGraph(childNode.getId).get, tuple._2)
-                  case `siteFilter_Filters_Rel` => (tuple._1, Filter.fromNeo4jGraph(childNode.getId).get :: tuple._2)
+                  case `siteFilter_AccountInfo_Rel` => (AccountInfo.fromNeo4jGraph(childNode.getId).get, result._2)
+                  case `siteFilter_Filters_Rel` => (result._1, Filter.fromNeo4jGraph(childNode.getId).get :: result._2)
                 }
             }
-            Some(SiteFilter(Some(node.getId), tupleObj._1.asInstanceOf[AccountInfo], tupleObj._2))
+            Some(SiteFilter(Some(node.getId), tupleOfAccountAndFilter._1.asInstanceOf[AccountInfo], tupleOfAccountAndFilter._2))
           } else {
             None
           }

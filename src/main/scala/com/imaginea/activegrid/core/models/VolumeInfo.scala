@@ -64,12 +64,12 @@ object VolumeInfo {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, volumeInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "volumeId", "size", "snapshotId", "availabilityZone", "state", "createTime", "volumeType")
-          val tupleObj = node.getRelationships.foldLeft(Tuple2[List[AnyRef], AnyRef](List.empty[AnyRef], AnyRef)) {
-            (tuple, relationship) =>
+          val tupleOfKeyValAndSnapshot = node.getRelationships.foldLeft(Tuple2[List[AnyRef], AnyRef](List.empty[AnyRef], AnyRef)) {
+            (result, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `volumeInfo_Tag_Relation` => (KeyValueInfo.fromNeo4jGraph(childNode.getId) :: tuple._1, tuple._2)
-                case `volumeInfo_SnapshotInfo_Relation` => (tuple._1, SnapshotInfo.fromNeo4jGraph(childNode.getId))
+                case `volumeInfo_Tag_Relation` => (KeyValueInfo.fromNeo4jGraph(childNode.getId) :: result._1, result._2)
+                case `volumeInfo_SnapshotInfo_Relation` => (result._1, SnapshotInfo.fromNeo4jGraph(childNode.getId))
               }
           }
           Some(VolumeInfo(Some(nodeId),
@@ -79,10 +79,10 @@ object VolumeInfo {
             map("availabilityZone").toString,
             map("state").toString,
             map("createTime").toString,
-            tupleObj._1.asInstanceOf[List[KeyValueInfo]],
+            tupleOfKeyValAndSnapshot._1.asInstanceOf[List[KeyValueInfo]],
             map("volumeType").toString,
             map("snapshotCount").asInstanceOf[Int],
-            Some(tupleObj._2.asInstanceOf[SnapshotInfo])))
+            Some(tupleOfKeyValAndSnapshot._2.asInstanceOf[SnapshotInfo])))
         } else {
           None
         }

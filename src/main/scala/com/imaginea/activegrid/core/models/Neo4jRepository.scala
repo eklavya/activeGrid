@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.Main
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb._
@@ -12,8 +13,9 @@ import scala.collection.JavaConversions._
   */
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  implicit  val  config = Main.config
 
-  def neo4jStoreDir = "./graphdb/activegriddb"
+  def neo4jStoreDir = Main.config.getString("neo4j.dbpath")
 
   def hasLabel(node: Node, label: String): Boolean = {
     node.hasLabel(label)
