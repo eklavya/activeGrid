@@ -176,7 +176,7 @@ object Main extends App {
 
   implicit val filterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
   implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
-  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
+  implicit val siteFilterFormat = jsonFormat( SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "filters")
   implicit val toupleFormat = jsonFormat(Tuple.apply, "id", "key", "value")
@@ -1020,7 +1020,7 @@ object Main extends App {
           val buildSite = Future {
             val instances = site.filters.flatMap { siteFilter => AWSComputeAPI.getInstances(siteFilter.accountInfo)
             }
-            Site1(None, site.siteName, instances, site.filters)
+            Site1(None, site.siteName, instances, site.filters,site.loadBalancers,site.scalingGroups)
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1040,7 +1040,7 @@ object Main extends App {
           val result = Future {
             val sites = Neo4jRepository.getNodesByLabel("AWSSites")
             val siteViewFilter = new SiteViewFilter()
-            sites.map { site => siteViewFilter.filterInstance(site.asInstanceOf[AWSSite], ViewLevelProvider.toInstanceProvider(viewLevel)) }
+            sites.map { site => siteViewFilter.filterInstance(site.asInstanceOf[AWSSite], ViewLevel.toViewLevel(viewLevel)) }
           }
           onComplete(result) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)

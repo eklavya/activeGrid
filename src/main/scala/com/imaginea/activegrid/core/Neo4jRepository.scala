@@ -105,9 +105,11 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       case Some(id) => val parent = getNodeById(id)
         val relationList = parent.getRelationships(Direction.OUTGOING).toList.filter(relation => relation.getType.name.equals(relation))
         relationList.foreach(relation => relation.getNodes.toList.foreach {
-          node => if (node.getId == instanceId) node.delete() }
-        )
-
+          node => if (node.getId == instanceId) {
+            node.delete()
+            relation.delete()
+          }
+        })
     }
   }
 
