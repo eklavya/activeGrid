@@ -228,7 +228,7 @@ object Main extends App {
         val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
         listOfObjs.elements.foldLeft(List[T]()) {
           (list, jsString) =>
-            list.::(formateObject.read(jsString))
+            formateObject.read(jsString) :: list
         }
       } else {
         List.empty[T]
