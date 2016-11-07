@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
@@ -9,15 +10,15 @@ import scala.collection.JavaConversions._
   * Created by nagulmeeras on 27/10/16.
   */
 case class VolumeInfo(override val id: Option[Long],
-                      volumeId: String,
-                      size: Int,
-                      snapshotId: String,
-                      availabilityZone: String,
-                      state: String,
-                      createTime: String,
+                      volumeId: Option[String],
+                      size: Option[Int],
+                      snapshotId: Option[String],
+                      availabilityZone: Option[String],
+                      state: Option[String],
+                      createTime: Option[String],
                       tags: List[KeyValueInfo],
-                      volumeType: String,
-                      snapshotCount: Int,
+                      volumeType: Option[String],
+                      snapshotCount: Option[Int],
                       currentSnapshot: Option[SnapshotInfo]) extends BaseEntity
 
 object VolumeInfo {
@@ -25,6 +26,10 @@ object VolumeInfo {
   val volumeInfo_Tag_Relation = "HAS_TAGS"
   val volumeInfo_SnapshotInfo_Relation = "HAS_SNAPSHOT"
   val logger = LoggerFactory.getLogger(getClass)
+
+  def apply(id: Long): VolumeInfo = {
+    VolumeInfo(Some(id), None, None, None, None, None, None, List.empty[KeyValueInfo], None, None, None)
+  }
 
   implicit class VolumeInfoImpl(volumeInfo: VolumeInfo) extends Neo4jRep[VolumeInfo] {
     override def toNeo4jGraph(entity: VolumeInfo): Node = {
@@ -64,25 +69,28 @@ object VolumeInfo {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, volumeInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "volumeId", "size", "snapshotId", "availabilityZone", "state", "createTime", "volumeType")
-          val tupleOfKeyValAndSnapshot = node.getRelationships.foldLeft(Tuple2[List[AnyRef], AnyRef](List.empty[AnyRef], AnyRef)) {
+          val keyValAndSnapshot = node.getRelationships.foldLeft((List.empty[KeyValueInfo], SnapshotInfo.appply(1))) {
             (result, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `volumeInfo_Tag_Relation` => (KeyValueInfo.fromNeo4jGraph(childNode.getId) :: result._1, result._2)
-                case `volumeInfo_SnapshotInfo_Relation` => (result._1, SnapshotInfo.fromNeo4jGraph(childNode.getId))
+                case `volumeInfo_Tag_Relation` => val keyValueInfo = KeyValueInfo.fromNeo4jGraph(childNode.getId)
+                  if (keyValueInfo.nonEmpty) (keyValueInfo.get :: result._1, result._2) else result
+                case `volumeInfo_SnapshotInfo_Relation` => val snapshotInfoObj = SnapshotInfo.fromNeo4jGraph(childNode.getId)
+                  if (snapshotInfoObj.nonEmpty) (result._1, snapshotInfoObj.get) else result
               }
           }
           Some(VolumeInfo(Some(nodeId),
-            map("volumeId").toString,
-            map("size").asInstanceOf[Int],
-            map("snapshotId").toString,
-            map("availabilityZone").toString,
-            map("state").toString,
-            map("createTime").toString,
-            tupleOfKeyValAndSnapshot._1.asInstanceOf[List[KeyValueInfo]],
-            map("volumeType").toString,
-            map("snapshotCount").asInstanceOf[Int],
-            Some(tupleOfKeyValAndSnapshot._2.asInstanceOf[SnapshotInfo])))
+            ActiveGridUtils.getValueFromMapAs[String](map, "volumeId"),
+            ActiveGridUtils.getValueFromMapAs[Int](map, "size"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "snapshotId"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "availabilityZone"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "state"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "createTime"),
+            keyValAndSnapshot._1.asInstanceOf[List[KeyValueInfo]],
+            ActiveGridUtils.getValueFromMapAs[String](map, "volumeType"),
+            ActiveGridUtils.getValueFromMapAs[Int](map, "snapshotCount"),
+            Some(keyValAndSnapshot._2.asInstanceOf[SnapshotInfo])))
+
         } else {
           None
         }

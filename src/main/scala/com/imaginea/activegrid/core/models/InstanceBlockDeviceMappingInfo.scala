@@ -44,7 +44,7 @@ object InstanceBlockDeviceMappingInfo {
     mayBeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, ibd_VolumeInfo_Relation)) {
-          val volumeInfoObj = node.getRelationships.foldLeft(Option[AnyRef](AnyRef)) {
+          val volumeInfoObj = node.getRelationships.foldLeft(Option(VolumeInfo.apply(1))) {
             (reference, relationship) =>
               val childNode = relationship.getEndNode
               VolumeInfo.fromNeo4jGraph(childNode.getId)

@@ -216,7 +216,7 @@ object Main extends App {
           case JsNumber(str) => Some(str.asInstanceOf[T])
           case JsFalse => Some(false.asInstanceOf[T])
           case JsTrue => Some(true.asInstanceOf[T])
-          case _=> None
+          case _ => None
         }
       } else {
         None
@@ -1147,7 +1147,7 @@ object Main extends App {
           val buildSite = Future {
             val siteFilters = site.filters
             logger.info(s"Parsing instance : ${site.instances}")
-            val computedResult = siteFilters.foldLeft(Tuple4(List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+            val computedResult = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
               (result, siteFilter) =>
                 val accountInfo = siteFilter.accountInfo
                 val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)

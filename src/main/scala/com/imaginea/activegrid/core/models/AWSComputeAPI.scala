@@ -66,7 +66,7 @@ object AWSComputeAPI {
           createBlockDeviceMapping(awsInstance.getBlockDeviceMappings.toList, volumesMap, snapshotsMap),
           securityGroupInfos,
           false,
-          Option(accountInfo.regionName)
+          Option(accountInfo.regionName.get)
         )
         logger.debug(s"Instance OBJ:$instance")
         instance
@@ -173,8 +173,8 @@ object AWSComputeAPI {
   }
 
   def getComputeAPI(accountInfo: AccountInfo): AmazonEC2 = {
-    val region = RegionUtils.getRegion(accountInfo.regionName)
-    val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
+    val region = RegionUtils.getRegion(accountInfo.regionName.get)
+    val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
     val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
     AWSInstanceHelper(aWSCredentials1, region)
   }
@@ -196,8 +196,8 @@ object AWSComputeAPI {
   }
 
   def getAutoScalingGroups(accountInfo: AccountInfo): List[ScalingGroup] = {
-    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName)
-    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
+    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName.get)
+    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
     val aWSCredentials = getAWSCredentials(aWSContextBuilder)
     val amazonASG: AmazonAutoScalingClient = new AmazonAutoScalingClient(aWSCredentials)
     amazonASG.setRegion(aWSRegion)
@@ -222,8 +222,8 @@ object AWSComputeAPI {
   }
 
   def getLoadBalancers(accountInfo: AccountInfo): List[LoadBalancer] = {
-    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName)
-    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
+    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName.get)
+    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
     val aWSCredentials = getAWSCredentials(aWSContextBuilder)
     val amazonELB = new AmazonElasticLoadBalancingClient(aWSCredentials)
     amazonELB.setRegion(aWSRegion)
@@ -282,10 +282,10 @@ object AWSComputeAPI {
       }
       val currentSnapshotInfo = createSnapshotInfo(currentSnapshot)
 
-      VolumeInfo(None, volumeId, size, snapshotId, availabilityZone, state, createTime, tags, volumeType, snapshotCount, Some(currentSnapshotInfo))
+      VolumeInfo(None, Some(volumeId), Some(size), Some(snapshotId), Some(availabilityZone), Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount), Some(currentSnapshotInfo))
     }
     else
-      VolumeInfo(None, volumeId, size, snapshotId, availabilityZone, state, createTime, tags, volumeType, snapshotCount, None)
+      VolumeInfo(None, Some(volumeId), Some(size), Some(snapshotId), Some(availabilityZone), Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount), None)
   }
 
   def createSnapshotInfo(snapshot: Snapshot): SnapshotInfo = {
@@ -299,7 +299,7 @@ object AWSComputeAPI {
     val description = snapshot.getDescription
     val volumeSize = snapshot.getVolumeSize
     val tags = createKeyValueInfo(snapshot.getTags.toList)
-    SnapshotInfo(None, snapshotId, volumeId, state, startTime, progress, ownerId, ownerAlias, description, volumeSize, tags)
+    SnapshotInfo(None, Some(snapshotId), Some(volumeId), Some(state), Some(startTime), Some(progress), Some(ownerId), Some(ownerAlias), Some(description), Some(volumeSize), tags)
   }
 
   def createKeyValueInfo(tags: List[com.amazonaws.services.ec2.model.Tag]): List[KeyValueInfo] = {

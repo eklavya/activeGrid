@@ -70,11 +70,12 @@ object APMServerDetails {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
 
-            val tupleOfSiteAndHeaders = node.getRelationships.foldLeft(Tuple2[AnyRef, Map[String, String]](AnyRef, Map.empty[String, String])) {
+            val siteAndHeaders = node.getRelationships.foldLeft((Site.apply(1), Map.empty[String, String])) {
               (result, relationsip) =>
                 val childNode = relationsip.getEndNode
                 relationsip.getType.name match {
-                  case `apmServer_site_relation` => (Site.fromNeo4jGraph(childNode.getId), result._2)
+                  case `apmServer_site_relation` => val site = Site.fromNeo4jGraph(childNode.getId)
+                    if (site.nonEmpty) (site.get, result._2) else result
                   case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
                 }
             }
@@ -82,9 +83,9 @@ object APMServerDetails {
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              Option(tupleOfSiteAndHeaders._1.asInstanceOf[Site]),
+              Option(siteAndHeaders._1.asInstanceOf[Site]),
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
-              Option(tupleOfSiteAndHeaders._2)
+              Option(siteAndHeaders._2)
             ))
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $apmServerDetailsLabel")

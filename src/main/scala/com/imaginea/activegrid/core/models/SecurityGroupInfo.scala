@@ -58,7 +58,7 @@ object SecurityGroupInfo {
       neo =>
         val node = repository.getNodeById(nodeId)(neo)
         if (repository.hasLabel(node, securityGroupInfoLabel)) {
-          val tupleOfKeyValAndIpPermission = node.getRelationships.foldLeft(Tuple2(List.empty[IpPermissionInfo], List.empty[KeyValueInfo])) {
+          val keyValAndIpPermission = node.getRelationships.foldLeft((List.empty[IpPermissionInfo], List.empty[KeyValueInfo])) {
             (result, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
@@ -71,8 +71,8 @@ object SecurityGroupInfo {
             repository.getProperty[String](node, "groupId"),
             repository.getProperty[String](node, "ownerId"),
             repository.getProperty[String](node, "description"),
-            tupleOfKeyValAndIpPermission._1,
-            tupleOfKeyValAndIpPermission._2))
+            keyValAndIpPermission._1,
+            keyValAndIpPermission._2))
         } else {
           None
         }

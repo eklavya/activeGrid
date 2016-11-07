@@ -11,15 +11,19 @@ case class AccountInfo(override val id: Option[Long],
                        accountId: Option[String],
                        providerType: InstanceProvider, // AWS or OpenStack or Physical LAN etc..
                        ownerAlias: Option[String], //optional
-                       accessKey: String,
-                       secretKey: String,
-                       regionName: String, // region or end-point
+                       accessKey: Option[String],
+                       secretKey: Option[String],
+                       regionName: Option[String], // region or end-point
                        regions: List[String],
-                       networkCIDR: String) extends BaseEntity
+                       networkCIDR: Option[String]) extends BaseEntity
 
 object AccountInfo {
   val accountInfoLabel = "AccountInfo"
   val logger = LoggerFactory.getLogger(getClass)
+
+  def apply(id: Long): AccountInfo = {
+    AccountInfo(Some(id), None, InstanceProvider.toInstanceProvider("AWS"), None, None, None, None, List.empty[String], None)
+  }
 
   implicit class AccountInfoImpl(accountInfo: AccountInfo) extends Neo4jRep[AccountInfo] {
     logger.debug(s"Executing $getClass :: toNeo4jGraph")
@@ -52,11 +56,11 @@ object AccountInfo {
             ActiveGridUtils.getValueFromMapAs[String](map, "accountId"),
             InstanceProvider.toInstanceProvider(map("providerType").asInstanceOf[String]),
             ActiveGridUtils.getValueFromMapAs[String](map, "ownerAlias"),
-            map("accessKey").asInstanceOf[String],
-            map("secretKey").asInstanceOf[String],
-            map("regionName").asInstanceOf[String],
+            ActiveGridUtils.getValueFromMapAs[String](map, "accessKey"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "secretKey"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "regionName"),
             map("regions").asInstanceOf[List[String]],
-            map("networkCIDR").asInstanceOf[String]
+            ActiveGridUtils.getValueFromMapAs[String](map, "networkCIDR")
           ))
         } else {
           None
