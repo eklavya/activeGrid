@@ -62,17 +62,16 @@ object AppSettings {
         try {
           val node = repo.getNodeById(nodeId)(neo)
           if (repo.hasLabel(node, labelName)) {
-            val settingsMap = collection.mutable.Map.empty[String, Map[String, String]]
-            node.getRelationships.map(relationship => {
-              val endNode = relationship.getEndNode
-              val map = endNode.getAllProperties.foldLeft(Map[String, String]())((map, prop) => map + ((prop._1, prop._2.asInstanceOf[String])))
-              relationship.getType.name match {
-                case `settingsRelationName` => settingsMap.put("settings", map)
-                case `authSettingsRelationName` => settingsMap.put("authSettings", map)
-                case _ => None
-              }
-            })
-            Some(new AppSettings(Option.apply(node.getId), settingsMap("settings"), settingsMap("authSettings")))
+            val mapObj = node.getRelationships.foldLeft(Map[String, Map[String, String]]()) {
+              (map, relationship) =>
+                val childNode = relationship.getEndNode
+                val settingsProps = childNode.getAllProperties.foldLeft(Map[String, String]())((map, prop) => map + ((prop._1, prop._2.asInstanceOf[String])))
+                relationship.getType.name match {
+                  case `settingsRelationName` => map + (("settings", settingsProps))
+                  case `authSettingsRelationName` => map + (("authSettings", settingsProps))
+                }
+            }
+            Some(new AppSettings(Option.apply(node.getId), mapObj("settings"), mapObj("authSettings")))
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $labelName")
             None

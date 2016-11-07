@@ -120,9 +120,21 @@ object Instance {
           ProcessInfo.fromNeo4jGraph(childId)
         }.toSet
 
+        val relationship_blockDevice = "HAS_blockDeviceMapping"
+        val childNodeIds_blockDevice = Neo4jRepository.getChildNodeIds(nodeId, relationship_blockDevice)
+        val blockDeviceMappings: List[InstanceBlockDeviceMappingInfo] = childNodeIds_blockDevice.flatMap { childId =>
+          InstanceBlockDeviceMappingInfo.fromNeo4jGraph(childId)
+        }
+
+        val relationship_securityGroup = "HAS_securityGroup"
+        val childNodeIds_securityGroup = Neo4jRepository.getChildNodeIds(nodeId, relationship_securityGroup)
+        val securityGroups: List[SecurityGroupInfo] = childNodeIds_securityGroup.flatMap { childId =>
+          SecurityGroupInfo.fromNeo4jGraph(childId)
+        }
+
         Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo,
           tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers,
-          None, availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, List.empty, List.empty, reservedInstance, region))
+          None, availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, blockDeviceMappings, securityGroups, reservedInstance, region))
       case None =>
         logger.warn(s"could not find node for Instance with nodeId $nodeId")
         None
@@ -214,6 +226,18 @@ object Instance {
       entity.processes.foreach { process =>
         val processNode = process.toNeo4jGraph(process)
         Neo4jRepository.setGraphRelationship(node, processNode, relationship_process)
+      }
+
+      val relationship_blockingDeviceMapping = "HAS_blockDeviceMapping"
+      entity.blockDeviceMappings.foreach { blockDeviceMapping =>
+        val blockDeviceNode = blockDeviceMapping.toNeo4jGraph(blockDeviceMapping)
+        Neo4jRepository.setGraphRelationship(node, blockDeviceNode, relationship_blockingDeviceMapping)
+      }
+
+      val relationship_securityGroup = "HAS_securityGroup"
+      entity.securityGroups.foreach { securityGroup =>
+        val securityGroupNode = securityGroup.toNeo4jGraph(securityGroup)
+        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_process)
       }
       node
     }
