@@ -9,8 +9,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models.{InstanceGroup, _}
-import com.imaginea.activegrid.core.utils.{ActiveGridUtils, Constants, FileUtils}
-import com.typesafe.config.ConfigFactory
+import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
@@ -23,7 +22,6 @@ import scala.util.{Failure, Success}
 
 object Main extends App {
 
-  implicit val config = ConfigFactory.load
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
@@ -1188,7 +1186,7 @@ object Main extends App {
           provider =>
             logger.info(s"Coming Provider $provider")
             val regions = Future {
-              ActiveGridUtils.getRegions(InstanceProvider.toInstanceProvider(provider))
+              AGU.getRegions(InstanceProvider.toInstanceProvider(provider))
             }
             onComplete(regions) {
               case Success(response) => complete(StatusCodes.OK, response)
@@ -1338,8 +1336,8 @@ object Main extends App {
   val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
 
 
-  val bindingFuture = Http().bindAndHandle(route, config.getString("http.host"), config.getInt("http.port"))
-  logger.info(s"Server online at http://${config.getString("http.host")}:${config.getInt("http.port")}")
+  val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
+  logger.info(s"Server online at http://${AGU.HOST}:${AGU.PORT}")
 
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
