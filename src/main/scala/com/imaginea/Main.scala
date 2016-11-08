@@ -1,6 +1,8 @@
 package com.imaginea
 
 
+import java.io.File
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -13,6 +15,7 @@ import com.imaginea.activegrid.core.models._
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
+import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json._
@@ -1052,7 +1055,7 @@ object Main extends App {
             val siteNode = Site1.fromNeo4jGraph(siteId)
             siteNode match {
               case Some(site) =>
-                val instanceFromSite = siteNode.get.instances.find(inst => if(inst.instanceId.nonEmpty) false else inst.instanceId.get.equals(instanceId))
+                val instanceFromSite = siteNode.get.instances.find(inst => if (inst.instanceId.nonEmpty) false else inst.instanceId.get.equals(instanceId))
                 instanceFromSite match {
                   case Some(foundInstance) =>
                     val resultInstance = viewType match {
@@ -1078,6 +1081,125 @@ object Main extends App {
           }
         }
 
+      }
+    } ~ put {
+      path("keypairs" / LongNumber) { siteId =>
+        entity(as[Multipart.FormData]) { formData =>
+          val uploadKeyPairsResult = Future {
+            val dataMap = formData.asInstanceOf[FormData.Strict].strictParts.foldLeft(Map[String, String]())((accum, strict) => {
+              val name = strict.getName()
+              val value = strict.entity.getData().decodeString("UTF-8")
+              val mayBeFile = strict.filename
+              logger.debug(s"--- $name  -- $value -- $mayBeFile")
+
+              mayBeFile match {
+                case Some(fileName) => accum + ((name, value))
+                case None =>
+                  if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
+                    accum + ((name, value))
+                  else
+                    accum
+              }
+            })
+            val sshKeyContentInfo = SSHKeyContentInfo(dataMap)
+            //            val keyMaterials = sshKeyContentInfo.keyMaterials
+            val siteNode = Site1.fromNeo4jGraph(siteId)
+            siteNode match {
+              case Some(site) =>
+                val instanceFromSite = site.instances
+                instanceFromSite.foreach {
+                  instance =>
+                    val accessInfo = instance.sshAccessInfo
+                    val persistedKeyName = accessInfo.get.keyPair.keyName
+                    var persistedSshUserName = accessInfo.get.userName
+
+                    val keyMaterials = sshKeyContentInfo.keyMaterials
+
+                    if (keyMaterials.nonEmpty) {
+                      val keySetMap = keyMaterials.keySet
+                      keySetMap.foreach { sshKeyMaterialEntry =>
+                        if (!sshKeyMaterialEntry.equals("userName") && !sshKeyMaterialEntry.equals("passPhrase")) {
+                          val sshKeyData = keyMaterials.get(sshKeyMaterialEntry)
+                          if (persistedKeyName.equalsIgnoreCase(sshKeyMaterialEntry)) {
+                            val keyDirPath = "/keys".concat(instance.instanceId.get).concat("/")
+                            sshKeyData match {
+                              case Some(keyData) =>
+                                try {
+                                  val keyFilePath = keyDirPath.concat(sshKeyMaterialEntry).concat(".pem")
+                                  val temporaryFile = new File(keyDirPath)
+                                  temporaryFile.mkdirs()
+                                  val file = new File(keyFilePath)
+                                  FileUtils.saveContentToFile(file.toString, sshKeyData.get)
+                                  val userName = keyMaterials.filterKeys(key => key.equals("username") && !keyMaterials(key).equalsIgnoreCase("undefined")).get("username")
+
+                                  userName match {
+                                    case Some(userNameValue) =>
+                                      persistedSshUserName = userName.toString
+                                    case None =>
+                                      persistedSshUserName = "ubuntu"
+                                  }
+                                  val passPhrase = keyMaterials.filterKeys(key => key.contains("passPhrase")).get("passPhrase")
+                                  val keyPairInfo = accessInfo.get.keyPair
+                                  val KeyPairInfoUpdated = KeyPairInfo(Some(1), keyPairInfo.keyName, keyPairInfo.keyFingerprint, sshKeyData.get, Some(keyFilePath), KeyPairStatus.toKeyPairStatus("UPLOADED"), Some(persistedSshUserName), Some(passPhrase.get))
+                                  val sshAccessInfoNew = SSHAccessInfo(Some(1), KeyPairInfoUpdated, persistedSshUserName, accessInfo.get.port)
+                                  val instanceObj = instance.copy(sshAccessInfo = Some(sshAccessInfoNew))
+                                  //need to save instance OBJECT
+                                } catch {
+                                  case ex: Exception =>
+                                    logger.error(s"Raised Exception :$ex")
+                                    throw ex
+                                }
+                              case None => None
+                            }
+
+                          } else {
+                            try {
+                              //createNewSshAccessInfo
+                              val keyDirPath = "/keys".concat(instance.instanceId.get).concat("/")
+                              val userName = keyMaterials.filterKeys(key => key.equals("userName") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("username")
+                              userName match {
+                                case Some(userNameValue) =>
+                                  persistedSshUserName = userName.toString
+                                case None =>
+                                  persistedSshUserName = "ubuntu"
+                              }
+                              val keyFilePath = keyDirPath.concat(sshKeyMaterialEntry).concat(".pem")
+                              val temporaryFile = new File(keyDirPath)
+                              temporaryFile.mkdirs()
+                              val file = new File(keyFilePath)
+                              FileUtils.saveContentToFile(file.toString, sshKeyData.get)
+
+                              val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("passPhrase")
+                              val KeyPairInfoUpdated = KeyPairInfo(Some(1), sshKeyMaterialEntry, None, sshKeyData.get, Some(keyFilePath), KeyPairStatus.toKeyPairStatus("UPLOADED"), Some(persistedSshUserName), Some(passPhrase.get))
+                              val sshAccessInfoNew = SSHAccessInfo(Some(1), KeyPairInfoUpdated, persistedSshUserName, accessInfo.get.port)
+                              val instanceObj = instance.copy(sshAccessInfo = Some(sshAccessInfoNew))
+                              //need to save instance OBJECT
+                            } catch {
+                              case ex: Exception =>
+                                logger.error(s"Raised Exception: $ex")
+                                throw ex
+                            }
+                          }
+                        } else {
+                          None
+                        }
+                      }
+                    } else {
+                      None
+                    }
+                }
+              case None =>
+                throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+            }
+            Some("Uploaded Key pair Info successfully")
+          }
+          onComplete(uploadKeyPairsResult) {
+            case Success(page) => complete(StatusCodes.OK, page)
+            case Failure(ex) =>
+              logger.error(s"Failed to update Keys, Message: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, s"Failed to update Keys")
+          }
+        }
       }
     }
   }
