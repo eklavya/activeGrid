@@ -4,8 +4,6 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
 /**
   * Created by nagulmeeras on 01/11/16.
   */
@@ -41,9 +39,14 @@ object InstanceGroup {
   def fromNeo4jGraph(nodeId: Long): Option[InstanceGroup] = {
     Neo4jRepository.findNodeById(nodeId) match {
       case Some(node) =>
-        val instances = node.getRelationships.foldLeft(List.empty[Instance]) {
-          (list, relationship) =>
-            Instance.fromNeo4jGraph(relationship.getEndNode.getId).get :: list
+        //        val instances = node.getRelationships.foldLeft(List.empty[Instance]) {
+        //          (list, relationship) =>
+        //            Instance.fromNeo4jGraph(relationship.getEndNode.getId).get :: list
+        //        }
+
+        val childNodeIds_ig: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceGroup_Instance_Relation)
+        val instances: List[Instance] = childNodeIds_ig.flatMap { childId =>
+          Instance.fromNeo4jGraph(childId)
         }
 
         Some(InstanceGroup(Some(node.getId),

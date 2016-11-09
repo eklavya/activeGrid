@@ -52,11 +52,13 @@ object SiteFilter {
             val accountAndFilter = node.getRelationships.foldLeft((AccountInfo.apply(1), List[Filter]())) {
               (result, relationship) =>
                 val childNode = relationship.getEndNode
+                logger.info(s"Relation Name : ${relationship.getType.name} , Node ID : $nodeId")
                 relationship.getType.name match {
                   case `siteFilter_AccountInfo_Rel` => val accountInfo = AccountInfo.fromNeo4jGraph(childNode.getId)
                     if (accountInfo.nonEmpty) (accountInfo.get, result._2) else result
                   case `siteFilter_Filters_Rel` => val filter = Filter.fromNeo4jGraph(childNode.getId)
                     if (filter.nonEmpty) (result._1, filter.get :: result._2) else result
+                  case _=> result
                 }
             }
             Some(SiteFilter(Some(node.getId), accountAndFilter._1.asInstanceOf[AccountInfo], accountAndFilter._2))
