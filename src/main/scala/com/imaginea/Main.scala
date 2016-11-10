@@ -267,6 +267,7 @@ object Main extends App {
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
+
   implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
   implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
@@ -289,7 +290,6 @@ object Main extends App {
       }
     }
   }
-
 
   implicit object ConditionFormat extends RootJsonFormat[Condition] {
     override def write(obj: Condition): JsValue = {
@@ -592,7 +592,6 @@ object Main extends App {
                   complete(StatusCodes.BadRequest, s"Failed save Site access")
               }
             }
-
           }
         }
     } ~
@@ -745,6 +744,7 @@ object Main extends App {
       }
     }
   }
+
 
   //KeyPair Serivce
   def keyPairRoute: Route = pathPrefix("keypairs") {
