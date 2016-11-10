@@ -263,7 +263,6 @@ object Main extends App {
   }
 
 
-
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
@@ -311,9 +310,9 @@ object Main extends App {
   implicit val LoadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
   implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
 
-
-  implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
+
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -926,26 +925,28 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to Retrieve Softwares List.")
         }
       }
-    } ~ path("instanceTypes" / IntNumber) { siteId =>
+    } ~ path("instanceTypes") {
       get {
-        val listOfInstanceFlavors = Future {
-          val mayBeSite = Site.fromNeo4jGraph(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val listOfInstances = site.instances
-              val listOfInstanceFlavors = listOfInstances.map(instance => InstanceFlavor(instance.instanceType.get, None, instance.memoryInfo.get.total, instance.rootDiskInfo.get.total))
-              Page[InstanceFlavor](listOfInstanceFlavors)
+        parameter("siteId".as[Int]) { siteId =>
+          val listOfInstanceFlavors = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                val listOfInstances = site.instances
+                val listOfInstanceFlavors = listOfInstances.map(instance => InstanceFlavor(instance.instanceType.get, None, instance.memoryInfo.get.total, instance.rootDiskInfo.get.total))
+                Page[InstanceFlavor](listOfInstanceFlavors)
 
-            case None =>
-              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
-              Page[InstanceFlavor](List.empty[InstanceFlavor])
+              case None =>
+                logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+                Page[InstanceFlavor](List.empty[InstanceFlavor])
+            }
           }
-        }
-        onComplete(listOfInstanceFlavors) {
-          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-          case Failure(ex) =>
-            logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
-            complete(StatusCodes.BadRequest, "Unable to get List of Instance Flavors")
+          onComplete(listOfInstanceFlavors) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
+              logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to get List of Instance Flavors")
+          }
         }
       }
     }
@@ -1249,7 +1250,7 @@ object Main extends App {
                   } else {
                     val instanceGroupNode = instanceGroup.toNeo4jGraph(instanceGroup)
                     val siteNode = Neo4jRepository.findNodeById(siteId)
-                    Neo4jRepository.createRelation("HAS_InstanceGroup",siteNode.get , instanceGroupNode)
+                    Neo4jRepository.createRelation("HAS_InstanceGroup", siteNode.get, instanceGroupNode)
                   }
                 } else {
                   throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
@@ -1282,55 +1283,57 @@ object Main extends App {
               complete(StatusCodes.BadRequest, "Unable to get tags")
           }
       }
-    }
-  } ~ path("keypairs" / LongNumber) { siteId =>
-    get {
-      val listOfKeyPairs = Future {
-        val mayBeSite = Site1.fromNeo4jGraph(siteId)
-        mayBeSite match {
-          case Some(site) =>
-            val keyPairs = site.instances.flatMap { instance =>
-              instance.sshAccessInfo.flatMap(x => Some(x.keyPair))
-            }
-            Page[KeyPairInfo](keyPairs)
-          case None =>
-            logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
-            Page[KeyPairInfo](List.empty[KeyPairInfo])
-        }
-      }
-      onComplete(listOfKeyPairs) {
-        case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-        case Failure(ex) =>
-          logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
-          complete(StatusCodes.BadRequest, "Unable to get List of KeyPairs")
-      }
-    }
-  } ~ path("site" / LongNumber / Segment) { (siteId, view) =>
-    get {
-      val filteredSite = Future {
-        val mayBeSite = Site1.fromNeo4jGraph(siteId)
-        mayBeSite match {
-          case Some(site) =>
-            val viewType = ViewType.toViewType(view)
-            val listOfFilteredInstances = site.instances.map { instance =>
-              viewType match {
-                case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("SUMMARY"))
-                case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("SUMMARY"))
-                case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
+    } ~ path("keypairs" / LongNumber) { siteId =>
+      get {
+        val listOfKeyPairs = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site) =>
+              val keyPairs = site.instances.flatMap { instance =>
+                instance.sshAccessInfo.flatMap(x => Some(x.keyPair))
               }
-
-            }
-            Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
-          case None =>
-            logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
-            None
+              Page[KeyPairInfo](keyPairs)
+            case None =>
+              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+              Page[KeyPairInfo](List.empty[KeyPairInfo])
+          }
+        }
+        onComplete(listOfKeyPairs) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(ex) =>
+            logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to get List of KeyPairs")
         }
       }
-      onComplete(filteredSite) {
-        case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-        case Failure(ex) =>
-          logger.error(s"Unable to get Filtered Site; Failed with ${ex.getMessage}", ex)
-          complete(StatusCodes.BadRequest, "Unable to get Filtered Site")
+    } ~ path("site" / LongNumber) { siteId =>
+      get {
+        parameter("type") { view =>
+          val filteredSite = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                val viewType = ViewType.toViewType(view)
+                val listOfFilteredInstances = site.instances.map { instance =>
+                  viewType match {
+                    case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("SUMMARY"))
+                    case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("SUMMARY"))
+                    case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
+                  }
+
+                }
+                Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+              case None =>
+                logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+                None
+            }
+          }
+          onComplete(filteredSite) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
+              logger.error(s"Unable to get Filtered Site; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to get Filtered Site")
+          }
+        }
       }
     }
   }
