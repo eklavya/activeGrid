@@ -69,7 +69,7 @@ object Site1 {
         val reservedInstance: List[ReservedInstanceDetails] = childNodeIds_rid.flatMap { childId =>
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
-
+        logger.info(s"Printing : ${instances.head.blockDeviceMappings}")
         Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")

@@ -239,7 +239,7 @@ object Instance {
       val relationship_securityGroup = "HAS_securityGroup"
       entity.securityGroups.foreach { securityGroup =>
         val securityGroupNode = securityGroup.toNeo4jGraph(securityGroup)
-        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_process)
+        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_securityGroup)
       }
       node
     }

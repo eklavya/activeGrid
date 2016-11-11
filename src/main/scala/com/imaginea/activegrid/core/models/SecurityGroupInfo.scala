@@ -3,8 +3,6 @@ package com.imaginea.activegrid.core.models
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 
-import scala.collection.JavaConversions._
-
 /**
   * Created by nagulmeeras on 27/10/16.
   */
@@ -21,7 +19,6 @@ object SecurityGroupInfo {
     SecurityGroupInfo(id, None, None, None, None, List.empty[IpPermissionInfo], List.empty[KeyValueInfo])
   }
 
-  val repository = Neo4jRepository
   val securityGroupInfoLabel = "SecurityGroupInfo"
   val securityGroup_IpPermission_Relation = "HAS_IP_PERMISSION"
   val securityGroup_KeyValue_Relation = "HAS_KEY_VALUE"
@@ -37,12 +34,12 @@ object SecurityGroupInfo {
       entity.ipPermissions.foreach {
         ipPermission =>
           val ipPermissionNode = ipPermission.toNeo4jGraph(ipPermission)
-          repository.createRelation(securityGroup_IpPermission_Relation, node, ipPermissionNode)
+          Neo4jRepository.createRelation(securityGroup_IpPermission_Relation, node, ipPermissionNode)
       }
       entity.tags.foreach {
         tag =>
           val tagNode = tag.toNeo4jGraph(tag)
-          repository.createRelation(securityGroup_KeyValue_Relation, node, tagNode)
+          Neo4jRepository.createRelation(securityGroup_KeyValue_Relation, node, tagNode)
       }
       node
     }
@@ -58,21 +55,24 @@ object SecurityGroupInfo {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, securityGroupInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "groupName", "groupId", "ownerId", "description")
-          val keyValAndIpPermission = node.getRelationships.foldLeft((List.empty[IpPermissionInfo], List.empty[KeyValueInfo])) {
-            (result, relationship) =>
-              val childNode = relationship.getEndNode
-              relationship.getType.name match {
-                case `securityGroup_KeyValue_Relation` => (result._1, KeyValueInfo.fromNeo4jGraph(childNode.getId).get :: result._2)
-                case `securityGroup_IpPermission_Relation` => (IpPermissionInfo.fromNeo4jGraph(childNode.getId).get :: result._1, result._2)
-              }
+
+          val childNodeIds_KeyValueInfo = Neo4jRepository.getChildNodeIds(nodeId, securityGroup_KeyValue_Relation)
+          val keyValueInfos: List[KeyValueInfo] = childNodeIds_KeyValueInfo.flatMap { childId =>
+            KeyValueInfo.fromNeo4jGraph(childId)
           }
+
+          val childNodeIds_IpPermissionInfo = Neo4jRepository.getChildNodeIds(nodeId, securityGroup_IpPermission_Relation)
+          val ipPermissions: List[IpPermissionInfo] = childNodeIds_IpPermissionInfo.flatMap { childId =>
+            IpPermissionInfo.fromNeo4jGraph(childId)
+          }
+
           Some(SecurityGroupInfo(Some(nodeId),
             ActiveGridUtils.getValueFromMapAs[String](map, "groupName"),
             ActiveGridUtils.getValueFromMapAs[String](map, "groupId"),
             ActiveGridUtils.getValueFromMapAs[String](map, "ownerId"),
             ActiveGridUtils.getValueFromMapAs[String](map, "description"),
-            keyValAndIpPermission._1,
-            keyValAndIpPermission._2))
+            ipPermissions,
+            keyValueInfos))
         } else {
           None
         }

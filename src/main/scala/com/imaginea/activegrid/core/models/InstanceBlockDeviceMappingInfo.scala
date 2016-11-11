@@ -3,8 +3,6 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
 /**
   * Created by nagulmeeras on 27/10/16.
   */
@@ -40,21 +38,21 @@ object InstanceBlockDeviceMappingInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[InstanceBlockDeviceMappingInfo] = {
+    logger.debug(s"Executing $getClass :: fromNeo4jGraph with ID $nodeId")
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
       case Some(node) =>
-        if (Neo4jRepository.hasLabel(node, ibd_VolumeInfo_Relation)) {
-          val volumeInfoObj = node.getRelationships.foldLeft(Option(VolumeInfo.apply(1))) {
-            (reference, relationship) =>
-              val childNode = relationship.getEndNode
-              VolumeInfo.fromNeo4jGraph(childNode.getId)
+        if (Neo4jRepository.hasLabel(node, instanceBlockDeviceMappingInfoLabel)) {
+          val childNodeIds_volumeInfo: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, ibd_VolumeInfo_Relation)
+          val volumeInfos: List[VolumeInfo] = childNodeIds_volumeInfo.flatMap { childId =>
+            VolumeInfo.fromNeo4jGraph(childId)
           }
           val map = Neo4jRepository.getProperties(node, "deviceName", "status", "attachTime", "deleteOnTermination", "usage")
-
+          //logger.info(s"getting : $volumeInfos")
           Some(InstanceBlockDeviceMappingInfo(
             Some(nodeId),
             map("deviceName").asInstanceOf[String],
-            volumeInfoObj.asInstanceOf[VolumeInfo],
+            volumeInfos.head,
             map("status").asInstanceOf[String],
             map("attachTime").asInstanceOf[String],
             map("deleteOnTermination").asInstanceOf[Boolean],

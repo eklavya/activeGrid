@@ -130,10 +130,10 @@ object Main extends App {
         "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings", "securityGroups", "reservedInstance", "region")
 
       val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields ++= longToJsField(fieldNames(0), i.id)
-      fields ++= stringToJsField(fieldNames(1), i.state)
-      fields ++= stringToJsField(fieldNames(2), i.state)
-      fields ++= List((fieldNames(3), JsString(i.name)))
+      fields ++= longToJsField(fieldNames.head, i.id)
+      fields ++= stringToJsField(fieldNames(1), i.instanceId)
+      fields ++= List((fieldNames(2), JsString(i.name)))
+      fields ++= stringToJsField(fieldNames(3), i.state)
       fields ++= stringToJsField(fieldNames(4), i.instanceType)
       fields ++= stringToJsField(fieldNames(5), i.platform)
       fields ++= stringToJsField(fieldNames(6), i.architecture)
@@ -321,7 +321,7 @@ object Main extends App {
           onComplete(Future {
             appsetting.toNeo4jGraph(appsetting)
           }) {
-            case Success(response) => complete(StatusCodes.OK, "Done")
+            case Success(response) => complete(StatusCodes.OK, "Saved successfully!")
             case Failure(exception) =>
               logger.error(s"Unable to save App Settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save App Settings")
@@ -352,7 +352,7 @@ object Main extends App {
             AppSettings.updateAppSettings(setting, "Has_Settings")
           }
           onComplete(response) {
-            case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+            case Success(responseMessage) => complete(StatusCodes.OK, "Updated successfully!")
             case Failure(exception) =>
               logger.error(s"Unable to save the settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save the settings")
@@ -367,7 +367,7 @@ object Main extends App {
             AppSettings.updateAppSettings(setting, "Has_AuthSettings")
           }
           onComplete(response) {
-            case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+            case Success(responseMessage) => complete(StatusCodes.OK, "Updated successfully!")
             case Failure(exception) =>
               logger.error(s"Unable to save the Auth settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save the Auth settings")
@@ -393,7 +393,7 @@ object Main extends App {
           AppSettings.deleteSettings(list, "Has_Settings")
         }
         onComplete(isDeleted) {
-          case Success(response) => complete(StatusCodes.OK, "Done")
+          case Success(response) => complete(StatusCodes.OK, "Deleted Successfully!")
           case Failure(exception) =>
             logger.error(s"Unable to delete settings ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to delete  settings")
@@ -1158,7 +1158,7 @@ object Main extends App {
             }
             val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
             site1.toNeo4jGraph(site1)
-            logger.info(s"Printing SITE : $site1")
+            //logger.info(s"Printing SITE : $site1")
             site1
           }
           onComplete(buildSite) {
@@ -1258,7 +1258,7 @@ object Main extends App {
               }
               logger.info(s"Site Id : $siteId ")
               onComplete(response) {
-                case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+                case Success(responseMessage) => complete(StatusCodes.OK, "Saved successfully!")
                 case Failure(exception) =>
                   logger.error(s"Unable to save the Instance group ${exception.getMessage}", exception)
                   complete(StatusCodes.BadRequest, "Unable save the instance group")
