@@ -1,11 +1,18 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by nagulmeeras on 25/10/16.
-  */
+ * Created by nagulmeeras on 25/10/16.
+ */
 case class Filter(override val id: Option[Long],
                   filterType: FilterType,
                   values: List[String]) extends BaseEntity

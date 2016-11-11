@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
@@ -71,12 +78,16 @@ object APMServerDetails {
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
 
             val siteAndHeaders = node.getRelationships.foldLeft((Site.apply(1), Map.empty[String, String])) {
-              (result, relationsip) =>
-                val childNode = relationsip.getEndNode
-                relationsip.getType.name match {
+              (result, relationship) =>
+                val childNode = relationship.getEndNode
+                relationship.getType.name match {
                   case `apmServer_site_relation` => val site = Site.fromNeo4jGraph(childNode.getId)
                     if (site.nonEmpty) (site.get, result._2) else result
-                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
+                  case `apmServer_header_relation` =>
+                    (result._1,
+                      childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
+                        map + ((property._1, property._2.asInstanceOf[String])))
+                      )
                 }
             }
             Some(new APMServerDetails(

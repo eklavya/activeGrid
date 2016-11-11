@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
@@ -15,7 +22,7 @@ import scala.collection.JavaConversions._
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def neo4jStoreDir = AGU.DBPATH
+  def neo4jStoreDir: String = AGU.DBPATH
 
   def hasLabel(node: Node, label: String): Boolean = {
     node.hasLabel(label)

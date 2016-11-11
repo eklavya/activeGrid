@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
@@ -51,7 +58,9 @@ object AccountInfo {
     maybeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, accountInfoLabel)) {
-          val map = Neo4jRepository.getProperties(node, "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+          val map = Neo4jRepository.getProperties(node, "accountId", "providerType", "ownerAlias", "accessKey", "secretKey",
+            "regionName", "regions", "networkCIDR")
+
           Some(new AccountInfo(Some(node.getId),
             ActiveGridUtils.getValueFromMapAs[String](map, "accountId"),
             InstanceProvider.toInstanceProvider(map("providerType").asInstanceOf[String]),
@@ -69,3 +78,4 @@ object AccountInfo {
     }
   }
 }
+

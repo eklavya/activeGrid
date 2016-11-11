@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
@@ -5,8 +12,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by shareefn on 7/10/16.
-  */
+ * Created by shareefn on 7/10/16.
+ */
 case class ProcessInfo(override val id: Option[Long],
                        pid: Int,
                        parentPid: Int,

@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
@@ -73,8 +80,7 @@ object SiteACL {
       val siteNode: List[Node] = Neo4jRepository.getNodesWithRelation(node, hasSite)
       val siteList: List[Site] = siteNode.map(child => {
         logger.debug(s" Site -> SiteACL ${child}")
-        val site: Site = null
-        site.fromNeo4jGraph(child.getId)
+        Site.fromNeo4jGraph(child.getId)
       }).flatten
 
       val site = siteList match {

@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
@@ -5,8 +12,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by nagulmeeras on 31/10/16.
-  */
+ * Created by nagulmeeras on 31/10/16.
+ */
 case class ReservedInstanceDetails(override val id: Option[Long],
                                    instanceType: Option[String],
                                    reservedInstancesId: Option[String],
@@ -20,7 +27,9 @@ object ReservedInstanceDetails {
   val reservedInstanceDetailsLabel = "ReservedInstanceDetails"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails) extends Neo4jRep[ReservedInstanceDetails] {
+  implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails)
+    extends Neo4jRep[ReservedInstanceDetails] {
+
     override def toNeo4jGraph(entity: ReservedInstanceDetails): Node = {
       val map = Map("instanceType" -> entity.instanceType,
         "reservedInstancesId" -> entity.reservedInstancesId,
@@ -42,7 +51,8 @@ object ReservedInstanceDetails {
     mayBeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, reservedInstanceDetailsLabel)) {
-          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
+          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone", "tenancy",
+            "offeringType", "productDescription", "count")
 
           Some(ReservedInstanceDetails(Some(nodeId),
             ActiveGridUtils.getValueFromMapAs[String](map, "instanceType"),

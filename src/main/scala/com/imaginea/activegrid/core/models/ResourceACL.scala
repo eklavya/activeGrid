@@ -1,9 +1,16 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
-
-import org.slf4j.LoggerFactory
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
+
 /**
  * Created by ranjithrajd on 25/10/16.
  */
@@ -27,11 +34,12 @@ object ResourceACL {
       Neo4jRepository.saveEntity[ResourceACL](label,entity.id,resourceMap)
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] =  fromNeo4jGraph(nodeId)
+    override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = fromNeo4jGraph(nodeId)
   }
+
   def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = {
     val nodeOption = Neo4jRepository.findNodeById(nodeId)
-    nodeOption.map{ node =>
+    nodeOption.map { node =>
       val resourceMap = Neo4jRepository.getProperties(node, "resources", "permission", "resourceIds")
       ResourceACL(Some(node.getId)
         , resourceMap("resources").toString

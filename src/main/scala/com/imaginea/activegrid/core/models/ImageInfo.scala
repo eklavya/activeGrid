@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
@@ -63,7 +70,9 @@ object ImageInfo {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
       val node = Neo4jRepository.findNodeById(nodeId)
-      val map = Neo4jRepository.getProperties(node.get, "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+      val map = Neo4jRepository.getProperties(node.get, "imageId", "state", "ownerId", "publicValue",
+        "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description",
+        "rootDeviceType", "rootDeviceName", "version")
       val imageInfo = ImageInfo(Some(node.get.getId),
         ActiveGridUtils.getValueFromMapAs[String](map, "imageId"),
         ActiveGridUtils.getValueFromMapAs[String](map, "state"),

@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 /**
@@ -10,7 +17,7 @@ import org.slf4j.LoggerFactory
 
 case class UserGroup(override val id: Option[Long]
                      , name: String
-                     , users:Set[User] = Set.empty
+                     , users: Set[User] = Set.empty
                      , accesses: Set[ResourceACL] = Set.empty) extends BaseEntity
 
 object UserGroup {
@@ -30,14 +37,14 @@ object UserGroup {
       //Iterating the users and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with Users ${userGroup.users}")
 
-      userGroup.users.foreach{ user =>
+      userGroup.users.foreach { user =>
         val userNode = user.toNeo4jGraph(user)
         Neo4jRepository.createRelation(hasUsers, userGroupNode, userNode)
       }
 
       //Iterating the access and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with ResourceACL ${userGroup.accesses}")
-      userGroup.accesses.foreach{ resource =>
+      userGroup.accesses.foreach { resource =>
         val resourceNode = resource.toNeo4jGraph(resource)
         Neo4jRepository.createRelation(hasResourceAccess, userGroupNode, resourceNode)
       }

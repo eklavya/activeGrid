@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
+ *
+ * This software is the confidential and proprietary information of Pramati Technologies.
+ * You shall not disclose such Confidential Information and shall use it only in accordance with
+ * the terms of the source code license agreement you entered into with Pramati Technologies.
+ */
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
@@ -26,7 +33,11 @@ object ScalingGroup {
     val mayBeNode = Neo4jRepository.findNodeById(id)
     mayBeNode match {
       case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "desiredCapacity", "maxCapacity", "minCapacity")
+        val map = Neo4jRepository.getProperties(node, "name",
+          "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames",
+          "desiredCapacity", "maxCapacity", "minCapacity"
+        )
+
         val relationship_keyValueInfo = "HAS_keyValueInfo"
         val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, relationship_keyValueInfo)
         val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
