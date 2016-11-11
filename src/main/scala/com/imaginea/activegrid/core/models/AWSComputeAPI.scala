@@ -12,6 +12,7 @@ import com.amazonaws.services.ec2.model._
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
+import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -37,10 +38,18 @@ object AWSComputeAPI {
         val imageInfo = getImageInfo(awsInstance.getImageId, imagesMap)
         val instanceSecurityGroups = awsInstance.getSecurityGroups
         val securityGroupInfos = getSecurityGroupInfo(totalsecurityGroups, instanceSecurityGroups.toList)
+        val keyName = Option(awsInstance.getKeyName)
+        keyName.flatMap { name => Some(name.replaceAll("'", "")) }
+        val tags = awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList
+        val tag = tags.find(tag => tag.key.equals(Constants.NAME_TAG_KEY))
+        val instanceName = tag match {
+          case Some(value) => value.value
+          case None => awsInstance.getPublicDnsName
+        }
         val instance = new Instance(None,
           Some(awsInstance.getInstanceId),
-          awsInstance.getKeyName,
-          Some(awsInstance.getState.toString),
+          instanceName,
+          Some(awsInstance.getState.getName),
           Option(awsInstance.getInstanceType),
           Option(awsInstance.getPlatform),
           Option(awsInstance.getArchitecture),
@@ -49,7 +58,7 @@ object AWSComputeAPI {
           Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).ramSize)),
           Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).rootPartitionSize)),
           awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList,
-          createSSHAccessInfo(awsInstance.getKeyName),
+          createSSHAccessInfo(keyName.get),
           List.empty,
           List.empty,
           Set.empty,
