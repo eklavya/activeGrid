@@ -121,7 +121,7 @@ object AWSComputeAPI {
   }
 
   def getImageInfo(imageId: String, imagesMap: Map[String, Image]): ImageInfo = {
-    logger.info(s"Image ID: $imageId")
+    //logger.info(s"Image ID: $imageId")
     if (imageId.nonEmpty) {
 
       if (imagesMap.contains(imageId)) {
@@ -151,7 +151,11 @@ object AWSComputeAPI {
   def createSSHAccessInfo(keyName: String): Option[SSHAccessInfo] = {
     val node = Neo4jRepository.getNodeByProperty("KeyPairInfo", "keyName", keyName)
     val keyPairInfo = node.flatMap { node => KeyPairInfo.fromNeo4jGraph(node.getId) }
-    keyPairInfo.flatMap(info => Some(SSHAccessInfo(None, info, "", 0)))
+    keyPairInfo match {
+      case Some(keyPair) => Some(SSHAccessInfo(None, keyPair, "", 0))
+      case None => val keyPair = KeyPairInfo(keyName, "", None, KeyPairStatus.toKeyPairStatus("NOT_YET_UPLOADED"))
+        Some(SSHAccessInfo(None, keyPair, "", 0))
+    }
   }
 
   def getSecurityGroupInfo(totalSecurityGroups: Map[String, SecurityGroup], instanceGroupIdentifiers: List[GroupIdentifier]): List[SecurityGroupInfo] = {

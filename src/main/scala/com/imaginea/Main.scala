@@ -1,5 +1,7 @@
 package com.imaginea
 
+import java.util.Date
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -18,6 +20,7 @@ import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObjec
 
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationLong
 import scala.util.{Failure, Success}
 
 object Main extends App {
@@ -25,6 +28,7 @@ object Main extends App {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
+  val cachedSite = mutable.Map.empty[Long, Site1]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
 
@@ -1141,31 +1145,53 @@ object Main extends App {
 
   val discoveryRoutes = pathPrefix("discover") {
     path("site") {
-      put {
-        entity(as[Site1]) { site =>
-          val buildSite = Future {
-            val siteFilters = site.filters
-            logger.info(s"Parsing instance : ${site.instances}")
-            val computedResult = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
-              (result, siteFilter) =>
-                val accountInfo = siteFilter.accountInfo
-                val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
-                val instances = AWSComputeAPI.getInstances(amazonEC2, accountInfo)
-                val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
-                val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
-                val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
-                (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
+      withRequestTimeout(1.minutes) {
+        put {
+          entity(as[Site1]) { site =>
+            val buildSite = Future {
+              val siteFilters = site.filters
+              val savedSite = site.toNeo4jGraph(site)
+              logger.info(s"Time for AWS : ${new Date()}")
+              val computedResult = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+                (result, siteFilter) =>
+                  val accountInfo = siteFilter.accountInfo
+                  val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
+                  val instances = AWSComputeAPI.getInstances(amazonEC2, accountInfo)
+                  val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
+                  val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
+                  val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
+                  (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
+              }
+              val site1 = Site1(Some(savedSite.getId), site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
+              cachedSite.put(savedSite.getId, site1)
+              logger.info(s"Time for AWS : ${new Date()}")
+              site1
             }
-            val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
-            site1.toNeo4jGraph(site1)
-            //logger.info(s"Printing SITE : $site1")
-            site1
+            onComplete(buildSite) {
+              case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case Failure(exception) =>
+                logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to save the Site.")
+            }
           }
-          onComplete(buildSite) {
-            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+        }
+      }
+    } ~ path("site" / "save" / LongNumber) { siteId =>
+      withRequestTimeout(4.minutes){
+        put {
+          val siteResponse = Future {
+            val mayBeSite = cachedSite.get(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                site.toNeo4jGraph(site)
+              case None => throw new NotFoundException(s"Site with id : $siteId")
+            }
+          }
+          onComplete(siteResponse) {
+            case Success(response) => complete(StatusCodes.OK, "Site saved successfully!")
             case Failure(exception) =>
-              logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to save the Site.")
+              logger.error(s"Unable to save the site ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to save the site")
           }
         }
       }
@@ -1173,7 +1199,8 @@ object Main extends App {
       siteId =>
         get {
           val siteObj = Future {
-            Site1.fromNeo4jGraph(siteId)
+            logger.info(s"Printing Site : $cachedSite")
+            cachedSite.get(siteId)
           }
           onComplete(siteObj) {
             case Success(response) => complete(StatusCodes.OK, response)
@@ -1269,11 +1296,12 @@ object Main extends App {
       path("tags" / LongNumber) {
         siteId =>
           val tags = Future {
-            val site = Site1.fromNeo4jGraph(siteId)
-            if (site.nonEmpty) {
-              site.get.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
-            } else {
-              throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+            val mayBeSite = cachedSite.get(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
+              case None =>
+                throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
             }
           }
           onComplete(tags) {
@@ -1286,7 +1314,7 @@ object Main extends App {
     } ~ path("keypairs" / LongNumber) { siteId =>
       get {
         val listOfKeyPairs = Future {
-          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          val mayBeSite = cachedSite.get(siteId)
           mayBeSite match {
             case Some(site) =>
               val keyPairs = site.instances.flatMap { instance =>
@@ -1338,10 +1366,12 @@ object Main extends App {
     }
   }
 
+
   val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
 
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
+
   logger.info(s"Server online at http://${AGU.HOST}:${AGU.PORT}")
 
 
