@@ -3,18 +3,18 @@ package com.imaginea.activegrid.core.models
 /**
   * Created by sivag on 28/10/16.
   */
-class SiteViewFilter extends  ViewFilter[AWSSite]{
+class SiteViewFilter extends  ViewFilter[Site1]{
 
   val emptyList = List.empty
 
-  def getDetailedSiteView(t: AWSSite): AWSSite ={
-    AWSSite(Some(0L),t.name,t.instances,Some(List.empty[SiteFilter]),Some(List.empty[KeyPairInfo]),Some(List.empty[Instance]),Some(List.empty[Application]),Some(""),List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[ReservedInstanceDetails],List.empty[AutoScalingPolicy])
+  def getDetailedSiteView(t: Site1): Site1 ={
+    Site1(t.id,t.siteName,t.instances,t.reservedInstanceDetails,t.filters,t.loadBalancers,t.scalingGroups,t.groupsList)
   }
 
-  def getSummarySiteView(t: AWSSite): AWSSite = {
-    AWSSite(Some(0L),t.name,Some(List.empty[Instance]),Some(List.empty[SiteFilter]),Some(List.empty[KeyPairInfo]),Some(List.empty[Instance]),Some(List.empty[Application]),Some(""),List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[ReservedInstanceDetails],List.empty[AutoScalingPolicy])
+  def getSummarySiteView(t: Site1): Site1 = {
+    Site1(t.id,t.siteName,t.instances,t.reservedInstanceDetails,t.filters,t.loadBalancers,t.scalingGroups,t.groupsList)
   }
-  override def filterInstance(t: AWSSite, viewLevel: ViewLevel): AWSSite = {
+  override def filterInstance(t: Site1, viewLevel: ViewLevel): Site1 = {
     viewLevel match {
       case DETAILED => getDetailedSiteView(t)
       case SUMMARY => getSummarySiteView(t)

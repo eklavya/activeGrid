@@ -32,7 +32,7 @@ object PolicyCondition {
         "scaleType" -> policyCondition.scaleType,
         "scalingGroup" -> policyCondition.scalingGroup
       )
-      val policyConditionNode = GraphDBExecutor.saveEntity[PolicyCondition](label, map)
+      val policyConditionNode = Neo4jRepository.saveEntity[PolicyCondition](label,policyCondition.id, map)
       policyConditionNode
     }
 
@@ -45,8 +45,8 @@ object PolicyCondition {
   def fromNeo4jGraph(nodeId: Long): Option[PolicyCondition] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
-      val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+      val node = Neo4jRepository.findNodeById(nodeId)
+      val map = Neo4jRepository.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
       val policyCondition = PolicyCondition(Some(nodeId),
         map("namapplicationTiere").asInstanceOf[ApplicationTier],
         map("metricType").asInstanceOf[MetricType],

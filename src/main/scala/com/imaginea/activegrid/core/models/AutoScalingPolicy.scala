@@ -25,7 +25,7 @@ object AutoScalingPolicy {
         "primaryConditions" -> autoScalingPolicy.primaryConditions,
         "secondaryConditions" -> autoScalingPolicy.secondaryConditions,
         "lastAppliedAt" -> autoScalingPolicy.lastAppliedAt)
-      val autoScalingPolicyNode = GraphDBExecutor.saveEntity[PolicyCondition](label, map)
+      val autoScalingPolicyNode = Neo4jRepository.saveEntity[PolicyCondition](label, autoScalingPolicy.id,map)
       autoScalingPolicyNode
     }
 
@@ -38,8 +38,8 @@ object AutoScalingPolicy {
   def fromNeo4jGraph(nodeId: Long): Option[AutoScalingPolicy] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
-      val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+      val node = Neo4jRepository.findNodeById(nodeId)
+      val map = Neo4jRepository.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
       val autoScalingPolicy = AutoScalingPolicy(Some(nodeId),
         map("application").asInstanceOf[Application],
         map("primaryConditions").asInstanceOf[Array[PolicyCondition]].toList,

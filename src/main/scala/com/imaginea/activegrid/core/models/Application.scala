@@ -35,7 +35,7 @@ object Application {
         "responseTime" -> application.responseTime
       )
 
-      val applicationNode = GraphDBExecutor.saveEntity[Application](label, map)
+      val applicationNode = Neo4jRepository.saveEntity[Application](label,application.id, map)
       applicationNode
     }
 
@@ -48,8 +48,8 @@ object Application {
   def fromNeo4jGraph(nodeId: Long): Option[Application] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
-      val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+      val node = Neo4jRepository.findNodeById(nodeId)
+      val map = Neo4jRepository.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
       val application = Application(Some(nodeId),
         map("name").asInstanceOf[String],
         map("description").asInstanceOf[String],

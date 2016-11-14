@@ -26,7 +26,7 @@ object ApplicationTier {
         "instances" -> applicationTier.instances.toArray,
         "apmServer" -> applicationTier.apmServer)
 
-      val applicationTierNode = GraphDBExecutor.saveEntity[ApplicationTier](label, map)
+      val applicationTierNode = Neo4jRepository.saveEntity[ApplicationTier](label, applicationTier.id,map)
       applicationTierNode
     }
 
@@ -39,8 +39,8 @@ object ApplicationTier {
   def fromNeo4jGraph(nodeId: Long): Option[ApplicationTier] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {
-      val node = GraphDBExecutor.findNodeById(nodeId)
-      val map = GraphDBExecutor.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+      val node = Neo4jRepository.findNodeById(nodeId)
+      val map = Neo4jRepository.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
       val applicationTier = ApplicationTier(Some(nodeId),
         map("name").asInstanceOf[String],
         map("description").asInstanceOf[String],

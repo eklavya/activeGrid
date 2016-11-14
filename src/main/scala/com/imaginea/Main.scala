@@ -1332,15 +1332,16 @@ object Main extends App {
       }
     }
   }
-  def serviceEndPoints = pathPrefix("sites") {
+  def siteServices = pathPrefix("sites") {
     val siteViewFilter = new SiteViewFilter()
     get {
       parameters('viewLevel.as[String]) {
         (viewLevel) =>
           val result = Future {
+            logger.info("View level is..."+viewLevel)
             Neo4jRepository.getNodesByLabel("Site1").map{ siteNode =>
               Site1.fromNeo4jGraph(siteNode.getId) match {
-                case Some(siteObj) => Some(siteViewFilter.filterInstance (siteObj, ViewLevel.toViewLevel (viewLevel) ))
+                case Some(siteObj) => Some(siteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel (viewLevel) ))
                 case None => None
               }
             }
@@ -1352,9 +1353,29 @@ object Main extends App {
           }
       }
     }
+  } ~ path("sites" / LongNumber) {
+    siteId => delete {
+      val maybeDelete = Future {
+        Neo4jRepository.findNodeById(siteId).isDefined match {
+          case true => {
+            Neo4jRepository.deleteEntity(siteId)
+            Some("Deleted successfully")
+          }
+          case false => {
+            Some(s"Site with ${siteId} not existed")
+          }
+        }
+      }
+      onComplete(maybeDelete) {
+        case Success(deleteStatus) => complete(StatusCodes.OK, deleteStatus)
+        case Failure(ex) =>
+          logger.info("Failed to delete entity", ex)
+          complete(StatusCodes.BadRequest, "Deletion failed")
+      }
+    }
   }
 
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
+  val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
 
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)

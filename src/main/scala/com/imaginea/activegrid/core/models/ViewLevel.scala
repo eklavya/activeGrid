@@ -22,6 +22,7 @@ case object ViewLevel {
     viewLevel match {
       case "SUMMARY" => SUMMARY
       case "DETAILED" => DETAILED
+      case _ => SUMMARY
     }
   }
 }
