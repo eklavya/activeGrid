@@ -62,7 +62,6 @@ object Software {
       case ex: Exception =>
         logger.warn(ex.getMessage, ex)
         None
-
     }
   }
 
