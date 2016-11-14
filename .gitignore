@@ -14,10 +14,13 @@ bin/
 /logs/
 /modules
 /project/target
+/target
 tmp/
 test-result
 server.pid
 *.eml
+*.iml
+.idea/
 /dist/
 .cache
-
+graphdb/
