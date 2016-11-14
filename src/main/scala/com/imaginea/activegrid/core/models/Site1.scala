@@ -25,6 +25,18 @@ object Site1 {
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
 
+  def delete(siteId: Long): String = {
+    val maybeNode = Neo4jRepository.findNodeById(siteId)
+    maybeNode match {
+      case Some(node) => {
+        Neo4jRepository.deleteEntity(node.getId)
+        "Site delete successfully!!!"
+      }
+      case None =>
+        s"Site with id ${siteId} not existed"
+    }
+  }
+
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -71,6 +83,7 @@ object Site1 {
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
     }
+
   }
 
   implicit class RichSite1(site1: Site1) extends Neo4jRep[Site1] {
@@ -114,6 +127,7 @@ object Site1 {
     override def fromNeo4jGraph(id: Long): Option[Site1] = {
       Site1.fromNeo4jGraph(id)
     }
+
   }
 
 }

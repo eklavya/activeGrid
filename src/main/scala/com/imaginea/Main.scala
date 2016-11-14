@@ -1356,15 +1356,7 @@ object Main extends App {
   } ~ path("sites" / LongNumber) {
     siteId => delete {
       val maybeDelete = Future {
-        Neo4jRepository.findNodeById(siteId).isDefined match {
-          case true => {
-            Neo4jRepository.deleteEntity(siteId)
-            Some("Deleted successfully")
-          }
-          case false => {
-            Some(s"Site with ${siteId} not existed")
-          }
-        }
+        Some(Site1.delete(siteId))
       }
       onComplete(maybeDelete) {
         case Success(deleteStatus) => complete(StatusCodes.OK, deleteStatus)
