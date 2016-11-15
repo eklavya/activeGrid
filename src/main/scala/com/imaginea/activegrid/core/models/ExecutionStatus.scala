@@ -6,6 +6,9 @@ package com.imaginea.activegrid.core.models
 case class ExecutionStatus(status:Boolean,msg:String)
 
 object ExecutionStatus{
+
+  def apply(status: Boolean): ExecutionStatus = new ExecutionStatus(status, "")
+
  def getMsg(es:ExecutionStatus): String ={
      return es.msg
  }

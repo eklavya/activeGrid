@@ -5,6 +5,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol
 
+import scala.collection.JavaConversions._
+
 /**
   * Created by shareefn on 7/10/16.
   */
@@ -251,6 +253,29 @@ object Instance {
     override def fromNeo4jGraph(id: Long): Option[Instance] = {
       Instance.fromNeo4jGraph(id)
     }
+  }
+
+  def deleteFromSite(siteId:Long, instanceId:String) : ExecutionStatus = {
+     val maybeSite = Site1.fromNeo4jGraph(siteId)
+     val instanceIdLong = instanceId.asInstanceOf[Long]
+    if(!maybeSite.isDefined) {
+      ExecutionStatus(false, s"Parent site ${siteId} not available")
+    }
+    else
+    {      val site = maybeSite.get
+           val instance2 = site.instances.filter(instance => instance.id.isDefined && instance.id.get == instanceIdLong)
+          //Removing  instance from Groups list
+
+           site.groupsList.map(instanceGroup=>Neo4jRepository.deleteRelation(instanceIdLong,instanceGroup,"instances"))
+          //Removing from applications
+
+           //Removing from site
+           Neo4jRepository.deleteRelation(instanceId.toLong, site, "instances")
+            ExecutionStatus(true, s"Instance ${instanceId} delete from ${siteId} successfully!!")
+
+    }
+    ExecutionStatus(true, s"Instance ${instanceId} delete from ${siteId} successfully!!")
+
   }
 
 }

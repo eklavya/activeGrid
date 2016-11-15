@@ -17,7 +17,7 @@ object IpPermissionInfo {
   val ipPermissionLabel = "IpPermissionInfo"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class IpPermissionInfoImpl(ipPermissionInfo: IpPermissionInfo) extends Neo4jRep[IpPermissionInfo] {
+  implicit class IpPermissionInfoImpl(ipPermissionInfo: IpPermissionInfo) extends   Neo4jRep[IpPermissionInfo] {
     override def toNeo4jGraph(entity: IpPermissionInfo): Node = {
       val map = Map("fromPort" -> entity.fromPort,
         "toPort" -> entity.toPort,

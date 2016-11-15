@@ -150,6 +150,8 @@ object AWSComputeAPI {
           val sg = securityGroup._2
           val ipPermissions = sg.getIpPermissions.toList.map {
             ipPermission =>
+              logger.info("Ip permission info....."+ipPermission.toString)
+
               IpPermissionInfo(None,
                 ipPermission.getFromPort,
                 ipPermission.getToPort,

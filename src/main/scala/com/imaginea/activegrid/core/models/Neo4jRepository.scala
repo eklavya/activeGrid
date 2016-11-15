@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 
+
 /**
   * Created by babjik on 23/9/16.
   */
@@ -103,17 +104,23 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   }
 
-  def deleteRelation(instanceId: Long, parentEntity: BaseEntity, relation: String): Unit = withTx { implicit neo =>
-    import scala.collection.JavaConversions._;
+  def deleteRelation(instanceId: Long, parentEntity: BaseEntity, relationName: String): ExecutionStatus = withTx { implicit neo =>
     parentEntity.id match {
       case Some(id) => val parent = getNodeById(id)
-        val relationList = parent.getRelationships(Direction.OUTGOING).toList.filter(relation => relation.getType.name.equals(relation))
-        relationList.foreach(relation => relation.getNodes.toList.foreach {
-          node => if (node.getId == instanceId) {
-            node.delete()
-            relation.delete()
-          }
-        })
+        //Fetching relations that maps instance to site
+        val relationList = parent.getRelationships(Direction.OUTGOING).toList.filter(relation => relation.getType.name.equals(relationName))
+
+        //Deleting insatnce node and relation.
+        relationList.foreach {
+          relation => val instanceNode = relation.getEndNode
+            if(instanceNode.getId == instanceId) {
+              instanceNode.delete()
+              relation.delete()
+            }
+        }
+        ExecutionStatus(true,s"Instace ${instanceId} from ${parentEntity.id} removed successfully")
+        // If parent id invalid
+      case _ => ExecutionStatus(false,s"Parent node ${parentEntity.id} not available")
     }
   }
 
