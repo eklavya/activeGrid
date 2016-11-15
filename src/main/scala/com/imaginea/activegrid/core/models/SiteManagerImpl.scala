@@ -5,26 +5,22 @@ package com.imaginea.activegrid.core.models
   */
 object SiteManagerImpl {
 
-  def deleteIntanceFromSite(siteId:Long,instanceId:String) : ExecutionStatus = {
-       val siteNode = Site1.fromNeo4jGraph(siteId)
+  def deleteIntanceFromSite(siteId: Long, instanceId: String): ExecutionStatus = {
+    val siteNode = Site1.fromNeo4jGraph(siteId)
+    siteNode match {
+      case None => ExecutionStatus(false, s"Site ${siteId} not available")
+      case Some(site) =>
+        val site = siteNode.get
+        val instance = site.instances.map(instance => instance.id.toString == instanceId)
 
-       if(!siteNode.isDefined){
-         ExecutionStatus(false,s"Site ${siteId} not available")
-       }
-       else {
-         val site = siteNode.get
-         val instance = site.instances.map(instance => instance.id.toString == instanceId)
+        //Removing instance  from groups list
+        site.groupsList.map(instanceGroup => Neo4jRepository.deleteRelation(instanceId, instanceGroup, "instances"))
 
-         //Removing instance  from groups list
-         site.groupsList.map(instanceGroup => Neo4jRepository.deleteRelation(instanceId,instanceGroup,"instances"))
+        //Need to remove from application.
 
-         //Need to remove from application.
-
-         //Removing from site
-         Neo4jRepository.deleteRelation(instanceId, site, "instances")
-         ExecutionStatus(true,s"Instance ${instanceId} deleted from site ${siteId}")
-       }
-
-
+        //Removing from site
+        Neo4jRepository.deleteRelation(instanceId, site, "instances")
+        ExecutionStatus(true, s"Instance ${instanceId} deleted from site ${siteId}")
+    }
   }
 }
