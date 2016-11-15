@@ -50,7 +50,7 @@ object Instance {
     Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
   def apply(name: String): Instance =
-    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, false, None)
+    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
@@ -71,7 +71,7 @@ object Instance {
         val elasticIP = map.get("elasticIP").asInstanceOf[Option[String]]
         val monitoring = map.get("monitoring").asInstanceOf[Option[String]]
         val rootDeviceType = map.get("rootDeviceType").asInstanceOf[Option[String]]
-        val reservedInstance = map.get("reservedInstance").toString.toBoolean
+        val reservedInstance = if (map.get("reservedInstance").nonEmpty) map("reservedInstance").asInstanceOf[Boolean] else false
         val region = map.get("region").asInstanceOf[Option[String]]
         //TO DO
         //val launchTime: Date = new Date(map.get("launchTime").get.toString.toLong)
@@ -120,9 +120,21 @@ object Instance {
           ProcessInfo.fromNeo4jGraph(childId)
         }.toSet
 
+        val relationship_blockDevice = "HAS_blockDeviceMapping"
+        val childNodeIds_blockDevice = Neo4jRepository.getChildNodeIds(nodeId, relationship_blockDevice)
+        val blockDeviceMappings: List[InstanceBlockDeviceMappingInfo] = childNodeIds_blockDevice.flatMap { childId =>
+          InstanceBlockDeviceMappingInfo.fromNeo4jGraph(childId)
+        }
+
+        val relationship_securityGroup = "HAS_securityGroup"
+        val childNodeIds_securityGroup = Neo4jRepository.getChildNodeIds(nodeId, relationship_securityGroup)
+        val securityGroups: List[SecurityGroupInfo] = childNodeIds_securityGroup.flatMap { childId =>
+          SecurityGroupInfo.fromNeo4jGraph(childId)
+        }
+
         Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo, rootDiskInfo,
           tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers,
-          None, availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, List.empty, List.empty, reservedInstance, region))
+          None, availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, blockDeviceMappings, securityGroups, reservedInstance, region))
       case None =>
         logger.warn(s"could not find node for Instance with nodeId $nodeId")
         None
@@ -133,6 +145,7 @@ object Instance {
   implicit class InstanceImpl(instance: Instance) extends Neo4jRep[Instance] {
 
     override def toNeo4jGraph(entity: Instance): Node = {
+      logger.info(s"Executing $getClass :: toNeo4jGraph")
       val label = "Instance"
       val mapPrimitives = Map("instanceId" -> entity.instanceId,
         "name" -> entity.name,
@@ -152,6 +165,7 @@ object Instance {
         "reservedInstance" -> entity.reservedInstance,
         "region" -> entity.region
       )
+      //logger.info(s"Printging Instance : $entity  : ID : ${entity.id.get.getClass}")
       val node = Neo4jRepository.saveEntity[Instance](label, entity.id, mapPrimitives)
 
       entity.memoryInfo match {
@@ -214,6 +228,18 @@ object Instance {
       entity.processes.foreach { process =>
         val processNode = process.toNeo4jGraph(process)
         Neo4jRepository.setGraphRelationship(node, processNode, relationship_process)
+      }
+
+      val relationship_blockingDeviceMapping = "HAS_blockDeviceMapping"
+      entity.blockDeviceMappings.foreach { blockDeviceMapping =>
+        val blockDeviceNode = blockDeviceMapping.toNeo4jGraph(blockDeviceMapping)
+        Neo4jRepository.setGraphRelationship(node, blockDeviceNode, relationship_blockingDeviceMapping)
+      }
+
+      val relationship_securityGroup = "HAS_securityGroup"
+      entity.securityGroups.foreach { securityGroup =>
+        val securityGroupNode = securityGroup.toNeo4jGraph(securityGroup)
+        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_securityGroup)
       }
       node
     }

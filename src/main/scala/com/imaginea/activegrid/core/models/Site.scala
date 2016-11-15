@@ -14,6 +14,10 @@ case class Site(override val id: Option[Long], instances: List[Instance], siteNa
 object Site {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
+  def apply(id: Long): Site = {
+    Site(Some(id), List.empty[Instance], None, None)
+  }
+
   implicit class SiteImpl(site: Site) extends Neo4jRep[Site] {
 
     override def toNeo4jGraph(entity: Site): Node = {

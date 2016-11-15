@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 case class APMServerDetails(override val id: Option[Long],
                             name: String,
                             serverUrl: String,
-                            monitoredSite: Option[Site],
+                            monitoredSite: Option[Site1],
                             provider: APMProvider,
                             headers: Option[Map[String, String]]) extends BaseEntity
 
@@ -69,24 +69,24 @@ object APMServerDetails {
         try {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
-            val enityMap = collection.mutable.Map.empty[String, Option[Any]]
-            node.getRelationships.map {
-              relationship =>
-                relationship.getType.name match {
-                  case `apmServer_site_relation` =>
-                    enityMap.put("siteEntity", Site.fromNeo4jGraph(relationship.getEndNode.getId))
 
-                  case `apmServer_header_relation` =>
-                    enityMap.put("headers", Some(relationship.getEndNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String])))))
+            val siteAndHeaders = node.getRelationships.foldLeft((Site1.apply(1), Map.empty[String, String])) {
+              (result, relationsip) =>
+                val childNode = relationsip.getEndNode
+                relationsip.getType.name match {
+                  case `apmServer_site_relation` => val site = Site1.fromNeo4jGraph(childNode.getId)
+                    if (site.nonEmpty) (site.get, result._2) else result
+                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
+                  case _=> result
                 }
             }
             Some(new APMServerDetails(
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              if (enityMap.contains("siteEntiy")) enityMap("siteEntiy").asInstanceOf[Option[Site]] else None,
+              Option(siteAndHeaders._1.asInstanceOf[Site1]),
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
-              if (enityMap.contains("headers")) enityMap("headers").asInstanceOf[Option[Map[String, String]]] else None
+              Option(siteAndHeaders._2)
             ))
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $apmServerDetailsLabel")
