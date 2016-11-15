@@ -314,6 +314,7 @@ object Main extends App {
 
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  implicit val executionStatusFormat = jsonFormat(ExecutionStatus.apply,"status","msg")
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -1356,10 +1357,10 @@ object Main extends App {
   } ~ path("sites" / LongNumber) {
     siteId => delete {
       val maybeDelete = Future {
-        Some(Site1.delete(siteId))
+        Site1.delete(siteId)
       }
       onComplete(maybeDelete) {
-        case Success(deleteStatus) => complete(StatusCodes.OK, deleteStatus)
+        case Success(deleteStatus) => complete(StatusCodes.OK,ExecutionStatus.getMsg(deleteStatus))
         case Failure(ex) =>
           logger.info("Failed to delete entity", ex)
           complete(StatusCodes.BadRequest, "Deletion failed")

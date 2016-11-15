@@ -25,15 +25,15 @@ object Site1 {
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
 
-  def delete(siteId: Long): String = {
+  def delete(siteId: Long): ExecutionStatus = {
     val maybeNode = Neo4jRepository.findNodeById(siteId)
     maybeNode match {
       case Some(node) => {
         Neo4jRepository.deleteEntity(node.getId)
-        "Site delete successfully!!!"
+        ExecutionStatus(true,"Site deleted successfully")
       }
       case None =>
-        s"Site with id ${siteId} not existed"
+        ExecutionStatus(false,"Site not available")
     }
   }
 
