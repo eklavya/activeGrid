@@ -113,7 +113,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   }
 
-  def deleteRelation(instanceId: Long, parentEntity: BaseEntity, relationName: String): ExecutionStatus = withTx { implicit neo =>
+  def deleteRelation(instanceId: String, parentEntity: BaseEntity, relationName: String): ExecutionStatus = withTx { implicit neo =>
     parentEntity.id match {
       case Some(id) => val parent = getNodeById(id)
         //Fetching relations that maps instance to site
