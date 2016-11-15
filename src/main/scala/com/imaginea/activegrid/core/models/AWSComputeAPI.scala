@@ -57,6 +57,7 @@ object AWSComputeAPI {
       val region = accountInfo.regionName
       val volumesMap: Map[String, Volume] = Map.empty[String, Volume]
       val snapshotsMap: Map[String, List[Snapshot]] = Map.empty
+
       val instanceBlockDeviceMappingInfo = createBlockDeviceMapping(blockDeviceMapping, volumesMap, snapshotsMap)
 
       Instance(None, id, nodeName, instanceState, instanceType, platform, architecture, publicDnsName,
@@ -65,6 +66,28 @@ object AWSComputeAPI {
         Some(accountInfo), availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, None, monitoring,
         rootDeviceType, instanceBlockDeviceMappingInfo, List.empty[SecurityGroupInfo], reservedInstance = false, Some(region))
     }
+  }
+
+  def createSnapshotsMap(volumeIds: List[String], accountInfo: AccountInfo): Map[String, List[Snapshot]] = {
+    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName)
+    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey, accountInfo.secretKey, accountInfo.regionName)
+    val aWSCredentials = getAWSCredentials(aWSContextBuilder)
+    val amazonEC2: AmazonEC2 = AWSInstanceHelper(aWSCredentials, aWSRegion)
+    val describeSnapshotsRequest: DescribeSnapshotsRequest = new DescribeSnapshotsRequest
+    val filter = new com.amazonaws.services.ec2.model.Filter("volume-id", volumeIds)
+    val describeSnapshotsResult: DescribeSnapshotsResult = amazonEC2.describeSnapshots(describeSnapshotsRequest
+      .withFilters(filter))
+    describeSnapshotsResult.getSnapshots.foldLeft(Map[String, List[Snapshot]]()) { (map, snapshot) =>
+      val volumeId = snapshot.getVolumeId
+      val list = map.get(volumeId)
+      if (list.nonEmpty) {
+        map + ((volumeId, snapshot :: list.get))
+      } else {
+        map + ((volumeId, List(snapshot)))
+      }
+
+    }
+
   }
 
   def createBlockDeviceMapping(blockDeviceMapping: List[InstanceBlockDeviceMapping], volumesMap: Map[String, Volume], snapshotsMap: Map[String, List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
@@ -94,7 +117,6 @@ object AWSComputeAPI {
     val availabilityZone = volume.getAvailabilityZone
     val state = volume.getState
     val createTime = volume.getCreateTime.toString
-    import scala.collection.JavaConversions._
     val tags: List[KeyValueInfo] = createKeyValueInfo(volume.getTags.toList)
     val volumeType = volume.getVolumeType
     val snapshotCount = snapshots.size
