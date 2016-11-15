@@ -3,14 +3,10 @@ package com.imaginea.activegrid.core.models
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol
-
-import scala.collection.JavaConversions._
 
 /**
   * Created by shareefn on 7/10/16.
   */
-
 case class Instance(override val id: Option[Long],
                     instanceId: Option[String],
                     name: String,
@@ -54,11 +50,7 @@ object Instance {
     Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
   def apply(name: String): Instance =
-    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, false, None)
-
-  def apply(aws: com.amazonaws.services.ec2.model.Instance): Instance =
-    Instance(None, Option(aws.getInstanceId), aws.getIamInstanceProfile.getArn, Option(aws.getState.getName), Option(aws.getInstanceType), Option(aws.getPlatform), Option(aws.getArchitecture), Option(aws.getPublicDnsName), Option(aws.getLaunchTime.getTime.toLong), None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser],None,None,None,None,None,None,None,None,List.empty[InstanceBlockDeviceMappingInfo],List.empty[SecurityGroupInfo],false,None)
-
+    Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo], None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
@@ -79,7 +71,7 @@ object Instance {
         val elasticIP = map.get("elasticIP").asInstanceOf[Option[String]]
         val monitoring = map.get("monitoring").asInstanceOf[Option[String]]
         val rootDeviceType = map.get("rootDeviceType").asInstanceOf[Option[String]]
-        val reservedInstance = map.get("reservedInstance").toString.toBoolean
+        val reservedInstance = if (map.get("reservedInstance").nonEmpty) map("reservedInstance").asInstanceOf[Boolean] else false
         val region = map.get("region").asInstanceOf[Option[String]]
         //TO DO
         //val launchTime: Date = new Date(map.get("launchTime").get.toString.toLong)
@@ -153,6 +145,7 @@ object Instance {
   implicit class InstanceImpl(instance: Instance) extends Neo4jRep[Instance] {
 
     override def toNeo4jGraph(entity: Instance): Node = {
+      logger.info(s"Executing $getClass :: toNeo4jGraph")
       val label = "Instance"
       val mapPrimitives = Map("instanceId" -> entity.instanceId,
         "name" -> entity.name,
@@ -172,6 +165,7 @@ object Instance {
         "reservedInstance" -> entity.reservedInstance,
         "region" -> entity.region
       )
+      //logger.info(s"Printging Instance : $entity  : ID : ${entity.id.get.getClass}")
       val node = Neo4jRepository.saveEntity[Instance](label, entity.id, mapPrimitives)
 
       entity.memoryInfo match {
@@ -245,7 +239,7 @@ object Instance {
       val relationship_securityGroup = "HAS_securityGroup"
       entity.securityGroups.foreach { securityGroup =>
         val securityGroupNode = securityGroup.toNeo4jGraph(securityGroup)
-        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_process)
+        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_securityGroup)
       }
       node
     }
@@ -253,29 +247,6 @@ object Instance {
     override def fromNeo4jGraph(id: Long): Option[Instance] = {
       Instance.fromNeo4jGraph(id)
     }
-  }
-
-  def deleteFromSite(siteId:Long, instanceId:String) : ExecutionStatus = {
-     val maybeSite = Site1.fromNeo4jGraph(siteId)
-     val instanceIdLong = instanceId.asInstanceOf[Long]
-    if(!maybeSite.isDefined) {
-      ExecutionStatus(false, s"Parent site ${siteId} not available")
-    }
-    else
-    {      val site = maybeSite.get
-           val instance2 = site.instances.filter(instance => instance.id.isDefined && instance.id.get == instanceIdLong)
-          //Removing  instance from Groups list
-
-           site.groupsList.map(instanceGroup=>Neo4jRepository.deleteRelation(instanceIdLong,instanceGroup,"instances"))
-          //Removing from applications
-
-           //Removing from site
-           Neo4jRepository.deleteRelation(instanceId.toLong, site, "instances")
-            ExecutionStatus(true, s"Instance ${instanceId} delete from ${siteId} successfully!!")
-
-    }
-    ExecutionStatus(true, s"Instance ${instanceId} delete from ${siteId} successfully!!")
-
   }
 
 }

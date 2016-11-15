@@ -16,7 +16,7 @@ object Filter {
 
   implicit class FilterImpl(filter: Filter) extends Neo4jRep[Filter] {
     override def toNeo4jGraph(entity: Filter): Node = {
-      val map = Map("filterType" -> entity.filterType.toString, "values" -> entity.values)
+      val map = Map("filterType" -> entity.filterType.toString, "values" -> entity.values.toArray)
       Neo4jRepository.saveEntity[Filter](filterLabelName, entity.id, map)
     }
 
@@ -33,7 +33,7 @@ object Filter {
           val map = Neo4jRepository.getProperties(node, "filterType", "values")
           Some(Filter(Some(node.getId),
             FilterType.toFilteType(map("filterType").asInstanceOf[String]),
-            map("values").asInstanceOf[List[String]]))
+            map("values").asInstanceOf[Array[String]].toList))
         } else {
           None
         }

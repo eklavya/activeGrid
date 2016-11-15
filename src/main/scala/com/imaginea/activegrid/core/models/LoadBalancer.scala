@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
   */
 case class LoadBalancer(override val id: Option[Long],
                         name: String,
-                        vpcId: String,
+                        vpcId: Option[String],
                         region: Option[String],
                         instanceIds: List[String],
                         availabilityZones: List[String]) extends BaseEntity
@@ -28,7 +28,7 @@ object LoadBalancer {
         val loadBalancer = LoadBalancer(
           Some(node.getId),
           map("name").toString,
-          map("vpcId").toString,
+          ActiveGridUtils.getValueFromMapAs[String](map, "vpcId"),
           ActiveGridUtils.getValueFromMapAs[String](map, "region"),
           map("instanceIds").asInstanceOf[Array[String]].toList,
           map("availabilityZones").asInstanceOf[Array[String]].toList

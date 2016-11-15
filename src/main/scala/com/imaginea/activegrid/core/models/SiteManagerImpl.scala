@@ -5,26 +5,24 @@ package com.imaginea.activegrid.core.models
   */
 object SiteManagerImpl {
 
-  def deleteIntanceFromSite(siteId:Long,instanceId:String) = {
-       val site:AWSSite = Neo4jRepository.findNodeById(siteId).asInstanceOf[AWSSite]
-       val instance = site.instances.map(l => l.filter(i => (i.id.equals(instanceId))))
+  def deleteIntanceFromSite(siteId:Long,instanceId:String) : ExecutionStatus = {
+       val siteNode = Site1.fromNeo4jGraph(siteId)
+       val instanceIdLong = instanceId.asInstanceOf[Long]
 
-       //Removing from Groups list
+       if(!siteNode.isDefined){
+         ExecutionStatus(false,s"Site ${siteId} not available")
+       }
+       else {
+         val site = siteNode.get
+         val instance = site.instances.map(instance => instance.id == instanceIdLong)
 
-       site.groupsList.map(l=>l.foreach{i =>
-         val group = i.asInstanceOf[InstanceGroup]
-         Neo4jRepository.deleteRelation(instanceId.toLong,group,"instances")})
+         //Removing instance  from groups list
+         site.groupsList.map(instanceGroup => Neo4jRepository.deleteRelation(instanceIdLong,instanceGroup,"instances"))
 
-
-      //Removing from applications
-
-      site.appliacations.map(l=>l.foreach{i =>
-      val group = i.asInstanceOf[InstanceGroup]
-      Neo4jRepository.deleteRelation(instanceId.toLong,group,"instances")})
-
-      //  Removing from site
-
-       Neo4jRepository.deleteRelation(instanceId.toLong,site,"instances")
+         //Removing from site
+         Neo4jRepository.deleteRelation(instanceId.toLong, site, "instances")
+         ExecutionStatus(true,s"Instance ${instanceId} deleted from site ${siteId}")
+       }
 
 
   }
