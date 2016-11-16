@@ -8,10 +8,6 @@
 package com.imaginea.activegrid.core.models
 
 /**
- * Created by sivag on 20/10/16.
- */
-sealed trait ExecutionStatus
-
-case object ExecutionStatusSuccess extends ExecutionStatus
-
-case object ExecutionStatusFailure extends ExecutionStatus
+  * Created by sivag on 20/10/16.
+  */
+case class ExecutionStatus(status: Boolean = true)

@@ -101,9 +101,9 @@ object AppSettingsNeo4jWrapper {
             case (k, v) if (toDelete) => dbNode.removeProperty(k)
             case (k, v) => dbNode.setProperty(k, v.toString)
           }
-          ExecutionStatusSuccess
+          ExecutionStatus(true)
         }
-      }).getOrElse(ExecutionStatusFailure)
+      }).getOrElse(ExecutionStatus(false))
     }
   }
 
