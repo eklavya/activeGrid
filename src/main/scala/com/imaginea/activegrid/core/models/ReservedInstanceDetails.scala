@@ -42,7 +42,8 @@ object ReservedInstanceDetails {
     mayBeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, reservedInstanceDetailsLabel)) {
-          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
+          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone",
+            "tenancy", "offeringType", "productDescription", "count")
 
           Some(ReservedInstanceDetails(Some(nodeId),
             ActiveGridUtils.getValueFromMapAs[String](map, "instanceType"),

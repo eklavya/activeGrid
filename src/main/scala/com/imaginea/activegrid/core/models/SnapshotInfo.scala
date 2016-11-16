@@ -60,7 +60,8 @@ object SnapshotInfo {
     maybeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, snapshotInfoLabel)) {
-          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress", "ownerId", "ownerAlias", "description", "volumeSize")
+          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime",
+            "progress", "ownerId", "ownerAlias", "description", "volumeSize")
 
           val childNodeIds_keyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, snapshotInfo_KeyValue_Relation)
           val keyValueInfos: List[KeyValueInfo] = childNodeIds_keyValueInfos.flatMap { childId =>
