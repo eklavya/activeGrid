@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
- *
- * This software is the confidential and proprietary information of Pramati Technologies.
- * You shall not disclose such Confidential Information and shall use it only in accordance with
- * the terms of the source code license agreement you entered into with Pramati Technologies.
- */
 package com.imaginea
 
 import akka.actor.ActorSystem
@@ -322,7 +315,7 @@ object Main extends App {
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
 
-  def appSettingServiceRoutes = post {
+  def appSettingServiceRoutes: Route = post {
     path("appsettings") {
       entity(as[AppSettings]) {
         appsetting =>

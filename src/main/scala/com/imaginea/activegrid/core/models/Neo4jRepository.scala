@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 1999-2013 Pramati Technologies Pvt Ltd. All Rights Reserved.
- *
- * This software is the confidential and proprietary information of Pramati Technologies.
- * You shall not disclose such Confidential Information and shall use it only in accordance with
- * the terms of the source code license agreement you entered into with Pramati Technologies.
- */
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
@@ -148,9 +141,9 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 
-  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String) = withTx { neo =>
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String):Unit = withTx { neo =>
     val relType = DynamicRelationshipType.withName(relation)
-    logger.debug(s"setting relationhip : $relation")
+    logger.debug(s"setting relationship : $relation")
     fromNode --> relType --> toNode
     /*start --> relType --> end <
      start.getSingleRelationship(relType, Direction.OUTGOING)*/
