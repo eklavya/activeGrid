@@ -34,7 +34,7 @@ case object All extends Permission {
 }
 
 object Permission {
-  implicit def toPermission(name: String): Permission = name match {
+  def toPermission(name: String): Permission = name match {
     case "Create" => Create
     case "Read" => Read
     case "Update" => Update

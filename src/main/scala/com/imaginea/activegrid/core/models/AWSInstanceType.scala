@@ -197,6 +197,7 @@ case object AWSInstanceType {
     override def rootPartitionSize: Double = 1D
   }
 
+  // scalastyle:off cyclomatic.complexity
   def toAWSInstanceType(awsInstanceName: String): AWSInstanceType = {
     awsInstanceName match {
       case "t1.micro" => T1Micro
@@ -223,5 +224,6 @@ case object AWSInstanceType {
       case "c3.8xlarge" => C38XLarge
       case _ => NEWERBETTER
     }
+    // scalastyle:on cyclomatic.complexity
   }
 }

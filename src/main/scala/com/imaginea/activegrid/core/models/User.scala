@@ -59,7 +59,8 @@ object User {
   def fromNeo4jGraph(nodeId: Long): Option[User] = {
     Neo4jRepository.findNodeById(nodeId) match {
       case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+        val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId",
+          "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
         val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
 
@@ -100,7 +101,7 @@ object UserUtils {
 
   }
 
-  def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
+  def getUserKeysDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
 
   def getKeyDirPath(userId: Long): String = s"$getUserKeysDir${Constants.FILE_SEPARATOR}${userId.toString}${Constants.FILE_SEPARATOR}"
 

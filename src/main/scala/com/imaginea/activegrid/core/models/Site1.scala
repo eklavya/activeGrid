@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.models
 
-import java.util.concurrent.{Callable, Executors, FutureTask, TimeUnit}
+import java.util.concurrent.{Executors, TimeUnit}
 
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
@@ -27,10 +27,12 @@ object Site1 {
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
 
-  def apply(id : Long):Site1 = {
-    Site1(Some(id),"test",List.empty[Instance],List.empty[ReservedInstanceDetails],List.empty[SiteFilter],List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[InstanceGroup])
+  def apply(id: Long): Site1 = {
+    Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails], List.empty[SiteFilter],
+      List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup])
 
   }
+
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -88,18 +90,9 @@ object Site1 {
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
       logger.info("After saving site primitive types ")
       val relationship_inst = "HAS_Instance"
-
-//      entity.instances.foreach { instance =>
-//        logger.info("Executing instance")
-//         new FutureTask[String](new Callable[String] {
-//           override def call(): String = {
-//
-//             "Done"
-//           }
-//         })
-//      }
-      val executorService = Executors.newFixedThreadPool(10)
-      entity.instances.foreach{
+      val threadPoolSize = 10
+      val executorService = Executors.newFixedThreadPool(threadPoolSize)
+      entity.instances.foreach {
         instance =>
           executorService.submit(new Runnable {
             override def run(): Unit = {
@@ -108,7 +101,8 @@ object Site1 {
             }
           })
       }
-      executorService.awaitTermination(5 , TimeUnit.SECONDS)
+      val awaitTime = 5
+      executorService.awaitTermination(awaitTime, TimeUnit.SECONDS)
       executorService.shutdown()
 
       entity.filters.foreach { filter =>
@@ -142,10 +136,4 @@ object Site1 {
     }
   }
 
-}
-
-class InstanceSaver(instance: Instance) extends Runnable{
-  override def run(): Unit = {
-    instance.toNeo4jGraph(instance)
-  }
 }

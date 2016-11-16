@@ -46,7 +46,7 @@ case object FilterType {
       case "IP_RANGES" => IP_RANGES
       case "INSTANCE_IDS" => INSTANCE_IDS
       case "STATUS" => STATUS
-      case _=> UNKNOWN
+      case _ => UNKNOWN
     }
   }
 }
