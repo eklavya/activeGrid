@@ -39,10 +39,6 @@ object InstanceGroup {
   def fromNeo4jGraph(nodeId: Long): Option[InstanceGroup] = {
     Neo4jRepository.findNodeById(nodeId) match {
       case Some(node) =>
-        //        val instances = node.getRelationships.foldLeft(List.empty[Instance]) {
-        //          (list, relationship) =>
-        //            Instance.fromNeo4jGraph(relationship.getEndNode.getId).get :: list
-        //        }
 
         val childNodeIds_ig: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceGroup_Instance_Relation)
         val instances: List[Instance] = childNodeIds_ig.flatMap { childId =>

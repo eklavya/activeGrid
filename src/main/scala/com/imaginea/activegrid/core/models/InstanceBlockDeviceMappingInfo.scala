@@ -21,7 +21,8 @@ object InstanceBlockDeviceMappingInfo {
   val ibd_VolumeInfo_Relation = "HAS_VOLUME_INFO"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo) extends Neo4jRep[InstanceBlockDeviceMappingInfo] {
+  implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo)
+    extends Neo4jRep[InstanceBlockDeviceMappingInfo] {
     override def toNeo4jGraph(entity: InstanceBlockDeviceMappingInfo): Node = {
       val map = Map("deviceName" -> entity.deviceName,
         "status" -> entity.status,

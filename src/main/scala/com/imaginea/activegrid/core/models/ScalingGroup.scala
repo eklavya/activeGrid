@@ -27,7 +27,8 @@ object ScalingGroup {
     val mayBeNode = Neo4jRepository.findNodeById(id)
     mayBeNode match {
       case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "desiredCapacity", "maxCapacity", "minCapacity")
+        val map = Neo4jRepository.getProperties(node, "name", "launchConfigurationName", "status", "availabilityZones",
+          "instanceIds", "loadBalancerNames", "desiredCapacity", "maxCapacity", "minCapacity")
         val relationship_keyValueInfo = "HAS_keyValueInfo"
         val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, relationship_keyValueInfo)
         val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>

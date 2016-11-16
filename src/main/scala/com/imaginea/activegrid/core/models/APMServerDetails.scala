@@ -33,14 +33,17 @@ object APMServerDetails {
           if (!aPMServerDetails.name.isEmpty) node.setProperty("name", aPMServerDetails.name)
           node.setProperty("serverUrl", aPMServerDetails.serverUrl)
           node.setProperty("provider", aPMServerDetails.provider.toString)
-          if (aPMServerDetails.headers.nonEmpty) {
-            val headersNode = neo4JRepository.createNode(headersLabel)(neo)
-            aPMServerDetails.headers.get.foreach { case (key, value) => headersNode.setProperty(key, value) }
-            createRelationShip(node, headersNode, apmServer_header_relation)
+          aPMServerDetails.headers match {
+            case Some(headers) =>
+              val headersNode = neo4JRepository.createNode(headersLabel)(neo)
+              headers.foreach { case (key, value) => headersNode.setProperty(key, value) }
+              createRelationShip(node, headersNode, apmServer_header_relation)
+            case None => None
           }
-          if (aPMServerDetails.monitoredSite.nonEmpty) {
-            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph(aPMServerDetails.monitoredSite.get)
-            createRelationShip(node, siteNode, apmServer_site_relation)
+          aPMServerDetails.monitoredSite match {
+            case Some(site) =>
+              val siteNode = site.toNeo4jGraph(site)
+              createRelationShip(node, siteNode, apmServer_site_relation)
           }
           node
       }
@@ -76,7 +79,8 @@ object APMServerDetails {
                 relationsip.getType.name match {
                   case `apmServer_site_relation` => val site = Site.fromNeo4jGraph(childNode.getId)
                     if (site.nonEmpty) (site.get, result._2) else result
-                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
+                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
+                    map + ((property._1, property._2.asInstanceOf[String]))))
                 }
             }
             Some(new APMServerDetails(
