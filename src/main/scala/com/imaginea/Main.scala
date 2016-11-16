@@ -935,24 +935,26 @@ object Main extends App {
         }
       }
     } ~ path("instanceTypes") {
-      parameter("siteId".as[Int]) { siteId =>
-        val listOfInstanceFlavors = Future {
-          val mayBeSite = Site1.fromNeo4jGraph(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val listOfInstances = site.instances
-              val listOfInstanceFlavors = listOfInstances.map(instance => InstanceFlavor(instance.instanceType.get, None, instance.memoryInfo.get.total, instance.rootDiskInfo.get.total))
-              Page[InstanceFlavor](listOfInstanceFlavors)
-            case None =>
-              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
-              Page[InstanceFlavor](List.empty[InstanceFlavor])
+      get {
+        parameter("siteId".as[Int]) { siteId =>
+          val listOfInstanceFlavors = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                val listOfInstances = site.instances
+                val listOfInstanceFlavors = listOfInstances.map(instance => InstanceFlavor(instance.instanceType.get, None, instance.memoryInfo.get.total, instance.rootDiskInfo.get.total))
+                Page[InstanceFlavor](listOfInstanceFlavors)
+              case None =>
+                logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+                Page[InstanceFlavor](List.empty[InstanceFlavor])
+            }
           }
-        }
-        onComplete(listOfInstanceFlavors) {
-          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-          case Failure(ex) =>
-            logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
-            complete(StatusCodes.BadRequest, "Unable to get List of Instance Flavors")
+          onComplete(listOfInstanceFlavors) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
+              logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to get List of Instance Flavors")
+          }
         }
       }
     }
