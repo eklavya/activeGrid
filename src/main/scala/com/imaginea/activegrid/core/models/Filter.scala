@@ -1,7 +1,6 @@
 package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.Node
-import org.slf4j.LoggerFactory
 
 /**
   * Created by nagulmeeras on 25/10/16.
@@ -11,13 +10,18 @@ case class Filter(override val id: Option[Long],
                   values: List[String]) extends BaseEntity
 
 object Filter {
+  val repository = Neo4jRepository
   val filterLabelName = "Filter"
-  val logger = LoggerFactory.getLogger(getClass)
 
   implicit class FilterImpl(filter: Filter) extends Neo4jRep[Filter] {
     override def toNeo4jGraph(entity: Filter): Node = {
-      val map = Map("filterType" -> entity.filterType.toString, "values" -> entity.values.toArray)
-      Neo4jRepository.saveEntity[Filter](filterLabelName, entity.id, map)
+      repository.withTx {
+        neo =>
+          val node = repository.createNode(filterLabelName)(neo)
+          if (entity.filterType != null) node.setProperty("filterType", entity.filterType.toString)
+          if (entity.values.nonEmpty) node.setProperty("values", entity.values.toArray)
+          node
+      }
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[Filter] = {
@@ -26,18 +30,10 @@ object Filter {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[Filter] = {
-    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
-    mayBeNode match {
-      case Some(node) =>
-        if (Neo4jRepository.hasLabel(node, filterLabelName)) {
-          val map = Neo4jRepository.getProperties(node, "filterType", "values")
-          Some(Filter(Some(node.getId),
-            FilterType.toFilteType(map("filterType").asInstanceOf[String]),
-            map("values").asInstanceOf[Array[String]].toList))
-        } else {
-          None
-        }
-      case None => None
+    repository.withTx {
+      neo =>
+        val node = repository.getNodeById(nodeId) (neo)
+        Some(new Filter(Some(node.getId), FilterType.toFilteType(repository.getProperty[String](node, "filterType").get), repository.getProperty[List[String]](node, "values").get))
     }
   }
 }

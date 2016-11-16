@@ -6,7 +6,7 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by shareefn on 31/10/16.
+  * Created by sampathr on 28/10/16.
   */
 case class ScalingGroup(override val id: Option[Long],
                         name: String,

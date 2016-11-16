@@ -1177,7 +1177,7 @@ object Main extends App {
         }
       }
     } ~ path("site" / "save" / LongNumber) { siteId =>
-      withRequestTimeout(4.minutes){
+      withRequestTimeout(4.minutes) {
         put {
           val siteResponse = Future {
             val mayBeSite = cachedSite.get(siteId)
@@ -1366,8 +1366,40 @@ object Main extends App {
     }
   }
 
+  def siteServiceRoutes = pathPrefix("sites") {
+    path("site" / LongNumber) { siteId =>
+      get {
+        parameter("type") { view =>
+          val filteredSite = Future {
+            val siteNode = Site1.fromNeo4jGraph(siteId)
+            siteNode match {
+              case Some(site) =>
+                val viewType = ViewType.toViewType(view)
+                val filteredInstances = site.instances.map { instance =>
+                  viewType match {
+                    case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("SUMMARY"))
+                    case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("SUMMARY"))
+                    case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
+                  }
+                }
+                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+              case None =>
+                logger.warn(s"Failed in fromNeo4jGraph of Site for siteId : $siteId")
+                None
+            }
+          }
+          onComplete(filteredSite) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(ex) =>
+              logger.error(s"Unable to retrieve Filtered Sites. Failed with exception: ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to retrieve Filtered Sites")
+          }
+        }
+      }
+    }
+  }
 
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
+  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
 
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
