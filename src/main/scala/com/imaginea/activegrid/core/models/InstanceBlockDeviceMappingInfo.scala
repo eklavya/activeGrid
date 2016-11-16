@@ -3,7 +3,7 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 
 /**
   * Created by nagulmeeras on 27/10/16.
@@ -21,7 +21,8 @@ object InstanceBlockDeviceMappingInfo {
   val ibd_VolumeInfo_Relation = "HAS_VOLUME_INFO"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo) extends Neo4jRep[InstanceBlockDeviceMappingInfo] {
+  implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo)
+    extends Neo4jRep[InstanceBlockDeviceMappingInfo] {
     override def toNeo4jGraph(entity: InstanceBlockDeviceMappingInfo): Node = {
       val map = Map("deviceName" -> entity.deviceName,
         "status" -> entity.status,
