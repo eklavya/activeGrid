@@ -15,7 +15,8 @@ import scala.concurrent.Future
 object AppSettingsNeo4jWrapper {
 
 
-  val labels: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings", "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
+  val labels: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings",
+    "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val rep = Neo4jRepository
 
@@ -40,25 +41,28 @@ object AppSettingsNeo4jWrapper {
       neo => {
         rep.withTx { neo =>
           val settingNodes = rep.getAllNodesWithLabel(labels("AS").toString)(neo).toList
-          settingNodes.map { node => ApplicationSettings(Some(node.getId), getSettingsByRelation(node, labels("HGS").toString), getSettingsByRelation(node, labels("HAS").toString)) }.headOption
+          settingNodes.map { node => ApplicationSettings(Some(node.getId), getSettingsByRelation(node, labels("HGS").toString),
+            getSettingsByRelation(node, labels("HAS").toString))
+          }.headOption
         }
       }
     }
   }
 
   def updateSettings(settingsToUpdate: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
-    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS"))
+    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")) {
       updateOrDeleteSettings(settingsToUpdate, labels("HAS").toString, "UPDATE")
-    else
+    } else {
       updateOrDeleteSettings(settingsToUpdate, labels("HGS").toString, "UPDATE")
-
+    }
   }
 
   def deleteSetting(settingsToDelete: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
-    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS"))
+    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")) {
       updateOrDeleteSettings(settingsToDelete, labels("HAS").toString, "DELETE")
-    else
+    } else {
       updateOrDeleteSettings(settingsToDelete, labels("HGS").toString, "DELETE")
+    }
   }
 
   def getSettingsByRelation(rootNode: Node, relationName: String): Map[String, String] = {
@@ -88,10 +92,11 @@ object AppSettingsNeo4jWrapper {
                   val todelete = if (updateOrDelete.equalsIgnoreCase("DELETE")) true else false
                   settings.foreach {
                     case (k, v) =>
-                      if (todelete)
+                      if (todelete) {
                         dbnode.removeProperty(k)
-                      else
+                      }else {
                         dbnode.setProperty(k, v.toString)
+                      }
                   }
                 case None => ExecutionStatus(false)
               }
