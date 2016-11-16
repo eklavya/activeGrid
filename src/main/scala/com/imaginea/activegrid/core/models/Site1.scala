@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.models
 
-import java.util.concurrent.{Callable, Executors, FutureTask, TimeUnit}
+import java.util.concurrent.{Executors, TimeUnit}
 
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node

@@ -157,7 +157,12 @@ object AWSComputeAPI {
         Some(SSHAccessInfo(None, keyPair, "", 0))
     }
   }
-
+  def getPort(port:Integer): Int ={
+    port match {
+      case x:Integer => x.toInt
+      case _ => -1
+    }
+  }
   def getSecurityGroupInfo(totalSecurityGroups: Map[String, SecurityGroup], instanceGroupIdentifiers: List[GroupIdentifier]): List[SecurityGroupInfo] = {
     totalSecurityGroups.map {
       securityGroup =>
@@ -165,8 +170,8 @@ object AWSComputeAPI {
           val sg = securityGroup._2
           val ipPermissions = sg.getIpPermissions.toList.map {
             ipPermission =>
-              val fromPort = if (ipPermission.getFromPort == null) -1 else ipPermission.getFromPort.toInt
-              val toPort = if (ipPermission.getToPort == null) -1 else ipPermission.getToPort.toInt
+              val fromPort = getPort(ipPermission.getFromPort)
+              val toPort = getPort(ipPermission.getToPort)
               IpPermissionInfo(None,
                 fromPort,
                 toPort,

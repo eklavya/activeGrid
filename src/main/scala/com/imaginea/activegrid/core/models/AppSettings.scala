@@ -84,46 +84,38 @@ object AppSettings {
     }
   }
 
-  def updateAppSettings(settings: Map[String, String], relation: String): Unit = {
+  def updateAppSettings(settings: Map[String, String], relationName: String): Unit = {
     logger.info(s"Executing the $getClass :: updateAppSettings")
     repo.withTx {
-      neo =>
-        getAppSettingNode.foreach {
-          node =>
-            val relationships = node.getRelationships
-            val itr = relationships.iterator()
-            while (itr.hasNext) {
-              val relationship = itr.next()
-              val endNode = relationship.getEndNode
-              logger.info("nodes relation :" + relationship.getType.name() + " actual relation :" + relation)
-              if (relationship.getType.name.equalsIgnoreCase(relation)) {
-                logger.info("Coming to add new property")
-                settings.foreach { case (key, value) => endNode.setProperty(key, value) }
+      neo => getAppSettingNode.foreach { node =>
+        node.getRelationships.foreach {
+          relationship =>
+            val endNode = relationship.getEndNode
+            relationship.getType.name match {
+              case `relationName` => settings.foreach {
+                case (k, v) => endNode.setProperty(k, v)
+                case _ => false
               }
+              case _ => false
             }
+
         }
+      }
     }
   }
 
-  def deleteSettings(settingNames: List[String], relation: String): Boolean = {
+  def deleteSettings(settingNames: List[String], relationName: String): Boolean = {
     logger.info(s"Executing $getClass ::deleteSettings")
-    repo.withTx {
-      neo =>
-        getAppSettingNode.foreach {
-          node =>
-            val relationships = node.getRelationships
-            val itr = relationships.iterator()
-            while (itr.hasNext) {
-              val relationship = itr.next()
-              val endNode = relationship.getEndNode
-              logger.info("nodes relation :" + relationship.getType.name() + " actual relation :" + relation)
-              if (relationship.getType.name.equalsIgnoreCase(relation)) {
-                logger.info("Coming to delete property")
-                settingNames.foreach(entry => endNode.removeProperty(entry))
-              }
-            }
+    repo.withTx { neo => getAppSettingNode.foreach {
+      node => node.getRelationships.foreach{ relationship =>
+        val endNode = relationship.getEndNode
+        relationship.getType.name match {
+          case `relationName` => settingNames.foreach(settingName => endNode.removeProperty(settingName))
+          case _ => false
         }
-        true
+      }
+    }
+      true
     }
   }
 
@@ -141,4 +133,3 @@ object AppSettings {
     }
   }
 }
-

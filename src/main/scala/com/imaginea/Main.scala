@@ -80,7 +80,7 @@ object Main extends App {
     }
   }
 
-  implicit object ipProtocolFormat extends RootJsonFormat[IpProtocol] {
+  implicit object IpProtocolFormat extends RootJsonFormat[IpProtocol] {
 
     override def write(obj: IpProtocol): JsValue = {
       JsString(obj.value.toString)
@@ -125,8 +125,7 @@ object Main extends App {
   implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
   implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
 
-  //implicit val instanceFormat = jsonFormat(Instance)
-  implicit object instanceFormat extends RootJsonFormat[Instance] {
+  implicit object InstanceFormat extends RootJsonFormat[Instance] {
     override def write(i: Instance): JsValue = {
       val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo",
         "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers", "account", "availabilityZone", "privateDnsName",
@@ -1035,7 +1034,7 @@ object Main extends App {
     path("ApplicationSettings") {
       get {
         val allSettings = Future {
-          AppSettingsNeo4jWrapper.fromNeo4jGraph(0L)
+          AppSettingsNeoWrapper.fromNeo4jGraph(0L)
         }
         onComplete(allSettings) {
           case Success(settings) =>
@@ -1050,7 +1049,7 @@ object Main extends App {
     path("ApplicationSettings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "GENERAL_SETTINGS")
+          val maybeUpdated = AppSettingsNeoWrapper.updateSettings(appSettings, "GENERAL_SETTINGS")
           onComplete(maybeUpdated) {
             case Success(update) => update.status match {
               case true => complete(StatusCodes.OK, "Updated successfully")
@@ -1074,7 +1073,7 @@ object Main extends App {
     path("AuthSettings") {
       put {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "AUTH_SETTINGS")
+          val maybeUpdated = AppSettingsNeoWrapper.updateSettings(appSettings, "AUTH_SETTINGS")
           onComplete(maybeUpdated) {
             case Success(update) => update.status match {
               case true => complete(StatusCodes.OK, "Updated successfully")
@@ -1098,7 +1097,7 @@ object Main extends App {
     path("ApplicationSettings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeDeleted = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "GENERAL_SETTINGS")
+          val maybeDeleted = AppSettingsNeoWrapper.deleteSetting(appSettings, "GENERAL_SETTINGS")
           onComplete(maybeDeleted) {
             case Success(delete) => delete.status match {
               case true => complete(StatusCodes.OK, "Deleted successfully")
@@ -1121,7 +1120,7 @@ object Main extends App {
     path("AuthSettings") {
       delete {
         entity(as[Map[String, String]]) { appSettings =>
-          val maybeDelete = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "AUTH_SETTINGS")
+          val maybeDelete = AppSettingsNeoWrapper.deleteSetting(appSettings, "AUTH_SETTINGS")
           onComplete(maybeDelete) {
             case Success(delete) => delete.status match {
               case true => complete(StatusCodes.OK, "Deleted successfully")

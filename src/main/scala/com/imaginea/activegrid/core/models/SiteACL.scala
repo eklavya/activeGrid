@@ -55,9 +55,7 @@ object SiteACL {
       siteACLNode
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
-      SiteACL.fromNeo4jGraph(nodeId)
-    }
+    override def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = SiteACL.fromNeo4jGraph(nodeId)
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {

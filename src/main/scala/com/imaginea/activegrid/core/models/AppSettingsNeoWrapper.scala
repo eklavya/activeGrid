@@ -9,10 +9,9 @@ import scala.collection.immutable.HashMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-/**
-  * Created by sivag on 6/10/16.
-  */
-object AppSettingsNeo4jWrapper {
+//Created by sivag on 6/10/16.
+
+object AppSettingsNeoWrapper {
 
 
   val labels: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings", "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
@@ -77,6 +76,7 @@ object AppSettingsNeo4jWrapper {
   }
 
   def updateOrDeleteSettings(settings: Map[String, String], relationName: String, updateOrDelete: String): Future[ExecutionStatus] = Future {
+    val todelete = updateOrDelete.equalsIgnoreCase("DELETE")
     rep.withTx {
       neo => {
         rep.withTx { neo =>
@@ -85,7 +85,6 @@ object AppSettingsNeo4jWrapper {
             case Some(rootNode) => val relationNode = getRelationNodeByName(rootNode, relationName)
               relationNode match {
                 case Some(dbnode) =>
-                  val todelete = if (updateOrDelete.equalsIgnoreCase("DELETE")) true else false
                   settings.foreach {
                     case (k, v) =>
                       if (todelete)

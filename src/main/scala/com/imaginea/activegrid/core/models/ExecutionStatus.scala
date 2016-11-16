@@ -9,7 +9,7 @@ object ExecutionStatus{
 
   def apply(status: Boolean): ExecutionStatus = new ExecutionStatus(status, "")
 
- def getMsg(es:ExecutionStatus): String ={
-     return es.msg
+ def getMsg(statusObject:ExecutionStatus): String = {
+   statusObject.msg
  }
 }
