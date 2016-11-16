@@ -8,21 +8,21 @@ import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.regions.{Region, RegionUtils}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
-import com.amazonaws.services.ec2.model.{Address , SecurityGroup,Volume,Snapshot,
-DescribeImagesRequest , Image ,GroupIdentifier ,InstanceBlockDeviceMapping, EbsInstanceBlockDevice,
-DescribeVolumesRequest,DescribeSnapshotsRequest,DescribeSnapshotsResult}
+import com.amazonaws.services.ec2.model._ // scalastyle:ignore underscore.import
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
+import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._// scalastyle:ignore underscore.import
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
+  //scalastyle:off
   def getInstances(amazonEC2: AmazonEC2, accountInfo: AccountInfo): List[Instance] = {
 
     val awsInstancesResult = getAWSInstances(amazonEC2)
@@ -35,7 +35,11 @@ object AWSComputeAPI {
     })
     val defaultSize = 200
     val imagesMap = getImageInformation(amazonEC2, imageIdsAndVolumeIds._1)
-    val subList = imageIdsAndVolumeIds._2.subList(0, if (imageIdsAndVolumeIds._2.size > defaultSize) defaultSize else imageIdsAndVolumeIds._2.size).toList
+    val subListSize = imageIdsAndVolumeIds._2.size match {
+      case Constants.MAX_SIZE_IMAGE_AND_VOLUME_IDS => Constants.MAX_SIZE_IMAGE_AND_VOLUME_IDS
+      case _ => imageIdsAndVolumeIds._2.size
+    }
+    val subList = imageIdsAndVolumeIds._2.subList(0, subListSize).toList
     val volumesMap: Map[String, Volume] = getVolumeInfoMap(amazonEC2, subList)
     val snapshotsMap: Map[String, List[Snapshot]] = getSnapshotsMap(amazonEC2, subList)
     //val imageInfoMap = getImageInfoMap(imagesMap )
@@ -62,7 +66,7 @@ object AWSComputeAPI {
           Option(awsInstance.getPrivateDnsName),
           Option(awsInstance.getPrivateIpAddress),
           Option(awsInstance.getPublicIpAddress),
-          addresses.get(awsInstance.getInstanceId).flatMap{address => Some(address.getPublicIp)},
+          addresses.get(awsInstance.getInstanceId).flatMap { address => Some(address.getPublicIp) },
           Option(awsInstance.getMonitoring.getState),
           Option(awsInstance.getRootDeviceType),
           createBlockDeviceMapping(awsInstance.getBlockDeviceMappings.toList, volumesMap, snapshotsMap),
@@ -74,6 +78,8 @@ object AWSComputeAPI {
     }
     instances
   }
+
+  //scalastyle:off
 
   private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
     new AWSCredentials() {

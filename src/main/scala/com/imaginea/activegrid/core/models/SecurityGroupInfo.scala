@@ -3,7 +3,7 @@ package com.imaginea.activegrid.core.models
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._// scalastyle:ignore underscore.import
 
 /**
   * Created by nagulmeeras on 27/10/16.
