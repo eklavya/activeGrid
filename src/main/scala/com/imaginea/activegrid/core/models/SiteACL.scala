@@ -27,7 +27,7 @@ object SiteACL {
 
     override def toNeo4jGraph(siteACL: SiteACL): Node = {
 
-      logger.debug(s"SiteACL Node saved into db - ${siteACL}")
+      logger.debug(s"SiteACL Node saved into db - $siteACL")
       val map = Map("name" -> siteACL.name)
 
       val siteACLNode = Neo4jRepository.saveEntity[SiteACL](label, siteACL.id, map)
@@ -61,15 +61,15 @@ object SiteACL {
   def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
 
     val siteACLNodeOption = Neo4jRepository.findNodeById(nodeId)
-    logger.debug(s" SiteACL ${siteACLNodeOption}")
+    logger.debug(s" SiteACL $siteACLNodeOption")
     siteACLNodeOption.map(node => {
       val siteACLMap = Neo4jRepository.getProperties(node, "name")
 
-      logger.debug(s" is SiteACL entity ${siteACLMap}")
+      logger.debug(s" is SiteACL entity $siteACLMap")
 
       val siteNode: List[Node] = Neo4jRepository.getNodesWithRelation(node, hasSite)
       val siteList: List[Site] = siteNode.flatMap(child => {
-        logger.debug(s" Site -> SiteACL ${child}")
+        logger.debug(s" Site -> SiteACL $child")
         Site.fromNeo4jGraph(child.getId)
       })
 
@@ -80,13 +80,13 @@ object SiteACL {
 
       val instanceNodes = Neo4jRepository.getNodesWithRelation(node, hasInstances)
       val instances = instanceNodes.flatMap(child => {
-        logger.debug(s" Instance -> SiteACL ${child}")
+        logger.debug(s" Instance -> SiteACL $child")
         Instance.fromNeo4jGraph(child.getId)
       })
 
       val groupNodes = Neo4jRepository.getNodesWithRelation(node, hasGroups)
       val groups = groupNodes.flatMap(child => {
-        logger.debug(s"UserGroup -> SiteACL ${child}")
+        logger.debug(s"UserGroup -> SiteACL $child")
         UserGroup.fromNeo4jGraph(child.getId)
       })
 
@@ -97,7 +97,7 @@ object SiteACL {
         instances = instances,
         groups = groups
       )
-      logger.debug(s"UserGroup - ${userGroup}")
+      logger.debug(s"UserGroup - $userGroup")
       userGroup
     })
   }
