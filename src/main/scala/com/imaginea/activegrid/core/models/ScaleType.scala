@@ -9,19 +9,19 @@ sealed trait ScaleType {
   override def toString: String = scaleType
 }
 
-case object SCALE_UP extends ScaleType {
+case object SCALEUP extends ScaleType {
   override def scaleType: String = "SCALE_UP"
 }
 
-case object SCALE_DOWN extends ScaleType {
+case object SCALEDOWN extends ScaleType {
   override def scaleType: String = "SCALE_DOWN"
 }
 
 case object ScaleType {
   def toScaleType(scaleType: String): ScaleType = {
     scaleType match {
-      case "SCALE_UP" => SCALE_UP
-      case "SCALE_DOWN" => SCALE_DOWN
+      case "SCALE_UP" => SCALEUP
+      case "SCALE_DOWN" => SCALEDOWN
     }
   }
 }
