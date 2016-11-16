@@ -1054,9 +1054,9 @@ object Main extends App {
         entity(as[Map[String, String]]) { appSettings =>
           val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "GENERAL_SETTINGS")
           onComplete(maybeUpdated) {
-            case Success(update) => update.status match {
-              case true => complete(StatusCodes.OK, "Updated successfully")
-              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
+            case Success(update) => update match {
+              case ExecutionStatusSuccess => complete(StatusCodes.OK, "Updated successfully")
+              case ExecutionStatusFailure => complete(StatusCodes.OK, "Updated failed,,Retry!!")
             }
             case Failure(ex) =>
               ex match {
@@ -1078,9 +1078,9 @@ object Main extends App {
         entity(as[Map[String, String]]) { appSettings =>
           val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "AUTH_SETTINGS")
           onComplete(maybeUpdated) {
-            case Success(update) => update.status match {
-              case true => complete(StatusCodes.OK, "Updated successfully")
-              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
+            case Success(update) => update match {
+              case ExecutionStatusSuccess => complete(StatusCodes.OK, "Updated successfully")
+              case ExecutionStatusFailure => complete(StatusCodes.OK, "Updated failed,,Retry!!")
             }
             case Failure(ex) =>
               ex match {
@@ -1102,9 +1102,9 @@ object Main extends App {
         entity(as[Map[String, String]]) { appSettings =>
           val maybeDeleted = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "GENERAL_SETTINGS")
           onComplete(maybeDeleted) {
-            case Success(delete) => delete.status match {
-              case true => complete(StatusCodes.OK, "Deleted successfully")
-              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
+            case Success(delete) => delete match {
+              case ExecutionStatusSuccess => complete(StatusCodes.OK, "Deleted successfully")
+              case ExecutionStatusFailure => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
             }
             case Failure(ex) =>
               ex match {
@@ -1125,9 +1125,9 @@ object Main extends App {
         entity(as[Map[String, String]]) { appSettings =>
           val maybeDelete = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "AUTH_SETTINGS")
           onComplete(maybeDelete) {
-            case Success(delete) => delete.status match {
-              case true => complete(StatusCodes.OK, "Deleted successfully")
-              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
+            case Success(delete) => delete match {
+              case ExecutionStatusSuccess => complete(StatusCodes.OK, "Deleted successfully")
+              case ExecutionStatusFailure => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
             }
             case Failure(ex) =>
               ex match {
