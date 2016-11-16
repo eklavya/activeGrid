@@ -55,12 +55,14 @@ object Instance {
   val relationship_securityGroup = "HAS_securityGroup"
   val defaultLaunchTime = 100
 
+  //scalastyle:off
   def apply(instanceId: Option[String], name: String, state: Option[String], instanceType: Option[String], platform: Option[String],
             architecture: Option[String], publicDnsName: Option[String], launchTime: Option[Long], memoryInfo: Option[StorageInfo],
             rootDiskInfo: Option[StorageInfo], tags: List[KeyValueInfo], imageInfo: Option[ImageInfo], sshAccessInfo: Option[SSHAccessInfo]): Instance =
     Instance(None, instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime, memoryInfo,
       rootDiskInfo, tags, sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo],
       imageInfo, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
+  //scalastyle:on
 
   def apply(name: String, tags: List[KeyValueInfo], processes: Set[ProcessInfo]): Instance =
     Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None, List.empty[InstanceConnection],
@@ -72,6 +74,7 @@ object Instance {
       List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None, List.empty[InstanceUser],
       None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
+  //scalastyle:off
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -135,11 +138,12 @@ object Instance {
         logger.warn(s"could not find node for Instance with nodeId $nodeId")
         None
     }
-
+    //scalastyle:on
   }
 
   implicit class InstanceImpl(instance: Instance) extends Neo4jRep[Instance] {
 
+    //scalastyle:off
     override def toNeo4jGraph(entity: Instance): Node = {
       logger.info(s"Executing $getClass :: toNeo4jGraph")
       val label = "Instance"
@@ -207,7 +211,7 @@ object Instance {
       }
       node
     }
-
+    //scalastyle:on
     override def fromNeo4jGraph(id: Long): Option[Instance] = {
       Instance.fromNeo4jGraph(id)
     }

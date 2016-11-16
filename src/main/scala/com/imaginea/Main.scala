@@ -2,18 +2,18 @@ package com.imaginea
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._ // scalastyle:ignore underscore.import
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives._ // scalastyle:ignore underscore.import
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models._
+import com.imaginea.activegrid.core.models._ // scalastyle:ignore underscore.import
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol._
+import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
 import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat, _}
 
 import scala.collection.mutable
@@ -129,6 +129,7 @@ object Main extends App {
 
   //implicit val instanceFormat = jsonFormat(Instance)
   implicit object instanceFormat extends RootJsonFormat[Instance] {
+    //scalastyle:off
     override def write(i: Instance): JsValue = {
       val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName",
         "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes",
@@ -168,7 +169,7 @@ object Main extends App {
       fields ++= stringToJsField(fieldNames(29), i.region)
       JsObject(fields: _*)
     }
-
+    //scalastyle:on
     override def read(json: JsValue): Instance = {
       json match {
         case JsObject(map) =>
@@ -321,6 +322,9 @@ object Main extends App {
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers",
     "scalingGroups", "groupsList")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
+
+  // scalastyle:off method.length
+  // scalastyle:off cyclomatic.complexity
 
   def appSettingServiceRoutes: Route = post {
     path("appsettings") {
@@ -942,7 +946,8 @@ object Main extends App {
             mayBeSite match {
               case Some(site) =>
                 val listOfInstances = site.instances
-                val listOfInstanceFlavors = listOfInstances.map(instance => InstanceFlavor(instance.instanceType.get, None, instance.memoryInfo.get.total, instance.rootDiskInfo.get.total))
+                val listOfInstanceFlavors = listOfInstances.map(instance => InstanceFlavor(instance.instanceType.get,
+                  None, instance.memoryInfo.get.total, instance.rootDiskInfo.get.total))
                 Page[InstanceFlavor](listOfInstanceFlavors)
               case None =>
                 logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
@@ -1230,7 +1235,7 @@ object Main extends App {
                 mayBesite match {
                   case Some(site) =>
                     logger.info(s"Got Site $site and Comparing groupType with $groupType")
-                    site.groupsList.filter(group => group.groupType.get.equalsIgnoreCase(groupType))
+                    site.groupsList.filter(group => group.groupType.contains(groupType))
                   case None => throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
                 }
 
