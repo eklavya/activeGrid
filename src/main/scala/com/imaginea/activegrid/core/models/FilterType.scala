@@ -13,19 +13,19 @@ case object TAGS extends FilterType {
   override def filterType: String = "TAGS"
 }
 
-case object KEYPAIR_NAMES extends FilterType {
+case object KEYPAIRNAMES extends FilterType {
   override def filterType: String = "KEYPAIR_NAMES"
 }
 
-case object SECURITY_GROUPS extends FilterType {
+case object SECURITYGROUPS extends FilterType {
   override def filterType: String = "SECURITY_GROUPS"
 }
 
-case object IP_RANGES extends FilterType {
+case object IPRANGES extends FilterType {
   override def filterType: String = "IP_RANGES"
 }
 
-case object INSTANCE_IDS extends FilterType {
+case object INSTANCEIDS extends FilterType {
   override def filterType: String = "INSTANCE_IDS"
 }
 
@@ -41,10 +41,10 @@ case object FilterType {
   def toFilteType(filterType: String): FilterType = {
     filterType match {
       case "TAGS" => TAGS
-      case "KEYPAIR_NAMES" => KEYPAIR_NAMES
-      case "SECURITY_GROUPS" => SECURITY_GROUPS
-      case "IP_RANGES" => IP_RANGES
-      case "INSTANCE_IDS" => INSTANCE_IDS
+      case "KEYPAIR_NAMES" => KEYPAIRNAMES
+      case "SECURITY_GROUPS" => SECURITYGROUPS
+      case "IP_RANGES" => IPRANGES
+      case "INSTANCE_IDS" => INSTANCEIDS
       case "STATUS" => STATUS
       case _=> UNKNOWN
     }
