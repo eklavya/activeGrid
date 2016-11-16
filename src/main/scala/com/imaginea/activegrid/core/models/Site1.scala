@@ -1,7 +1,8 @@
 package com.imaginea.activegrid.core.models
 
-import java.util.concurrent.{Callable, Executors, FutureTask, TimeUnit}
+import java.util.concurrent.{Executors, TimeUnit}
 
+import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -27,10 +28,12 @@ object Site1 {
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
 
-  def apply(id : Long):Site1 = {
-    Site1(Some(id),"test",List.empty[Instance],List.empty[ReservedInstanceDetails],List.empty[SiteFilter],List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[InstanceGroup])
+  def apply(id: Long): Site1 = {
+    Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails], List.empty[SiteFilter],
+      List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup])
 
   }
+
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -42,11 +45,7 @@ object Site1 {
         val instances: List[Instance] = childNodeIds_inst.flatMap { childId =>
           Instance.fromNeo4jGraph(childId)
         }
-        /*val relationship_sf = "HAS_SiteFilter"
-        val childNodeIds_sf: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_sf)
-        val siteFilters: List[SiteFilter] = childNodeIds_sf.flatMap { childId =>
-          SiteFilter.fromNeo4jGraph(childId)
-        }*/
+
         val childNodeIds_sf: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, site_SF_Relation)
         val siteFilters: List[SiteFilter] = childNodeIds_sf.flatMap { childId =>
           SiteFilter.fromNeo4jGraph(childId)
@@ -88,18 +87,8 @@ object Site1 {
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
       logger.info("After saving site primitive types ")
       val relationship_inst = "HAS_Instance"
-
-//      entity.instances.foreach { instance =>
-//        logger.info("Executing instance")
-//         new FutureTask[String](new Callable[String] {
-//           override def call(): String = {
-//
-//             "Done"
-//           }
-//         })
-//      }
-      val executorService = Executors.newFixedThreadPool(10)
-      entity.instances.foreach{
+      val executorService = Executors.newFixedThreadPool(Constants.THREAD_POOL_SIZE)
+      entity.instances.foreach {
         instance =>
           executorService.submit(new Runnable {
             override def run(): Unit = {
@@ -108,7 +97,7 @@ object Site1 {
             }
           })
       }
-      executorService.awaitTermination(5 , TimeUnit.SECONDS)
+      executorService.awaitTermination(Constants.MAX_AWAIT_TIME, TimeUnit.SECONDS)
       executorService.shutdown()
 
       entity.filters.foreach { filter =>

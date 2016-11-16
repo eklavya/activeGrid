@@ -3,10 +3,12 @@ package com.imaginea.activegrid.core.models
 import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
-import org.neo4j.graphdb._
+import org.neo4j.graphdb._ // scalastyle:ignore underscore.import
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
+
+// scalastyle:ignore underscore.import
 
 /**
   * Created by babjik on 23/9/16.
@@ -15,7 +17,7 @@ import scala.collection.JavaConversions._
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def neo4jStoreDir = AGU.DBPATH
+  def neo4jStoreDir: String = AGU.DBPATH
 
   def hasLabel(node: Node, label: String): Boolean = {
     node.hasLabel(label)
@@ -50,7 +52,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
         logger.info(s"fetching node with Id $nodeId")
         val node = getNodeById(nodeId)
         logger.info(s"deleting relationships for Node : $nodeId")
-        deleteRelationships(node,isStart = true)
+        deleteRelationships(node, isStart = true)
         node
       case None =>
         //logger.info(s"creating node with label $label")
@@ -131,10 +133,10 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   }
 
   def createRelation(label: String, fromNode: Node, toNode: Node): Relationship = withTx { neo =>
-    //logger.info(s"Relation:  ($fromNode) --> $label --> ($toNode) <")
+    logger.info(s"Relation:  ($fromNode) --> $label --> ($toNode) <")
     val relType = DynamicRelationshipType.withName(label)
     val relation: Relationship = fromNode.createRelationshipTo(toNode, relType)
-    //logger.debug(s"New Relation is ${relation.getType} [${relation.getId}]")
+    logger.debug(s"New Relation is ${relation.getType} [${relation.getId}]")
     relation
   }
 
@@ -144,12 +146,14 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 
-  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String) = withTx { neo =>
-    val relType = DynamicRelationshipType.withName(relation)
-    //logger.debug(s"setting relationhip : $relation")
-    fromNode --> relType --> toNode
-    /*start --> relType --> end <
-     start.getSingleRelationship(relType, Direction.OUTGOING)*/
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String): Unit = {
+    withTx { neo =>
+      val relType = DynamicRelationshipType.withName(relation)
+      //logger.debug(s"setting relationhip : $relation")
+      fromNode --> relType --> toNode
+      /*start --> relType --> end <
+       start.getSingleRelationship(relType, Direction.OUTGOING)*/
+    }
   }
 
   def getChildNodeId(parentNode: Long, relation: String): Option[Long] = withTx { neo =>
@@ -181,17 +185,18 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     val nodes = findNodesByLabelAndProperty(label, propertyName, propertyVal)(neo)
     nodes.headOption
   }
-  def deleteRelationships(node : Node , isStart: Boolean = false):Unit={
+
+  def deleteRelationships(node: Node, isStart: Boolean = false): Unit = {
     val outGoingRelations = getRelationships(node, Direction.OUTGOING)
-    if(outGoingRelations.nonEmpty){
-      outGoingRelations.foreach{
+    if (outGoingRelations.nonEmpty) {
+      outGoingRelations.foreach {
         relation =>
           deleteRelationships(relation.getEndNode)
       }
     }
     val incomingRelations = getRelationships(node, Direction.INCOMING)
     incomingRelations.foreach(relation => relation.delete())
-    if(!isStart){
+    if (!isStart) {
       node.delete()
     }
   }
