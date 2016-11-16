@@ -1,3 +1,4 @@
+// Copyright (C) 2016,Pramati Technologies Pvt Ltd. ALL RIGHTS RESERVED
 
 package com.imaginea.activegrid.core.models
 
@@ -16,7 +17,8 @@ case class PolicyCondition(override val id: Option[Long],
                            scaleType: ScaleType,
                            scalingGroup: ScalingGroup) extends BaseEntity
 
-object PolicyCondition {
+object PolicyCondition
+{
 
   implicit class PolicyConditionImpl(policyCondition: PolicyCondition) extends Neo4jRep[PolicyCondition] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))

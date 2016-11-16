@@ -1,3 +1,4 @@
+// Copyright (C) 2016,Pramati Technologies Pvt Ltd. ALL RIGHTS RESERVEDp
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
@@ -12,7 +13,8 @@ case class ResourceACL(override val id: Option[Long]
                        , permission: String = All.name
                        , resourceIds: Array[Long] = Array.empty) extends BaseEntity
 
-object ResourceACL {
+object ResourceACL
+{
   val label = "ResourceACL"
 
   def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = {

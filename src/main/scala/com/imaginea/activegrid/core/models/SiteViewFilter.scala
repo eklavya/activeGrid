@@ -10,7 +10,8 @@ class SiteViewFilter extends  ViewFilter[Site1]{
   }
 
   def getSummarySiteView(t: Site1): Site1 = {
-    Site1(t.id,t.siteName,t.instances,List.empty[ReservedInstanceDetails],List.empty[SiteFilter],List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[InstanceGroup])
+    Site1(t.id,t.siteName,t.instances,List.empty[ReservedInstanceDetails],
+      List.empty[SiteFilter],List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[InstanceGroup])
   }
   override def filterInstance(t: Site1, viewLevel: ViewLevel): Site1 = {
     viewLevel match {

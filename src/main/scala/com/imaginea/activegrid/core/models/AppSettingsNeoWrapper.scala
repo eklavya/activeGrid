@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._// scalastyle:off
 import scala.collection.immutable.HashMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -34,30 +34,23 @@ object AppSettingsNeoWrapper {
     }
   }
 
+  def setNodeProperties(n: Node, settings: Map[String, String]) {
+    settings.foreach {
+      case (k, v) => n.setProperty(k, v);
+    }
+  }
+
   def fromNeo4jGraph(nodeId: Long): Option[ApplicationSettings] = {
     rep.withTx {
       neo => {
         rep.withTx { neo =>
           val settingNodes = rep.getAllNodesWithLabel(labels("AS").toString)(neo).toList
-          settingNodes.map { node => ApplicationSettings(Some(node.getId), getSettingsByRelation(node, labels("HGS").toString), getSettingsByRelation(node, labels("HAS").toString)) }.headOption
+          settingNodes.map { node => ApplicationSettings(Some(node.getId),
+            getSettingsByRelation(node, labels("HGS").toString), getSettingsByRelation(node,
+              labels("HAS").toString)) }.headOption
         }
       }
     }
-  }
-
-  def updateSettings(settingsToUpdate: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
-    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS"))
-      updateOrDeleteSettings(settingsToUpdate, labels("HAS").toString, "UPDATE")
-    else
-      updateOrDeleteSettings(settingsToUpdate, labels("HGS").toString, "UPDATE")
-
-  }
-
-  def deleteSetting(settingsToDelete: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
-    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS"))
-      updateOrDeleteSettings(settingsToDelete, labels("HAS").toString, "DELETE")
-    else
-      updateOrDeleteSettings(settingsToDelete, labels("HGS").toString, "DELETE")
   }
 
   def getSettingsByRelation(rootNode: Node, relationName: String): Map[String, String] = {
@@ -68,10 +61,21 @@ object AppSettingsNeoWrapper {
     }
   }
 
-  def getRelationNodeByName(rootNode: Node, relationName: String): Option[Node] = {
-    rootNode.getRelationships.find(relation => relation.getType.name() == relationName) match {
-      case Some(relationship) => Some(relationship.getEndNode)
-      case None => None
+  def updateSettings(settingsToUpdate: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
+    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")) {
+      updateOrDeleteSettings(settingsToUpdate, labels("HAS").toString, "UPDATE")
+    }
+    else {
+      updateOrDeleteSettings(settingsToUpdate, labels("HGS").toString, "UPDATE")
+    }
+  }
+
+  def deleteSetting(settingsToDelete: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
+    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")){
+      updateOrDeleteSettings(settingsToDelete, labels("HAS").toString, "DELETE")
+    }
+    else {
+      updateOrDeleteSettings(settingsToDelete, labels("HGS").toString, "DELETE")
     }
   }
 
@@ -87,10 +91,9 @@ object AppSettingsNeoWrapper {
                 case Some(dbnode) =>
                   settings.foreach {
                     case (k, v) =>
-                      if (todelete)
-                        dbnode.removeProperty(k)
-                      else
+                      if (todelete) { dbnode.removeProperty(k) } else {
                         dbnode.setProperty(k, v.toString)
+                      }
                   }
                 case None => ExecutionStatus(false)
               }
@@ -102,9 +105,10 @@ object AppSettingsNeoWrapper {
     ExecutionStatus(true)
   }
 
-  def setNodeProperties(n: Node, settings: Map[String, String]) {
-    settings.foreach {
-      case (k, v) => n.setProperty(k, v);
+  def getRelationNodeByName(rootNode: Node, relationName: String): Option[Node] = {
+    rootNode.getRelationships.find(relation => relation.getType.name() == relationName) match {
+      case Some(relationship) => Some(relationship.getEndNode)
+      case None => None
     }
   }
 }

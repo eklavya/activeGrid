@@ -31,7 +31,7 @@ object Site1 {
     val maybeNode = Neo4jRepository.findNodeById(siteId)
     maybeNode match {
       case Some(node) => {
-        logger.info(s"Site is ${siteId} available,It properties are...."+node.toString)
+        logger.info(s"Site is ${siteId} available,It properties are...." + node.toString)
         Neo4jRepository.deleteEntity(node.getId)
         ExecutionStatus(true,"Site deleted successfully")
       }
@@ -41,7 +41,8 @@ object Site1 {
   }
 
   def apply(id : Long):Site1 = {
-    Site1(Some(id),"test",List.empty[Instance],List.empty[ReservedInstanceDetails],List.empty[SiteFilter],List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[InstanceGroup])
+    Site1(Some(id),"test",List.empty[Instance],List.empty[ReservedInstanceDetails],
+      List.empty[SiteFilter],List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[InstanceGroup])
 
   }
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
@@ -92,6 +93,7 @@ object Site1 {
     }
   }
 
+  // scalastyle:off
   implicit class RichSite1(site1: Site1) extends Neo4jRep[Site1] {
 
     override def toNeo4jGraph(entity: Site1): Node = {

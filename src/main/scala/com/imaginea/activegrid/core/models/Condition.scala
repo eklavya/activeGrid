@@ -1,9 +1,11 @@
+// Copyright (C) 2016,Pramati Technologies Pvt Ltd. ALL RIGHTS RESERVED
 package com.imaginea.activegrid.core.models
 
 /**
   * Created by shareefn on 25/10/16.
   */
-sealed trait Condition {
+sealed trait Condition
+{
   def condition: String
 
   override def toString: String = super.toString
@@ -33,3 +35,4 @@ object Condition {
     case "ENDSWITH" => ENDSWITH
   }
 }
+

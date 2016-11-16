@@ -3,7 +3,7 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ //scalastyle:off
 
 /**
   * Created by nagulmeeras on 14/10/16.
@@ -76,7 +76,9 @@ object APMServerDetails {
                 relationsip.getType.name match {
                   case `apmServer_site_relation` => val site = Site1.fromNeo4jGraph(childNode.getId)
                     if (site.nonEmpty) (site.get, result._2) else result
-                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
+                  case `apmServer_header_relation` => (result._1,
+                    childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
+                      map + ((property._1, property._2.asInstanceOf[String]))))
                   case _=> result
                 }
             }

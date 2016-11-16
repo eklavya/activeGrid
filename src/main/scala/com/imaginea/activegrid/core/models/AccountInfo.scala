@@ -51,7 +51,8 @@ object AccountInfo {
     maybeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, accountInfoLabel)) {
-          val map = Neo4jRepository.getProperties(node, "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+          val map = Neo4jRepository.getProperties(node, "accountId", "providerType",
+            "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
           Some(new AccountInfo(Some(node.getId),
             ActiveGridUtils.getValueFromMapAs[String](map, "accountId"),
             InstanceProvider.toInstanceProvider(map("providerType").asInstanceOf[String]),

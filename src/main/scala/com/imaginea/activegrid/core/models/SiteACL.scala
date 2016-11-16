@@ -11,9 +11,7 @@ case class SiteACL(override val id: Option[Long]
                    , name: String
                    , site: Option[Site]
                    , instances: List[Instance] = List.empty
-                   , groups: List[UserGroup] = List.empty) extends BaseEntity {
-}
-
+                   , groups: List[UserGroup] = List.empty) extends BaseEntity
 object SiteACL {
   val label = "SiteACL"
 
