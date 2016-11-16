@@ -68,11 +68,10 @@ object SiteACL {
       logger.debug(s" is SiteACL entity ${siteACLMap}")
 
       val siteNode: List[Node] = Neo4jRepository.getNodesWithRelation(node, hasSite)
-      val siteList: List[Site] = siteNode.map(child => {
+      val siteList: List[Site] = siteNode.flatMap(child => {
         logger.debug(s" Site -> SiteACL ${child}")
-        val site: Site = null
-        site.fromNeo4jGraph(child.getId)
-      }).flatten
+        Site.fromNeo4jGraph(child.getId)
+      })
 
       val site = siteList match {
         case Nil => None
@@ -80,18 +79,16 @@ object SiteACL {
       }
 
       val instanceNodes = Neo4jRepository.getNodesWithRelation(node, hasInstances)
-      val instances = instanceNodes.map(child => {
+      val instances = instanceNodes.flatMap(child => {
         logger.debug(s" Instance -> SiteACL ${child}")
-        val instance: Instance = null
-        instance.fromNeo4jGraph(child.getId)
-      }).flatten
+        Instance.fromNeo4jGraph(child.getId)
+      })
 
       val groupNodes = Neo4jRepository.getNodesWithRelation(node, hasGroups)
-      val groups = groupNodes.map(child => {
+      val groups = groupNodes.flatMap(child => {
         logger.debug(s"UserGroup -> SiteACL ${child}")
-        val group: UserGroup = null
-        group.fromNeo4jGraph(child.getId)
-      }).flatten
+        UserGroup.fromNeo4jGraph(child.getId)
+      })
 
       val userGroup = SiteACL(
         id = Some(node.getId),

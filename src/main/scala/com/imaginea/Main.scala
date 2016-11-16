@@ -1,7 +1,7 @@
+
 package com.imaginea
 
 import java.util.Date
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -276,7 +276,7 @@ object Main extends App {
   implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
   implicit val InstanceGroupFormat = jsonFormat(InstanceGroup.apply, "id", "groupType", "name", "instances")
 
-  implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
+  implicit object ApmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
       logger.info(s"Writing APMProvider json : ${obj.provider.toString}")
       JsString(obj.provider.toString)

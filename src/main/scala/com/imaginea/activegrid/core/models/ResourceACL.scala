@@ -15,6 +15,16 @@ case class ResourceACL(override val id: Option[Long]
 object ResourceACL {
   val label = "ResourceACL"
 
+  def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = {
+    val nodeOption = Neo4jRepository.findNodeById(nodeId)
+    nodeOption.map { node =>
+      val resourceMap = Neo4jRepository.getProperties(node, "resources", "permission", "resourceIds")
+      ResourceACL(Some(node.getId)
+        , resourceMap("resources").toString
+        , resourceMap("permission").toString
+        , resourceMap("resourceIds").asInstanceOf[Array[Long]])
+    }
+  }
   implicit class RichResourceACL(resource: ResourceACL) extends Neo4jRep[ResourceACL] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
@@ -26,15 +36,8 @@ object ResourceACL {
       Neo4jRepository.saveEntity[ResourceACL](label, entity.id, resourceMap)
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = {
-      val nodeOption = Neo4jRepository.findNodeById(nodeId)
-      nodeOption.map { node =>
-        val resourceMap = Neo4jRepository.getProperties(node, "resources", "permission", "resourceIds")
-        ResourceACL(Some(node.getId)
-          , resourceMap("resources").toString
-          , resourceMap("permission").toString
-          , resourceMap("resourceIds").asInstanceOf[Array[Long]])
-      }
+    override def fromNeo4jGraph(id: Long): Node ={
+      ResourceACL.fromNeo4jGraph(id)
     }
   }
 

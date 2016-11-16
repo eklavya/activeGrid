@@ -65,15 +65,14 @@ object UserGroup {
       val userNodes = Neo4jRepository.getNodesWithRelation(node, hasUsers)
       val users = userNodes.flatMap(child => {
         logger.debug(s" UserGroup -> User node $child")
-        val user: User = null
         User.fromNeo4jGraph(child.getId)
       }).toSet
 
       val accessNodes = Neo4jRepository.getNodesWithRelation(node, hasResourceAccess)
       val resources = accessNodes.flatMap(child => {
         logger.debug(s" UserGroup -> Resource node $child")
-        val resource: ResourceACL = null;
-        resource.fromNeo4jGraph(child.getId)
+        ResourceACL.fromNeo4jGraph(child.getId)
+
       }).toSet
 
       val userGroup = UserGroup(

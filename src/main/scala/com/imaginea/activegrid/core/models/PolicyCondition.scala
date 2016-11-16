@@ -1,12 +1,12 @@
+
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-/**
-  * Created by sampathr on 28/10/16.
-  */
+//Created by sampathr on 28/10/16.
+
 case class PolicyCondition(override val id: Option[Long],
                            applicationTier: ApplicationTier,
                            metricType: MetricType,
