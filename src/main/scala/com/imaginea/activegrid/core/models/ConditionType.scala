@@ -10,24 +10,24 @@ sealed trait ConditionType {
 }
 
 
-case object GREATER_THAN extends ConditionType {
+case object GREATERTHAN extends ConditionType {
   override def conditionType: String = "GREATER_THAN"
 }
 
-case object LESS_THAN extends ConditionType {
+case object LESSTHAN extends ConditionType {
   override def conditionType: String = "LESS_THAN"
 }
 
-case object EQUAL_TO extends ConditionType {
+case object EQUALTO extends ConditionType {
   override def conditionType: String = "EQUAL_TO"
 }
 
 case object ConditionType {
   def toconditionType(conditionType: String): ConditionType = {
     conditionType match {
-      case "GREATER_THAN" => GREATER_THAN
-      case "LESS_THAN" => LESS_THAN
-      case "EQUAL_TO" => EQUAL_TO
+      case "GREATER_THAN" => GREATERTHAN
+      case "LESS_THAN" => LESSTHAN
+      case "EQUAL_TO" => EQUALTO
     }
   }
 }
