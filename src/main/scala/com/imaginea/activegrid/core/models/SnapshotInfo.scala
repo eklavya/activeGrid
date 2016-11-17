@@ -63,8 +63,8 @@ object SnapshotInfo {
           val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime",
             "progress", "ownerId", "ownerAlias", "description", "volumeSize")
 
-          val childNodeIds_keyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, snapshotInfoKeyValueRelation)
-          val keyValueInfos: List[KeyValueInfo] = childNodeIds_keyValueInfos.flatMap { childId =>
+          val childNodeIdskeyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, snapshotInfoKeyValueRelation)
+          val keyValueInfos: List[KeyValueInfo] = childNodeIdskeyValueInfos.flatMap { childId =>
             KeyValueInfo.fromNeo4jGraph(childId)
           }
           Some(SnapshotInfo(

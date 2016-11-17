@@ -30,9 +30,9 @@ object ScalingGroup {
         val map = Neo4jRepository.getProperties(node, "name", "launchConfigurationName",
           "status", "availabilityZones", "instanceIds", "loadBalancerNames", "desiredCapacity",
           "maxCapacity", "minCapacity")
-        val relationship_keyValueInfo = "HAS_keyValueInfo"
-        val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, relationship_keyValueInfo)
-        val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
+        val relationshipkeyValueInfo = "HAS_keyValueInfo"
+        val childNodeIdskeyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, relationshipkeyValueInfo)
+        val tags: List[KeyValueInfo] = childNodeIdskeyVal.flatMap { childId =>
           KeyValueInfo.fromNeo4jGraph(childId)
         }
 
@@ -71,10 +71,10 @@ object ScalingGroup {
         "minCapacity" -> entity.minCapacity
       )
       val node = Neo4jRepository.saveEntity[ScalingGroup](label, entity.id, map)
-      val relationship_keyVal = "HAS_keyValueInfo"
+      val relationshipKeyVal = "HAS_keyValueInfo"
       entity.tags.foreach { tag =>
         val tagNode = tag.toNeo4jGraph(tag)
-        Neo4jRepository.setGraphRelationship(node, tagNode, relationship_keyVal)
+        Neo4jRepository.setGraphRelationship(node, tagNode, relationshipKeyVal)
       }
       logger.debug(s"node - $node")
       node
