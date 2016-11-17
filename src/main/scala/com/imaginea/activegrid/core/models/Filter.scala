@@ -4,8 +4,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by nagulmeeras on 25/10/16.
-  */
+ * Created by nagulmeeras on 25/10/16.
+ */
 case class Filter(override val id: Option[Long],
                   filterType: FilterType,
                   values: List[String]) extends BaseEntity

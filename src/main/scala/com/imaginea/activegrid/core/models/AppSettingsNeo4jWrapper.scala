@@ -10,27 +10,31 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
-  * Created by sivag on 6/10/16.
-  */
+ * Created by sivag on 6/10/16.
+ */
 object AppSettingsNeo4jWrapper {
 
+  val labels =
+    HashMap(
+      "GS" -> "GeneralSettings",
+      "AS" -> "AppSettings",
+      "AUS" -> "AuthSettings",
+      "HAS" -> "HAS_AUTH_SETTINGS",
+      "HGS" -> "HAS_GENERAL_SETTINGS")
 
-  val labels: HashMap[String, String] = HashMap[String, String]("GS" -> "GeneralSettings", "AS" -> "AppSettings",
-    "AUS" -> "AuthSettings", "HAS" -> "HAS_AUTH_SETTINGS", "HGS" -> "HAS_GENERAL_SETTINGS")
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val rep = Neo4jRepository
-
 
   def toNeo4jGraph(entity: ApplicationSettings): Node = {
     rep.withTx {
       neo => {
-        val generalSettings = rep.createNode(labels("GS").toString)(neo)
-        val authSettings = rep.createNode(labels("AUS").toString)(neo)
+        val generalSettings = rep.createNode(labels("GS"))(neo)
+        val authSettings = rep.createNode(labels("AUS"))(neo)
         setNodeProperties(generalSettings, entity.settings)
         setNodeProperties(authSettings, entity.authSettings)
-        val appSettings = rep.createNode(labels("AS").toString)(neo)
-        rep.createRelation(labels("HGS").toString, appSettings, generalSettings)
-        rep.createRelation(labels("HAS").toString, appSettings, authSettings)
+        val appSettings = rep.createNode(labels("AS"))(neo)
+        rep.createRelation(labels("HGS"), appSettings, generalSettings)
+        rep.createRelation(labels("HAS"), appSettings, authSettings)
         appSettings
       }
     }
@@ -40,29 +44,25 @@ object AppSettingsNeo4jWrapper {
     rep.withTx {
       neo => {
         rep.withTx { neo =>
-          val settingNodes = rep.getAllNodesWithLabel(labels("AS").toString)(neo).toList
-          settingNodes.map { node => ApplicationSettings(Some(node.getId), getSettingsByRelation(node, labels("HGS").toString),
-            getSettingsByRelation(node, labels("HAS").toString))
+          val settingNodes = rep.getAllNodesWithLabel(labels("AS"))(neo).toList
+          settingNodes.map { node => ApplicationSettings(Some(node.getId)
+            , getSettingsByRelation(node, labels("HGS"))
+            , getSettingsByRelation(node, labels("HAS")))
           }.headOption
         }
       }
     }
   }
 
+  private def label(settingsType: String) =
+    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")) labels("HAS") else labels("HGS")
+
   def updateSettings(settingsToUpdate: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
-    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")) {
-      updateOrDeleteSettings(settingsToUpdate, labels("HAS").toString, "UPDATE")
-    } else {
-      updateOrDeleteSettings(settingsToUpdate, labels("HGS").toString, "UPDATE")
-    }
+    updateOrDeleteSettings(settingsToUpdate, label(settingsType), "UPDATE")
   }
 
   def deleteSetting(settingsToDelete: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
-    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")) {
-      updateOrDeleteSettings(settingsToDelete, labels("HAS").toString, "DELETE")
-    } else {
-      updateOrDeleteSettings(settingsToDelete, labels("HGS").toString, "DELETE")
-    }
+    updateOrDeleteSettings(settingsToDelete, label(settingsType), "DELETE")
   }
 
   def getSettingsByRelation(rootNode: Node, relationName: String): Map[String, String] = {
@@ -80,32 +80,22 @@ object AppSettingsNeo4jWrapper {
     }
   }
 
-  def updateOrDeleteSettings(settings: Map[String, String], relationName: String, updateOrDelete: String): Future[ExecutionStatus] = Future {
-    rep.withTx {
-      neo => {
-        rep.withTx { neo =>
-          val settingNodes = rep.getAllNodesWithLabel(labels("AS").toString)(neo).headOption
-          settingNodes match {
-            case Some(rootNode) => val relationNode = getRelationNodeByName(rootNode, relationName)
-              relationNode match {
-                case Some(dbnode) =>
-                  val todelete = if (updateOrDelete.equalsIgnoreCase("DELETE")) true else false
-                  settings.foreach {
-                    case (k, v) =>
-                      if (todelete) {
-                        dbnode.removeProperty(k)
-                      }else {
-                        dbnode.setProperty(k, v.toString)
-                      }
-                  }
-                case None => ExecutionStatus(false)
-              }
-            case None => ExecutionStatus(false)
+  def updateOrDeleteSettings(settings: Map[String, String]
+                             , relationName: String
+                             , updateOrDelete: String): Future[ExecutionStatus] = Future {
+    rep.withTx { neo =>
+      val settingNodes = rep.getAllNodesWithLabel(labels("AS"))(neo).headOption
+      settingNodes.flatMap(rootNode => {
+        val relationNode = getRelationNodeByName(rootNode, relationName)
+        relationNode.map { dbNode =>
+          val toDelete = updateOrDelete.equalsIgnoreCase("DELETE")
+          settings.foreach {
+            case (k, v) => if (toDelete) dbNode.removeProperty(k) else dbNode.setProperty(k, v.toString)
           }
+          ExecutionStatus(true)
         }
-      }
+      }).getOrElse(ExecutionStatus(false))
     }
-    ExecutionStatus(true)
   }
 
   def setNodeProperties(n: Node, settings: Map[String, String]) {

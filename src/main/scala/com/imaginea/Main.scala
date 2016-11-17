@@ -14,7 +14,7 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._// scalastyle:ignore underscore.import
-import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat, _}
+import spray.json._ // scalastyle:ignore underscore.import
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -296,7 +296,6 @@ object Main extends App {
       }
     }
   }
-
 
   implicit object ConditionFormat extends RootJsonFormat[Condition] {
     override def write(obj: Condition): JsValue = {
@@ -604,7 +603,6 @@ object Main extends App {
                   complete(StatusCodes.BadRequest, s"Failed save Site access")
               }
             }
-
           }
         }
     } ~
@@ -758,6 +756,7 @@ object Main extends App {
     }
   }
 
+
   //KeyPair Serivce
   def keyPairRoute: Route = pathPrefix("keypairs") {
     pathPrefix(LongNumber) { keyId =>
@@ -849,7 +848,7 @@ object Main extends App {
   }
 
 
-  def catalogRoutes: Route = pathPrefix("catalog") {
+  def catalogRoutes : Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {

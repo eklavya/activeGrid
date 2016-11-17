@@ -33,7 +33,6 @@ object AWSComputeAPI {
       val volumeids = awsInstance.getBlockDeviceMappings.map(mapping => mapping.getEbs.getVolumeId)
       (awsInstance.getImageId :: list._1, volumeids.toList ::: list._2)
     })
-    val defaultSize = 200
     val imagesMap = getImageInformation(amazonEC2, imageIdsAndVolumeIds._1)
     val subListSize = imageIdsAndVolumeIds._2.size match {
       case Constants.MAX_SIZE_IMAGE_AND_VOLUME_IDS => Constants.MAX_SIZE_IMAGE_AND_VOLUME_IDS
@@ -286,6 +285,7 @@ object AWSComputeAPI {
     val availabilityZone = volume.getAvailabilityZone
     val state = volume.getState
     val createTime = volume.getCreateTime.toString
+    import scala.collection.JavaConversions._
     val tags: List[KeyValueInfo] = createKeyValueInfo(volume.getTags.toList)
     val volumeType = volume.getVolumeType
     val snapshotCount = snapshots.size

@@ -26,9 +26,7 @@ object ResourceACL {
       Neo4jRepository.saveEntity[ResourceACL](label, entity.id, resourceMap)
     }
 
-    override def fromNeo4jGraph(id: Long): Option[ResourceACL] = {
-      ResourceACL.fromNeo4jGraph(id)
-    }
+    override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = fromNeo4jGraph(nodeId)
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = {
