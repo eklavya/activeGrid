@@ -42,7 +42,7 @@ case class Instance(override val id: Option[Long],
 object Instance {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  val LAUNCH_TIME = 100
+  val LaunchTime = 100
 
   def apply(instanceId: Option[String], name: String, state: Option[String], instanceType: Option[String],
             platform: Option[String], architecture: Option[String], publicDnsName: Option[String], launchTime: Option[Long],
@@ -94,7 +94,7 @@ object Instance {
         val region = map.get("region").asInstanceOf[Option[String]]
         //TO DO
         //val launchTime: Date = new Date(map.get("launchTime").get.toString.toLong)
-        val launchTime: Option[Long] = Some(LAUNCH_TIME)
+        val launchTime: Option[Long] = Some(LaunchTime)
         //map.get("launchTime").get.toString.toLong
 
         val relationship_info1 = "HAS_storageInfo1"

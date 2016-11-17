@@ -32,7 +32,8 @@ object Main extends App {
     override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
 
     override def read(json: JsValue): KeyPairStatus = json match {
-      case JsString(str) => KeyPairStatus.toKeyPairStatus(str)
+      case JsString(str) => KeyPairStatu
+        s.toKeyPairStatus(str)
       case _ => throw DeserializationException("Enum string expected")
     }
   }
@@ -315,7 +316,7 @@ object Main extends App {
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
 
-  def appSettingServiceRoutes: Route = post {
+  def appSettingServiceRoutes = post {
     path("appsettings") {
       entity(as[AppSettings]) {
         appsetting =>
