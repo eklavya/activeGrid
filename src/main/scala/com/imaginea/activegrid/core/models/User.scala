@@ -6,8 +6,8 @@ import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by babjik on 26/9/16.
-  */
+ * Created by babjik on 26/9/16.
+ */
 case class User(override val id: Option[Long]
                 , username: String
                 , password: String
@@ -59,7 +59,16 @@ object User {
   def fromNeo4jGraph(nodeId: Long): Option[User] = {
     Neo4jRepository.findNodeById(nodeId) match {
       case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+        val map = Neo4jRepository.getProperties(node
+          , "username"
+          , "password"
+          , "email"
+          , "uniqueId"
+          , "accountNonExpired"
+          , "accountNonLocked"
+          , "credentialsNonExpired"
+          , "enabled"
+          , "displayName")
 
         val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
 
@@ -96,8 +105,6 @@ object UserUtils {
         Some(Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode))
       case None => None
     }
-
-
   }
 
   def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
@@ -107,6 +114,7 @@ object UserUtils {
   def getKeyFilePath(userId: Long, keyName: String): String = s"${getKeyDirPath(userId)}$keyName.pub"
 
 }
+
 
 
 

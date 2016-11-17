@@ -5,8 +5,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by nagulmeeras on 31/10/16.
-  */
+ * Created by nagulmeeras on 31/10/16.
+ */
 case class ReservedInstanceDetails(override val id: Option[Long],
                                    instanceType: Option[String],
                                    reservedInstancesId: Option[String],
@@ -20,7 +20,9 @@ object ReservedInstanceDetails {
   val reservedInstanceDetailsLabel = "ReservedInstanceDetails"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails) extends Neo4jRep[ReservedInstanceDetails] {
+  implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails)
+    extends Neo4jRep[ReservedInstanceDetails] {
+
     override def toNeo4jGraph(entity: ReservedInstanceDetails): Node = {
       val map = Map("instanceType" -> entity.instanceType,
         "reservedInstancesId" -> entity.reservedInstancesId,
@@ -42,7 +44,8 @@ object ReservedInstanceDetails {
     mayBeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, reservedInstanceDetailsLabel)) {
-          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
+          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone", "tenancy",
+            "offeringType", "productDescription", "count")
 
           Some(ReservedInstanceDetails(Some(nodeId),
             ActiveGridUtils.getValueFromMapAs[String](map, "instanceType"),

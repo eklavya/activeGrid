@@ -5,8 +5,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by shareefn on 7/10/16.
-  */
+ * Created by shareefn on 7/10/16.
+ */
 case class ProcessInfo(override val id: Option[Long],
                        pid: Int,
                        parentPid: Int,

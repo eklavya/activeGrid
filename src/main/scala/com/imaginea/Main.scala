@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models.{InstanceGroup, _}
-import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
+import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU, Constants, FileUtils}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
@@ -267,6 +267,7 @@ object Main extends App {
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
+
   implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
   implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
@@ -289,7 +290,6 @@ object Main extends App {
       }
     }
   }
-
 
   implicit object ConditionFormat extends RootJsonFormat[Condition] {
     override def write(obj: Condition): JsValue = {
@@ -592,7 +592,6 @@ object Main extends App {
                   complete(StatusCodes.BadRequest, s"Failed save Site access")
               }
             }
-
           }
         }
     } ~
@@ -745,6 +744,7 @@ object Main extends App {
       }
     }
   }
+
 
   //KeyPair Serivce
   def keyPairRoute: Route = pathPrefix("keypairs") {

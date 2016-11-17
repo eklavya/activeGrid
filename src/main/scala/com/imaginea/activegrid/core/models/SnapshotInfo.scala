@@ -62,7 +62,9 @@ object SnapshotInfo {
     maybeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, snapshotInfoLabel)) {
-          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress", "ownerId", "ownerAlias", "description", "volumeSize")
+          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress", "ownerId",
+            "ownerAlias", "description", "volumeSize")
+
           val keyValueInfo = node.getRelationships.foldLeft(List.empty[KeyValueInfo]) {
             (list, relationship) =>
               val keyValInfo = KeyValueInfo.fromNeo4jGraph(relationship.getEndNode.getId)
