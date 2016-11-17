@@ -1,16 +1,17 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by shareefn on 31/10/16.
+  * Created by sampathr on 28/10/16.
   */
 case class ScalingGroup(override val id: Option[Long],
                         name: String,
                         launchConfigurationName: String,
-                        status: String,
+                        status: Option[String],
                         availabilityZones: List[String],
                         instanceIds: List[String],
                         loadBalancerNames: List[String],
@@ -37,7 +38,7 @@ object ScalingGroup {
           Some(node.getId),
           map("name").toString,
           map("launchConfigurationName").toString,
-          map("status").toString,
+          ActiveGridUtils.getValueFromMapAs[String](map, "status"),
           map("availabilityZones").asInstanceOf[Array[String]].toList,
           map("instanceIds").asInstanceOf[Array[String]].toList,
           map("loadBalancerNames").asInstanceOf[Array[String]].toList,

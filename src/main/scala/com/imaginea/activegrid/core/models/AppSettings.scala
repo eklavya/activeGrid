@@ -132,7 +132,7 @@ object AppSettings {
       neo =>
         try {
           val nodes = repo.getAllNodesWithLabel(labelName)(neo)
-          nodes.headOption
+          nodes.lastOption
         } catch {
           case nse: NoSuchElementException =>
             logger.warn(nse.getMessage, nse)

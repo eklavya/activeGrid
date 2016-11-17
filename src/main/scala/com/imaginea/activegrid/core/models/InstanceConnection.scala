@@ -9,7 +9,10 @@ import org.slf4j.LoggerFactory
   *
   */
 
-case class InstanceConnection(override val id: Option[Long], sourceNodeId: String, targetNodeId: String, portRanges: List[PortRange]) extends BaseEntity
+case class InstanceConnection(override val id: Option[Long],
+                              sourceNodeId: String,
+                              targetNodeId: String,
+                              portRanges: List[PortRange]) extends BaseEntity
 
 object InstanceConnection {
 
