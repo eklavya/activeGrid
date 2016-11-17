@@ -155,12 +155,12 @@ object Main extends App {
       fields ++= longToJsField(fieldNames(8), i.launchTime)
       fields ++= objectToJsValue[StorageInfo](fieldNames(9), i.memoryInfo, storageInfoFormat)
       fields ++= objectToJsValue[StorageInfo](fieldNames(10), i.rootDiskInfo, storageInfoFormat)
-      fields ++= listToJsValue[KeyValueInfo](fieldNames(11), i.tags, KeyValueInfoFormat)
+      fields ++= listToJsValue[KeyValueInfo](fieldNames(11), i.tags, keyValueInfoFormat)
       fields ++= objectToJsValue[SSHAccessInfo](fieldNames(12), i.sshAccessInfo, sshAccessInfoFormat)
       fields ++= listToJsValue[InstanceConnection](fieldNames(13), i.liveConnections, instanceConnectionFormat)
       fields ++= listToJsValue[InstanceConnection](fieldNames(14), i.estimatedConnections, instanceConnectionFormat)
       fields ++= setToJsValue[ProcessInfo](fieldNames(15), i.processes, processInfoFormat)
-      fields ++= objectToJsValue[ImageInfo](fieldNames(16), i.image, ImageFormat)
+      fields ++= objectToJsValue[ImageInfo](fieldNames(16), i.image, imageFormat)
       fields ++= listToJsValue[InstanceUser](fieldNames(17), i.existingUsers, instanceUserFormat)
       fields ++= objectToJsValue[AccountInfo](fieldNames(18), i.account, accountInfoFormat)
       fields ++= stringToJsField(fieldNames(19), i.availabilityZone)
@@ -203,7 +203,7 @@ object Main extends App {
             else {
               None
             },
-            getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", KeyValueInfoFormat),
+            getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
             if (getProperty[String](map, "sshAccessInfo").nonEmpty) {
               Some(sshAccessInfoFormat.read(getProperty[String](map, "sshAccessInfo").get.asInstanceOf[JsValue]))
             } else {
@@ -213,7 +213,7 @@ object Main extends App {
             getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
             getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
             if (getProperty[String](map, "imageInfo").nonEmpty) {
-              Some(ImageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue]))
+              Some(imageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue]))
             } else {
               None
             },
