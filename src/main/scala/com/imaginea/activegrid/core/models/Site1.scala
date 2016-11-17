@@ -31,13 +31,13 @@ object Site1 {
       case Some(node) =>
         val map = Neo4jRepository.getProperties(node, "siteName")
         val siteName = map.get("siteName").toString
-        val relationship_inst = "HAS_Instance"
-        val childNodeIds_inst: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship_inst)
+        val instanceRelation = "HAS_Instance"
+        val childNodeIds_inst: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceRelation)
         val instances: List[Instance] = childNodeIds_inst.flatMap { childId =>
           Instance.fromNeo4jGraph(childId)
         }
-        /*val relationship_sf = "HAS_SiteFilter"
-        val childNodeIds_sf: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, relationship_sf)
+        /*val sfRelation = "HAS_SiteFilter"
+        val childNodeIds_sf: List[Long] = GraphDBExecutor.getChildNodeIds(nodeId, sfRelation)
         val siteFilters: List[SiteFilter] = childNodeIds_sf.flatMap { childId =>
           SiteFilter.fromNeo4jGraph(childId)
         }*/
@@ -79,10 +79,10 @@ object Site1 {
       val label = "Site1"
       val mapPrimitives = Map("siteName" -> entity.siteName)
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
-      val relationship_inst = "HAS_Instance"
+      val instanceRelation = "HAS_Instance"
       entity.instances.foreach { instance =>
         val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+        Neo4jRepository.setGraphRelationship(node, instanceNode, instanceRelation)
       }
 
       entity.filters.foreach { filter =>

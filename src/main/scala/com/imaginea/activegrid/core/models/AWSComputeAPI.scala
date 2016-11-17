@@ -15,7 +15,7 @@ import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._  //scalastyle:ignore underscore.import
+import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
@@ -23,6 +23,7 @@ object AWSComputeAPI {
 
   //scalastyle:off method.length
   def getInstances(amazonEC2: AmazonEC2, accountInfo: AccountInfo): List[Instance] = {
+
     val awsInstancesResult = getAWSInstances(amazonEC2)
     val totalsecurityGroups = amazonEC2.describeSecurityGroups.getSecurityGroups
       .foldLeft(Map[String, SecurityGroup]())((map, sg) => map + ((sg.getGroupId, sg)))
@@ -66,7 +67,7 @@ object AWSComputeAPI {
           Option(awsInstance.getPrivateDnsName),
           Option(awsInstance.getPrivateIpAddress),
           Option(awsInstance.getPublicIpAddress),
-          addresses.get(awsInstance.getInstanceId).flatMap{address => Some(address.getPublicIp)},
+          Option(addresses(awsInstance.getInstanceId).getPublicIp),
           Option(awsInstance.getMonitoring.getState),
           Option(awsInstance.getRootDeviceType),
           createBlockDeviceMapping(awsInstance.getBlockDeviceMappings.toList, volumesMap, snapshotsMap),
@@ -252,7 +253,7 @@ object AWSComputeAPI {
   def createBlockDeviceMapping(blockDeviceMapping: List[InstanceBlockDeviceMapping]
                                , volumesMap: Map[String, Volume]
                                , snapshotsMap: Map[String
-                               , List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
+    , List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
 
     blockDeviceMapping.map { instanceBlockDeviceMapping =>
       val volumeId = instanceBlockDeviceMapping.getEbs.getVolumeId
