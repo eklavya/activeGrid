@@ -20,8 +20,8 @@ object SecurityGroupInfo {
   }
 
   val securityGroupInfoLabel = "SecurityGroupInfo"
-  val securityGroup_IpPermission_Relation = "HAS_IP_PERMISSION"
-  val securityGroup_KeyValue_Relation = "HAS_KEY_VALUE"
+  val securityGroupIpPermissionRelation = "HAS_IP_PERMISSION"
+  val securityGroupKeyValueRelation = "HAS_KEY_VALUE"
 
   implicit class SecurityGroupInfoImpl(securityGroupInfo: SecurityGroupInfo) extends Neo4jRep[SecurityGroupInfo] {
     override def toNeo4jGraph(entity: SecurityGroupInfo): Node = {
@@ -34,12 +34,12 @@ object SecurityGroupInfo {
       entity.ipPermissions.foreach {
         ipPermission =>
           val ipPermissionNode = ipPermission.toNeo4jGraph(ipPermission)
-          Neo4jRepository.createRelation(securityGroup_IpPermission_Relation, node, ipPermissionNode)
+          Neo4jRepository.createRelation(securityGroupIpPermissionRelation, node, ipPermissionNode)
       }
       entity.tags.foreach {
         tag =>
           val tagNode = tag.toNeo4jGraph(tag)
-          Neo4jRepository.createRelation(securityGroup_KeyValue_Relation, node, tagNode)
+          Neo4jRepository.createRelation(securityGroupKeyValueRelation, node, tagNode)
       }
       node
     }
@@ -56,13 +56,13 @@ object SecurityGroupInfo {
         if (Neo4jRepository.hasLabel(node, securityGroupInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "groupName", "groupId", "ownerId", "description")
 
-          val childNodeIds_KeyValueInfo = Neo4jRepository.getChildNodeIds(nodeId, securityGroup_KeyValue_Relation)
-          val keyValueInfos: List[KeyValueInfo] = childNodeIds_KeyValueInfo.flatMap { childId =>
+          val childNodeIdsKeyValueInfo = Neo4jRepository.getChildNodeIds(nodeId, securityGroupKeyValueRelation)
+          val keyValueInfos: List[KeyValueInfo] = childNodeIdsKeyValueInfo.flatMap { childId =>
             KeyValueInfo.fromNeo4jGraph(childId)
           }
 
-          val childNodeIds_IpPermissionInfo = Neo4jRepository.getChildNodeIds(nodeId, securityGroup_IpPermission_Relation)
-          val ipPermissions: List[IpPermissionInfo] = childNodeIds_IpPermissionInfo.flatMap { childId =>
+          val childNodeIdsIpPermissionInfo = Neo4jRepository.getChildNodeIds(nodeId, securityGroupIpPermissionRelation)
+          val ipPermissions: List[IpPermissionInfo] = childNodeIdsIpPermissionInfo.flatMap { childId =>
             IpPermissionInfo.fromNeo4jGraph(childId)
           }
 
