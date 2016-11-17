@@ -3,7 +3,7 @@ package com.imaginea.activegrid.core.models
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
-
+import scala.collection.JavaConversions._
 /**
   * Created by nagulmeeras on 27/10/16.
   */
@@ -60,12 +60,13 @@ object SnapshotInfo {
     maybeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, snapshotInfoLabel)) {
-          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime",
-            "progress", "ownerId", "ownerAlias", "description", "volumeSize")
+          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress", "ownerId",
+            "ownerAlias", "description", "volumeSize")
 
-          val childNodeIds_keyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, snapshotInfo_KeyValue_Relation)
-          val keyValueInfos: List[KeyValueInfo] = childNodeIds_keyValueInfos.flatMap { childId =>
-            KeyValueInfo.fromNeo4jGraph(childId)
+          val keyValueInfo = node.getRelationships.foldLeft(List.empty[KeyValueInfo]) {
+            (list, relationship) =>
+              val keyValInfo = KeyValueInfo.fromNeo4jGraph(relationship.getEndNode.getId)
+              if (keyValInfo.nonEmpty) keyValInfo.get :: list else list
           }
           Some(SnapshotInfo(
             Some(nodeId),
@@ -78,7 +79,7 @@ object SnapshotInfo {
             ActiveGridUtils.getValueFromMapAs[String](map, "ownerAlias"),
             ActiveGridUtils.getValueFromMapAs[String](map, "description"),
             ActiveGridUtils.getValueFromMapAs[Int](map, "volumeSize"),
-            keyValueInfos))
+            keyValueInfo.asInstanceOf[List[KeyValueInfo]]))
         } else {
           None
         }

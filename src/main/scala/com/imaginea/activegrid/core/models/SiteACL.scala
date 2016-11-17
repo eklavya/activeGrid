@@ -5,13 +5,15 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by ranjithrajd on 25/10/16.
-  */
+ * Created by ranjithrajd on 25/10/16.
+ */
+
 case class SiteACL(override val id: Option[Long]
                    , name: String
                    , site: Option[Site]
                    , instances: List[Instance] = List.empty
-                   , groups: List[UserGroup] = List.empty) extends BaseEntity
+                   , groups: List[UserGroup] = List.empty) extends BaseEntity {
+}
 
 object SiteACL {
   val label = "SiteACL"
@@ -80,26 +82,26 @@ object SiteACL {
       }
 
       val instanceNodes = Neo4jRepository.getNodesWithRelation(node, hasInstances)
-      val instances = instanceNodes.map(child => {
+      val instances = instanceNodes.flatMap(child => {
         logger.debug(s" Instance -> SiteACL ${child}")
         Instance.fromNeo4jGraph(child.getId)
-      }).flatten
+      })
 
       val groupNodes = Neo4jRepository.getNodesWithRelation(node, hasGroups)
-      val groups = groupNodes.map(child => {
+      val groups = groupNodes.flatMap(child => {
         logger.debug(s"UserGroup -> SiteACL ${child}")
         UserGroup.fromNeo4jGraph(child.getId)
-      }).flatten
+      })
 
-      val userGroup = SiteACL(
+      val siteACL = SiteACL(
         id = Some(node.getId),
         name = siteACLMap("name").toString,
         site = site,
         instances = instances,
         groups = groups
       )
-      logger.debug(s"UserGroup - ${userGroup}")
-      userGroup
+      logger.debug(s"SiteACL - ${siteACL}")
+      siteACL
     })
   }
 

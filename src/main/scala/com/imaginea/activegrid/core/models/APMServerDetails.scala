@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory
 import scala.collection.JavaConversions._ // scalastyle:off underscore.import
 
 
-
 /**
   * Created by nagulmeeras on 14/10/16.
   */
@@ -71,15 +70,17 @@ object APMServerDetails {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
 
-            val siteAndHeaders = node.getRelationships.foldLeft((Site1.apply(1), Map.empty[String, String])) {
-              (result, relationsip) =>
-                val childNode = relationsip.getEndNode
-                relationsip.getType.name match {
-                  case `apmServer_site_relation` => val site = Site1.fromNeo4jGraph(childNode.getId)
+            val siteAndHeaders = node.getRelationships.foldLeft((Site.apply(1), Map.empty[String, String])) {
+              (result, relationship) =>
+                val childNode = relationship.getEndNode
+                relationship.getType.name match {
+                  case `apmServer_site_relation` => val site = Site.fromNeo4jGraph(childNode.getId)
                     if (site.nonEmpty) (site.get, result._2) else result
-                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
-                    map + ((property._1, property._2.asInstanceOf[String]))))
-                  case _ => result
+                  case `apmServer_header_relation` => {
+                    val propertyMap = childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
+                      map + ((property._1, property._2.asInstanceOf[String])))
+                    (result._1, propertyMap)
+                  }
                 }
             }
             Some(new APMServerDetails(
