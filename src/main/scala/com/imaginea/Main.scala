@@ -32,8 +32,7 @@ object Main extends App {
     override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
 
     override def read(json: JsValue): KeyPairStatus = json match {
-      case JsString(str) => KeyPairStatu
-        s.toKeyPairStatus(str)
+      case JsString(str) => KeyPairStatus.toKeyPairStatus(str)
       case _ => throw DeserializationException("Enum string expected")
     }
   }
