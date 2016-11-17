@@ -1,9 +1,8 @@
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
-
-import org.slf4j.LoggerFactory
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 /**
  * Created by ranjithrajd on 25/10/16.
  */
@@ -27,11 +26,12 @@ object ResourceACL {
       Neo4jRepository.saveEntity[ResourceACL](label,entity.id,resourceMap)
     }
 
-    override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] =  fromNeo4jGraph(nodeId)
+    override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = fromNeo4jGraph(nodeId)
   }
+
   def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = {
     val nodeOption = Neo4jRepository.findNodeById(nodeId)
-    nodeOption.map{ node =>
+    nodeOption.map { node =>
       val resourceMap = Neo4jRepository.getProperties(node, "resources", "permission", "resourceIds")
       ResourceACL(Some(node.getId)
         , resourceMap("resources").toString
@@ -41,3 +41,4 @@ object ResourceACL {
   }
 
 }
+

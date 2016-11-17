@@ -30,14 +30,14 @@ object UserGroup {
       //Iterating the users and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with Users ${userGroup.users}")
 
-      userGroup.users.foreach{ user =>
+      userGroup.users.foreach { user =>
         val userNode = user.toNeo4jGraph(user)
         Neo4jRepository.createRelation(hasUsers, userGroupNode, userNode)
       }
 
       //Iterating the access and linking to the UserGroup
       logger.debug(s"UserGroupProxy has relation with ResourceACL ${userGroup.accesses}")
-      userGroup.accesses.foreach{ resource =>
+      userGroup.accesses.foreach { resource =>
         val resourceNode = resource.toNeo4jGraph(resource)
         Neo4jRepository.createRelation(hasResourceAccess, userGroupNode, resourceNode)
       }

@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models.{InstanceGroup, _}
-import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
+import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU, Constants, FileUtils}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory

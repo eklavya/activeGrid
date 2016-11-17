@@ -73,8 +73,7 @@ object SiteACL {
       val siteNode: List[Node] = Neo4jRepository.getNodesWithRelation(node, hasSite)
       val siteList: List[Site] = siteNode.map(child => {
         logger.debug(s" Site -> SiteACL ${child}")
-        val site: Site = null
-        site.fromNeo4jGraph(child.getId)
+        Site.fromNeo4jGraph(child.getId)
       }).flatten
 
       val site = siteList match {
