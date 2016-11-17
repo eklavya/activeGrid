@@ -3,7 +3,7 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._ //scalastyle:off
+import scala.collection.JavaConversions._
 
 /**
   * Created by nagulmeeras on 14/10/16.
@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._ //scalastyle:off
 case class APMServerDetails(override val id: Option[Long],
                             name: String,
                             serverUrl: String,
-                            monitoredSite: Option[Site1],
+                            monitoredSite: Option[Site],
                             provider: APMProvider,
                             headers: Option[Map[String, String]]) extends BaseEntity
 
@@ -70,23 +70,24 @@ object APMServerDetails {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
 
-            val siteAndHeaders = node.getRelationships.foldLeft((Site1.apply(1), Map.empty[String, String])) {
-              (result, relationsip) =>
-                val childNode = relationsip.getEndNode
-                relationsip.getType.name match {
-                  case `apmServer_site_relation` => val site = Site1.fromNeo4jGraph(childNode.getId)
+            val siteAndHeaders = node.getRelationships.foldLeft((Site.apply(1), Map.empty[String, String])) {
+              (result, relationship) =>
+                val childNode = relationship.getEndNode
+                relationship.getType.name match {
+                  case `apmServer_site_relation` => val site = Site.fromNeo4jGraph(childNode.getId)
                     if (site.nonEmpty) (site.get, result._2) else result
-                  case `apmServer_header_relation` => (result._1,
-                    childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
-                      map + ((property._1, property._2.asInstanceOf[String]))))
-                  case _=> result
+                  case `apmServer_header_relation` => {
+                    val propertyMap = childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
+                      map + ((property._1, property._2.asInstanceOf[String])))
+                    (result._1, propertyMap)
+                  }
                 }
             }
             Some(new APMServerDetails(
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              Option(siteAndHeaders._1.asInstanceOf[Site1]),
+              Option(siteAndHeaders._1.asInstanceOf[Site]),
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
               Option(siteAndHeaders._2)
             ))

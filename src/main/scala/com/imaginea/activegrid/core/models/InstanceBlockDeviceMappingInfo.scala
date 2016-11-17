@@ -3,6 +3,8 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
+import scala.collection.JavaConversions._
+
 /**
   * Created by nagulmeeras on 27/10/16.
   */
@@ -16,7 +18,7 @@ case class InstanceBlockDeviceMappingInfo(override val id: Option[Long],
 
 object InstanceBlockDeviceMappingInfo {
   val instanceBlockDeviceMappingInfoLabel = "InstanceBlockDeviceMappingInfo"
-  val ibdVolumeInfoRelation = "HAS_VOLUME_INFO"
+  val ibd_VolumeInfo_Relation = "HAS_VOLUME_INFO"
   val logger = LoggerFactory.getLogger(getClass)
 
   implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo)
@@ -27,10 +29,9 @@ object InstanceBlockDeviceMappingInfo {
         "attachTime" -> entity.attachTime,
         "deleteOnTermination" -> entity.deleteOnTermination,
         "usage" -> entity.usage)
-      val node = Neo4jRepository.saveEntity[InstanceBlockDeviceMappingInfo](instanceBlockDeviceMappingInfoLabel,
-        entity.id, map)
+      val node = Neo4jRepository.saveEntity[InstanceBlockDeviceMappingInfo](instanceBlockDeviceMappingInfoLabel, entity.id, map)
       val childNode = entity.volume.toNeo4jGraph(entity.volume)
-      Neo4jRepository.createRelation(ibdVolumeInfoRelation, node, childNode)
+      Neo4jRepository.createRelation(ibd_VolumeInfo_Relation, node, childNode)
       node
     }
 
@@ -40,22 +41,22 @@ object InstanceBlockDeviceMappingInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[InstanceBlockDeviceMappingInfo] = {
-    logger.debug(s"Executing $getClass :: fromNeo4jGraph with ID $nodeId")
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
       case Some(node) =>
-        if (Neo4jRepository.hasLabel(node, instanceBlockDeviceMappingInfoLabel)) {
-          val childNodeIdsVolumeInfo: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, ibdVolumeInfoRelation)
-          val volumeInfos: List[VolumeInfo] = childNodeIdsVolumeInfo.flatMap { childId =>
-            VolumeInfo.fromNeo4jGraph(childId)
+        if (Neo4jRepository.hasLabel(node, ibd_VolumeInfo_Relation)) {
+          val volumeInfoObj = node.getRelationships.foldLeft(Option(VolumeInfo.apply(1))) {
+            (reference, relationship) =>
+              val childNode = relationship.getEndNode
+              VolumeInfo.fromNeo4jGraph(childNode.getId)
           }
-          val map = Neo4jRepository.getProperties(node, "deviceName", "status", "attachTime", "deleteOnTermination",
-            "usage")
-          //logger.info(s"getting : $volumeInfos")
+          val map = Neo4jRepository.getProperties(node, "deviceName", "status",
+            "attachTime", "deleteOnTermination", "usage")
+
           Some(InstanceBlockDeviceMappingInfo(
             Some(nodeId),
             map("deviceName").asInstanceOf[String],
-            volumeInfos.head,
+            volumeInfoObj.asInstanceOf[VolumeInfo],
             map("status").asInstanceOf[String],
             map("attachTime").asInstanceOf[String],
             map("deleteOnTermination").asInstanceOf[Boolean],

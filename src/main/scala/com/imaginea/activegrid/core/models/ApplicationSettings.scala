@@ -12,11 +12,11 @@ object ApplicationSettings {
 
   implicit class RichApplicationSettings(appSettings: ApplicationSettings) extends Neo4jRep[ApplicationSettings] {
     override def toNeo4jGraph(entity: ApplicationSettings): Node = {
-      AppSettingsNeoWrapper.toNeo4jGraph(entity)
+      AppSettingsNeo4jWrapper.toNeo4jGraph(entity)
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[ApplicationSettings] = {
-      AppSettingsNeoWrapper.fromNeo4jGraph(0L)
+      AppSettingsNeo4jWrapper.fromNeo4jGraph(0L)
 
     }
   }

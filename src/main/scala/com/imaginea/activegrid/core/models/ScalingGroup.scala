@@ -1,6 +1,5 @@
 package com.imaginea.activegrid.core.models
 
-import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -11,7 +10,7 @@ import org.slf4j.LoggerFactory
 case class ScalingGroup(override val id: Option[Long],
                         name: String,
                         launchConfigurationName: String,
-                        status: Option[String],
+                        status: String,
                         availabilityZones: List[String],
                         instanceIds: List[String],
                         loadBalancerNames: List[String],
@@ -27,12 +26,14 @@ object ScalingGroup {
     val mayBeNode = Neo4jRepository.findNodeById(id)
     mayBeNode match {
       case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "name", "launchConfigurationName",
-          "status", "availabilityZones", "instanceIds", "loadBalancerNames", "desiredCapacity",
-          "maxCapacity", "minCapacity")
-        val relationshipkeyValueInfo = "HAS_keyValueInfo"
-        val childNodeIdskeyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, relationshipkeyValueInfo)
-        val tags: List[KeyValueInfo] = childNodeIdskeyVal.flatMap { childId =>
+        val map = Neo4jRepository.getProperties(node, "name",
+          "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames",
+          "desiredCapacity", "maxCapacity", "minCapacity"
+        )
+
+        val relationship_keyValueInfo = "HAS_keyValueInfo"
+        val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, relationship_keyValueInfo)
+        val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
           KeyValueInfo.fromNeo4jGraph(childId)
         }
 
@@ -40,7 +41,7 @@ object ScalingGroup {
           Some(node.getId),
           map("name").toString,
           map("launchConfigurationName").toString,
-          ActiveGridUtils.getValueFromMapAs[String](map, "status"),
+          map("status").toString,
           map("availabilityZones").asInstanceOf[Array[String]].toList,
           map("instanceIds").asInstanceOf[Array[String]].toList,
           map("loadBalancerNames").asInstanceOf[Array[String]].toList,
@@ -71,10 +72,10 @@ object ScalingGroup {
         "minCapacity" -> entity.minCapacity
       )
       val node = Neo4jRepository.saveEntity[ScalingGroup](label, entity.id, map)
-      val relationshipKeyVal = "HAS_keyValueInfo"
+      val relationship_keyVal = "HAS_keyValueInfo"
       entity.tags.foreach { tag =>
         val tagNode = tag.toNeo4jGraph(tag)
-        Neo4jRepository.setGraphRelationship(node, tagNode, relationshipKeyVal)
+        Neo4jRepository.setGraphRelationship(node, tagNode, relationship_keyVal)
       }
       logger.debug(s"node - $node")
       node
