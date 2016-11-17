@@ -241,7 +241,7 @@ object AWSComputeAPI {
   def createLoadBalancer(lbDescriptions: List[LoadBalancerDescription]): List[LoadBalancer] = {
     lbDescriptions.map { lbDesc =>
       val name = lbDesc.getLoadBalancerName
-      val vpcId = lbDesc.getVPCId
+      val vpcId = Some(lbDesc.getVPCId)
       val availabilityZones = lbDesc.getAvailabilityZones.toList
       val instanceIds = lbDesc.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
       LoadBalancer(None, name, vpcId, None, instanceIds, availabilityZones)

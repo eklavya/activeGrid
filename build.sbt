@@ -4,8 +4,13 @@ version := "1.0"
 
 scalaVersion := "2.11.8"
 
+
+
 resolvers ++= Seq("Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
-  Resolver.bintrayRepo("hseeberger", "maven"),"AWS" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-ec2","AWS3" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-s3")
+  Resolver.bintrayRepo("hseeberger", "maven"),
+  "AWS" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-ec2",
+  "AWS3" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-s3",
+  "scalastyle" at "https://oss.sonatype.org/content/repositories/releases/org/scalastyle/")
 
 libraryDependencies ++= {
   val AkkaVersion       = "2.4.10"

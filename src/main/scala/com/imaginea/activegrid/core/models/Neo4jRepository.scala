@@ -15,7 +15,7 @@ import scala.collection.JavaConversions._
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def neo4jStoreDir: String = AGU.DBPATH
+  def neo4jStoreDir: String = AGU.dbPath
 
   def hasLabel(node: Node, label: String): Boolean = {
     node.hasLabel(label)
@@ -64,6 +64,28 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getProperties(node: Node, keys: String*): Map[String, Any] = withTx { neo =>
     keys.foldLeft(Map[String, Any]())((accum, i) => if (node.hasProperty(i)) accum + ((i, node.getProperty(i))) else accum)
   }
+
+  def deleteRelation(instanceId: String, parentEntity: BaseEntity, relationName: String): ExecutionStatus = withTx { implicit neo =>
+    parentEntity.id match {
+      case Some(id) => val parent = getNodeById(id)
+        //Fetching relations that maps instance to site
+        val relationList = parent.getRelationships(Direction.OUTGOING).toList.filter(relation => relation.getType.name.equals(relationName))
+
+        //Deleting insatnce node and relation.
+        relationList.foreach {
+          relation => val instanceNode = relation.getEndNode
+            if(instanceNode.getId == instanceId) {
+              instanceNode.delete()
+              relation.delete()
+            }
+        }
+        ExecutionStatus(true,s"Instace ${instanceId} from ${parentEntity.id} removed successfully")
+      // If parent id invalid
+      case _ => ExecutionStatus(false,s"Parent node ${parentEntity.id} not available")
+    }
+  }
+
+
 
   def deleteChildNode(nodeId: Long): Option[Boolean] = withTx { implicit neo =>
 
