@@ -10,7 +10,6 @@ object SiteManagerImpl {
     siteNode match {
       case None => ExecutionStatus(false, s"Site ${siteId} not available")
       case Some(site) =>
-        val site = siteNode.get
         val instance = site.instances.map(instance => instance.id.toString == instanceId)
 
         //Removing instance  from groups list

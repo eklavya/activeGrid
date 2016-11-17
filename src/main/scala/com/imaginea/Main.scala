@@ -9,11 +9,11 @@ import akka.http.scaladsl.model.{Multipart, StatusCodes}
 // scalastyle:off
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat, _}
 import spray.json.DefaultJsonProtocol._
-import com.imaginea.activegrid.core.models.{InstanceGroup, _}
+import com.imaginea.activegrid.core.models._
 // scalastyle:on
 import akka.http.scaladsl.server.{PathMatchers, Route}
+import spray.json.{DeserializationException, JsArray, JsFalse,JsField, JsBoolean,JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat}
 import akka.stream.ActorMaterializer
 
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
@@ -137,7 +137,6 @@ object Main extends App {
   implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
   // scalastyle:off method.length
   implicit object InstanceFormat extends RootJsonFormat[Instance] {
-    //scalastyle:off
     override def write(i: Instance): JsValue = {
       val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform",
         "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo",
@@ -194,26 +193,16 @@ object Main extends App {
             getProperty[String](map, "architecture"),
             getProperty[String](map, "publicDnsName"),
             getProperty[Long](map, "launchTime"),
-            if (getProperty[String](map, "memoryInfo").nonEmpty) {
-              Some(storageInfoFormat.read(getProperty[String](map, "memoryInfo").get.asInstanceOf[JsValue])) }
-            else {None},
-            if (getProperty[String](map, "rootDiskInfo").nonEmpty) {
-              Some(storageInfoFormat.read(getProperty[String](map, "rootDiskInfo").get.asInstanceOf[JsValue]))  }
-            else { None },
+            readFromRootJson[StorageInfo](storageInfoFormat,map,"memoryInfo"),
+            readFromRootJson[StorageInfo](storageInfoFormat,map,"rootDiskInfo"),
             getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
-            if (getProperty[String](map, "sshAccessInfo").nonEmpty)
-              { Some(sshAccessInfoFormat.read(getProperty[String](map, "sshAccessInfo").get.asInstanceOf[JsValue])) }
-            else { None },
+            readFromRootJson[SSHAccessInfo](sshAccessInfoFormat,map,"sshAccessInfo"),
             getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
             getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
             getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
-            if (getProperty[String](map, "imageInfo").nonEmpty)
-              { Some(imageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue])) }
-            else { None },
+            readFromRootJson[ImageInfo](imageFormat,map,"imageInfo"),
             getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
-            if (getProperty[String](map, "account").nonEmpty)
-              { Some(accountInfoFormat.read(getProperty[String](map, "acoount").get.asInstanceOf[JsValue])) }
-            else { None },
+            readFromRootJson[AccountInfo](accountInfoFormat,map,"account"),
             getProperty[String](map, "availabilityZone"),
             getProperty[String](map, "privateDnsName"),
             getProperty[String](map, "privateIpAddress"),
@@ -286,6 +275,13 @@ object Main extends App {
     def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
       objList.map { obj => (fieldName, jsonFormat.write(obj))
       }.toList
+    }
+    def readFromRootJson[T<:BaseEntity](rootJson:RootJsonFormat[T],map: Map[String,JsValue],property:String) : Option[T] =
+    {
+      getProperty[String](map,property) match {
+        case Some(value) => Some(rootJson.read(value.asInstanceOf[JsValue]))
+        case _ => None
+      }
     }
   }
 
@@ -1281,7 +1277,7 @@ object Main extends App {
                 val site = Site1.fromNeo4jGraph(siteId)
                 if (site.nonEmpty) {
                   logger.info(s"Got Site $site and Comparing groupType with $groupType")
-                  site.get.groupsList.filter(group => group.groupType.get.equalsIgnoreCase(groupType))
+                  site.get.groupsList.filter(group => group.groupType.get.equalsIgnoreCase(groupType)) // scalastyle:ignore
                 } else {
                   throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
                 }
