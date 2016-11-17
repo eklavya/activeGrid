@@ -1332,7 +1332,7 @@ object Main extends App {
             val mayBeSite = cachedSite.get(siteId)
             mayBeSite match {
               case Some(site) =>
-                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
+                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAMETAGKEY)))
               case None =>
                 throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
             }
@@ -1452,9 +1452,9 @@ object Main extends App {
     apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes
 
 
-  val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
+  val bindingFuture = Http().bindAndHandle(route, AGU.host, AGU.port)
 
-  logger.info(s"Server online at http://${AGU.HOST}:${AGU.PORT}")
+  logger.info(s"Server online at http://${AGU.host}:${AGU.port}")
 
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
@@ -1493,7 +1493,7 @@ object Main extends App {
     KeyPairInfo.fromNeo4jGraph(node.getId)
   }
 
-  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
+  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILESEPARATOR}"
 
   def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
 

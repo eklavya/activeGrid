@@ -10,10 +10,10 @@ import com.typesafe.config.ConfigFactory
 object Constants {
   val config = ConfigFactory.load
 
-  val TEMP_DIR_LOC: String = config.getString("tmp.dir")
-  val USER_KEYS: String = "userkeys"
-  val FILE_SEPARATOR = File.separator
-  val NAME_TAG_KEY = "Name"
+  val TEMPDIRLOC: String = config.getString("tmp.dir")
+  val USERKEYS: String = "userkeys"
+  val FILESEPARATOR = File.separator
+  val NAMETAGKEY = "Name"
 
-  def getTempDirectoryLocation:String = TEMP_DIR_LOC
+  def getTempDirectoryLocation:String = TEMPDIRLOC
 }

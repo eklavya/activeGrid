@@ -14,9 +14,9 @@ import scala.collection.JavaConversions._ //scalastyle:ignore
 object ActiveGridUtils {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val config = ConfigFactory.load
-  val HOST:String = config.getString("http.host")
-  val PORT:Int = config.getInt("http.port")
-  val DBPATH:String = config.getString("neo4j.dbpath")
+  val host:String = config.getString("http.host")
+  val port:Int = config.getInt("http.port")
+  val dbPath:String = config.getString("neo4j.dbpath")
 
   def getValueFromMapAs[T](map: Map[String, Any], key: String): Option[T] = {
     map.get(key).map(_.asInstanceOf[T])

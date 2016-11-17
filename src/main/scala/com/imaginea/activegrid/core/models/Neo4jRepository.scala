@@ -16,7 +16,7 @@ import scala.collection.JavaConversions._ // scalastyle:ignore
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def neo4jStoreDir:String = AGU.DBPATH
+  def neo4jStoreDir:String = AGU.dbPath
 
   def hasLabel(node: Node, label: String): Boolean = {
     withTx {
