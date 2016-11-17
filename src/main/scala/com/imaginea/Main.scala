@@ -43,19 +43,19 @@ object Main extends App {
     }
   }
 
-  implicit val KeyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint",
+  implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint",
     "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
-  implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
-  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys",
+  implicit val pageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
+  implicit val userFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys",
     "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
-  implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
-  implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
+  implicit val pageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
+  implicit val sSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
   implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL",
     "port", "processNames", "discoverApplications")
   implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue",
+  implicit val imageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue",
     "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-  implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
+  implicit val pageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
 
 
@@ -122,10 +122,10 @@ object Main extends App {
   implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command",
     "owner", "residentBytes", "software", "softwareVersion")
   implicit val instanceUserFormat = jsonFormat(InstanceUser.apply, "id", "userName", "publicKeys")
-  implicit val InstanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
-  implicit val PageInstFormat = jsonFormat4(Page[InstanceFlavor])
+  implicit val instanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
+  implicit val pageInstFormat = jsonFormat4(Page[InstanceFlavor])
   implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
-  implicit val KeyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
+  implicit val keyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
 
   implicit val ipPermissionInfoFormat = jsonFormat(IpPermissionInfo.apply, "id", "fromPort", "toPort",
     "ipProtocol", "groupIds", "ipRanges")
@@ -158,12 +158,12 @@ object Main extends App {
       fields ++= longToJsField(fieldNames(8), i.launchTime)
       fields ++= objectToJsValue[StorageInfo](fieldNames(9), i.memoryInfo, storageInfoFormat)
       fields ++= objectToJsValue[StorageInfo](fieldNames(10), i.rootDiskInfo, storageInfoFormat)
-      fields ++= listToJsValue[KeyValueInfo](fieldNames(11), i.tags, KeyValueInfoFormat)
+      fields ++= listToJsValue[KeyValueInfo](fieldNames(11), i.tags, keyValueInfoFormat)
       fields ++= objectToJsValue[SSHAccessInfo](fieldNames(12), i.sshAccessInfo, sshAccessInfoFormat)
       fields ++= listToJsValue[InstanceConnection](fieldNames(13), i.liveConnections, instanceConnectionFormat)
       fields ++= listToJsValue[InstanceConnection](fieldNames(14), i.estimatedConnections, instanceConnectionFormat)
       fields ++= setToJsValue[ProcessInfo](fieldNames(15), i.processes, processInfoFormat)
-      fields ++= objectToJsValue[ImageInfo](fieldNames(16), i.image, ImageFormat)
+      fields ++= objectToJsValue[ImageInfo](fieldNames(16), i.image, imageFormat)
       fields ++= listToJsValue[InstanceUser](fieldNames(17), i.existingUsers, instanceUserFormat)
       fields ++= objectToJsValue[AccountInfo](fieldNames(18), i.account, accountInfoFormat)
       fields ++= stringToJsField(fieldNames(19), i.availabilityZone)
@@ -200,7 +200,7 @@ object Main extends App {
             if (getProperty[String](map, "rootDiskInfo").nonEmpty) {
               Some(storageInfoFormat.read(getProperty[String](map, "rootDiskInfo").get.asInstanceOf[JsValue]))  }
             else { None },
-            getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", KeyValueInfoFormat),
+            getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
             if (getProperty[String](map, "sshAccessInfo").nonEmpty)
               { Some(sshAccessInfoFormat.read(getProperty[String](map, "sshAccessInfo").get.asInstanceOf[JsValue])) }
             else { None },
@@ -208,7 +208,7 @@ object Main extends App {
             getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
             getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
             if (getProperty[String](map, "imageInfo").nonEmpty)
-              { Some(ImageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue])) }
+              { Some(imageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue])) }
             else { None },
             getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
             if (getProperty[String](map, "account").nonEmpty)
@@ -290,17 +290,17 @@ object Main extends App {
   }
 
 
-  implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
+  implicit val pageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
-  implicit val ResourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
-  implicit val UserGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
-  implicit val PageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
+  implicit val resourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
+  implicit val userGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
+  implicit val pageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
   implicit val reservedInstanceDetailsFormat = jsonFormat(ReservedInstanceDetails.apply, "id", "instanceType",
     "reservedInstancesId", "availabilityZone", "tenancy", "offeringType", "productDescription", "count")
-  implicit val SiteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
-  implicit val PageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
-  implicit val InstanceGroupFormat = jsonFormat(InstanceGroup.apply, "id", "groupType", "name", "instances")
+  implicit val siteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
+  implicit val pageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
+  implicit val instanceGroupFormat = jsonFormat(InstanceGroup.apply, "id", "groupType", "name", "instances")
 
   implicit object ApmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
@@ -333,9 +333,9 @@ object Main extends App {
     }
   }
 
-  implicit val FilterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
-  implicit val SiteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
-  implicit val LoadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
+  implicit val filterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
+  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
+  implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
   implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName",
     "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
 
@@ -1332,7 +1332,7 @@ object Main extends App {
             val mayBeSite = cachedSite.get(siteId)
             mayBeSite match {
               case Some(site) =>
-                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAMETAGKEY)))
+                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.nAMETAGKEY)))
               case None =>
                 throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
             }
@@ -1493,7 +1493,7 @@ object Main extends App {
     KeyPairInfo.fromNeo4jGraph(node.getId)
   }
 
-  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILESEPARATOR}"
+  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.fILESEPARATOR}"
 
   def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
 

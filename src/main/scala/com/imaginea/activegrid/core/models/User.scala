@@ -101,9 +101,9 @@ object UserUtils {
 
   }
 
-  def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILESEPARATOR}${Constants.USERKEYS}"
+  def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.fILESEPARATOR}${Constants.uSERKEYS}"
 
-  def getKeyDirPath(userId: Long): String = s"$getUserKeysDir${Constants.FILESEPARATOR}${userId.toString}${Constants.FILESEPARATOR}"
+  def getKeyDirPath(userId: Long): String = s"$getUserKeysDir${Constants.fILESEPARATOR}${userId.toString}${Constants.fILESEPARATOR}"
 
   def getKeyFilePath(userId: Long, keyName: String): String = s"${getKeyDirPath(userId)}$keyName.pub"
 

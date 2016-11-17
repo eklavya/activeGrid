@@ -54,7 +54,7 @@ object AWSComputeAPI {
         val keyName = Option(awsInstance.getKeyName)
         keyName.flatMap { name => Some(name.replaceAll("'", "")) }
         val tags = awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList
-        val tag = tags.find(tag => tag.key.equals(Constants.NAMETAGKEY))
+        val tag = tags.find(tag => tag.key.equals(Constants.nAMETAGKEY))
         val instanceName = tag match {
           case Some(value) => value.value
           case None => awsInstance.getPublicDnsName
