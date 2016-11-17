@@ -8,21 +8,21 @@ import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.regions.{Region, RegionUtils}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
-import com.amazonaws.services.ec2.model._
+import com.amazonaws.services.ec2.model._ //scalastyle:ignore underscore.import
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._  //scalastyle:ignore underscore.import
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
+  //scalastyle:off method.length
   def getInstances(amazonEC2: AmazonEC2, accountInfo: AccountInfo): List[Instance] = {
-
     val awsInstancesResult = getAWSInstances(amazonEC2)
     val totalsecurityGroups = amazonEC2.describeSecurityGroups.getSecurityGroups
       .foldLeft(Map[String, SecurityGroup]())((map, sg) => map + ((sg.getGroupId, sg)))
@@ -62,7 +62,7 @@ object AWSComputeAPI {
           Option(awsInstance.getPrivateDnsName),
           Option(awsInstance.getPrivateIpAddress),
           Option(awsInstance.getPublicIpAddress),
-          Option(addresses(awsInstance.getInstanceId).getPublicIp),
+          addresses.get(awsInstance.getInstanceId).flatMap{address => Some(address.getPublicIp)},
           Option(awsInstance.getMonitoring.getState),
           Option(awsInstance.getRootDeviceType),
           createBlockDeviceMapping(awsInstance.getBlockDeviceMappings.toList, volumesMap, snapshotsMap),
@@ -75,6 +75,7 @@ object AWSComputeAPI {
     }
     instances
   }
+  //scalastyle:on method.length
 
   private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
     new AWSCredentials() {

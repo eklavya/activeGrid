@@ -2,19 +2,19 @@ package com.imaginea
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._  // scalastyle:ignore underscore.import
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives._  // scalastyle:ignore underscore.import
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.{InstanceGroup, _}
+import com.imaginea.activegrid.core.models.{InstanceGroup, _}  // scalastyle:ignore underscore.import
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol._
-import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat, _}
+import spray.json.DefaultJsonProtocol._  // scalastyle:ignore underscore.import
+import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat, _}  // scalastyle:ignore underscore.import
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -36,15 +36,17 @@ object Main extends App {
       case _ => throw DeserializationException("Enum string expected")
     }
   }
-
   implicit val KeyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
   implicit val PageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
-  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+  implicit val UserFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys",
+    "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
   implicit val PageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
   implicit val SSHKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
   implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
   implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val ImageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId",
+    "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias",
+    "name", "description", "rootDeviceType", "rootDeviceName", "version")
   implicit val PageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
 
@@ -121,11 +123,17 @@ object Main extends App {
   //implicit val instanceFormat = jsonFormat(Instance)
   implicit object instanceFormat extends RootJsonFormat[Instance] {
     override def write(i: Instance): JsValue = {
-      val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo",
-        "tags", "sshAccessInfo", "liveConnections", "estimatedConnections", "processes", "image", "existingUsers", "account", "availabilityZone", "privateDnsName",
-        "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings", "securityGroups", "reservedInstance", "region")
+      val fieldNames = List("id", "instanceId", "name", "state", "instanceType",
+        "platform", "architecture", "publicDnsName", "launchTime", "memoryInfo",
+        "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections",
+        "estimatedConnections", "processes", "image", "existingUsers",
+        "account", "availabilityZone", "privateDnsName",
+        "privateIpAddress", "publicIpAddress", "elasticIp",
+        "monitoring", "rootDeviceType", "blockDeviceMappings",
+        "securityGroups", "reservedInstance", "region")
 
       val fields = new collection.mutable.ListBuffer[(String, JsValue)]
+      //scalastyle:off magic.number
       fields ++= longToJsField(fieldNames(1), i.id)
       fields ++= stringToJsField(fieldNames(2), i.state)
       fields ++= stringToJsField(fieldNames(3), i.state)
@@ -156,6 +164,7 @@ object Main extends App {
       fields ++= listToJsValue[SecurityGroupInfo](fieldNames(28), i.securityGroups, securityGroupsFormat)
       fields ++= List((fieldNames(29), JsBoolean(i.reservedInstance)))
       fields ++= stringToJsField(fieldNames(30), i.region)
+      //scalastyle:on magic.number
       JsObject(fields: _*)
     }
 
@@ -314,7 +323,7 @@ object Main extends App {
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
 
-  def appSettingServiceRoutes = post {
+  def appSettingServiceRoutes: Route = post {
     path("appsettings") {
       entity(as[AppSettings]) {
         appsetting =>
@@ -402,7 +411,7 @@ object Main extends App {
     }
   }
 
-  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) {
+  def apmServiceRoutes: Route  = path(PathMatchers.separateOnSlashes("apm")) {
     post {
       entity(as[APMServerDetails]) { apmServerDetails =>
         logger.debug(s"Executing $getClass :: saveAPMServerDetails")
@@ -799,10 +808,12 @@ object Main extends App {
             mayBeFile match {
               case Some(fileName) => accum + ((name, value))
               case None =>
-                if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
+                if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase")) {
                   accum + ((name, value))
-                else
+                }
+                else {
                   accum
+                }
             }
           })
 
@@ -835,7 +846,7 @@ object Main extends App {
   }
 
 
-  def catalogRoutes = pathPrefix("catalog") {
+  def catalogRoutes: Route  = pathPrefix("catalog") {
     path("images" / "view") {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {
@@ -950,7 +961,7 @@ object Main extends App {
     }
   }
 
-  def nodeRoutes = pathPrefix("node") {
+  def nodeRoutes: Route  = pathPrefix("node") {
     path("list") {
       get {
         val listOfAllInstanceNodes = Future {
@@ -1008,7 +1019,7 @@ object Main extends App {
     }
   }
 
-  val appsettingRoutes = pathPrefix("config") {
+  val appsettingRoutes: Route  = pathPrefix("config") {
     path("ApplicationSettings") {
       post {
         entity(as[ApplicationSettings]) { appSettings =>
@@ -1137,7 +1148,7 @@ object Main extends App {
 
   }
 
-  val discoveryRoutes = pathPrefix("discover") {
+  val discoveryRoutes: Route  = pathPrefix("discover") {
     path("site") {
       put {
         entity(as[Site1]) { site =>
@@ -1317,7 +1328,9 @@ object Main extends App {
               }
 
             }
+            //scalastyle:off line.length
             Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+          //scalastyle:on line.length
           case None =>
             logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
             None
@@ -1333,7 +1346,7 @@ object Main extends App {
   }
 
 
-  def siteServiceRoutes = pathPrefix("sites") {
+  def siteServiceRoutes: Route  = pathPrefix("sites") {
     path("site" / LongNumber) { siteId =>
       get {
         parameter("type") { view =>
@@ -1425,12 +1438,13 @@ object Main extends App {
   }
 
   def getOrCreateKeyPair(keyName: String, keyMaterial: String, keyFilePath: Option[String], status: KeyPairStatus, defaultUser: Option[String], passPhase: Option[String]): KeyPairInfo = {
+    //scalastyle:off line.length
     val mayBeKeyPair = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
-
     mayBeKeyPair match {
       case Some(keyPairInfo) =>
         KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
       case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
+      //scalastyle:on line.length
     }
   }
 
@@ -1443,13 +1457,15 @@ object Main extends App {
     } catch {
       case e: Throwable => logger.error(e.getMessage, e)
     }
+    //scalastyle:off line.length
     val node = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
+    //scalastyle:on line.length
     KeyPairInfo.fromNeo4jGraph(node.getId)
   }
 
   def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
-  def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
+  def getKeyFilePath(keyName: String): String = s"$getKeyFilesDir$keyName.pem"
 
   def getAPMServers: mutable.MutableList[APMServerDetails] = {
     logger.debug(s"Executing $getClass :: getAPMServers")
