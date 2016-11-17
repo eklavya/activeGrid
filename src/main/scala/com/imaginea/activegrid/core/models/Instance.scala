@@ -65,7 +65,7 @@ object Instance {
     Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo],
       None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None,
       List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty,
-      false, None
+      reservedInstance = false, None
     )
 
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
@@ -90,7 +90,7 @@ object Instance {
         val elasticIP = map.get("elasticIP").asInstanceOf[Option[String]]
         val monitoring = map.get("monitoring").asInstanceOf[Option[String]]
         val rootDeviceType = map.get("rootDeviceType").asInstanceOf[Option[String]]
-        val reservedInstance = map.get("reservedInstance").toString.toBoolean
+        val reservedInstance = if (map.get("reservedInstance").nonEmpty) map("reservedInstance").asInstanceOf[Boolean] else false
         val region = map.get("region").asInstanceOf[Option[String]]
         //TO DO
         //val launchTime: Date = new Date(map.get("launchTime").get.toString.toLong)
