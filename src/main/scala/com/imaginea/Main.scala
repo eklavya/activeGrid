@@ -1409,12 +1409,60 @@ object Main extends App {
       }
     }
   }
+  def siteServices = pathPrefix("sites") {
+    val siteViewFilter = new SiteViewFilter()
+    get {
+      parameters('viewLevel.as[String]) {
+        (viewLevel) =>
+          val result = Future {
+            logger.info("View level is..." + viewLevel)
+            Neo4jRepository.getNodesByLabel("Site1").map { siteNode =>
+              Site1.fromNeo4jGraph(siteNode.getId) match {
+                case Some(siteObj) => Some(siteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel)))
+                case None => None
+              }
+            }
+          }
+          onComplete(result) {
+            case Success(sitesList) => complete(StatusCodes.OK, sitesList)
+            case Failure(ex) => logger.error("Unable to retrieve sites information", ex)
+              complete(StatusCodes.BadRequest, "Failed to get results")
+          }
+      }
+    }
+  } ~ path("sites" / LongNumber) {
+    siteId => delete {
+      val maybeDelete = Future {
+        Site1.delete(siteId)
+      }
+      onComplete(maybeDelete) {
+        case Success(deleteStatus) => complete(StatusCodes.OK, ExecutionStatus.getMsg(deleteStatus))
+        case Failure(ex) => logger.info("Failed to delete entity", ex)
+          complete(StatusCodes.BadRequest, "Deletion failed")
+      }
+    }
+  } ~ path("sites" / LongNumber/"instances"/ Segment) {
+    (siteId,instanceId) =>  {
+      delete {
+        val mayBeDelete = Future {
+          SiteManagerImpl.deleteIntanceFromSite(siteId, instanceId)
+        }
+        onComplete(mayBeDelete) {
+          case Success(delete) => complete(StatusCodes.OK, ExecutionStatus.getMsg(delete))
+          case Failure(ex) => logger.error("Failed to delete the insatnce", ex)
+            complete(StatusCodes.BadRequest, "Failed to delete instance")
+        }
+      }
+    }
+  }
 
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+
+  val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
 
 
-  val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
-  logger.info(s"Server online at http://${AGU.HOST}:${AGU.PORT}")
+  val bindingFuture = Http().bindAndHandle(route, AGU.host, AGU.port)
+  logger.info(s"Server online at http://${AGU.host}:${AGU.port}")
 
 
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
