@@ -21,8 +21,8 @@ case class VolumeInfo(override val id: Option[Long],
 
 object VolumeInfo {
   val volumeInfoLabel = "VolumeInfo"
-  val volumeInfo_Tag_Relation = "HAS_TAGS"
-  val volumeInfo_SnapshotInfo_Relation = "HAS_SNAPSHOT"
+  val volumeInfoTagRelation = "HAS_TAGS"
+  val volumeInfoSnapshotInfoRelation = "HAS_SNAPSHOT"
   val logger = LoggerFactory.getLogger(getClass)
 
   def apply(id: Long): VolumeInfo = {
@@ -45,11 +45,11 @@ object VolumeInfo {
       entity.tags.foreach {
         tag =>
           val tagNode = tag.toNeo4jGraph(tag)
-          Neo4jRepository.createRelation(volumeInfo_Tag_Relation, node, tagNode)
+          Neo4jRepository.createRelation(volumeInfoTagRelation, node, tagNode)
       }
       if (entity.currentSnapshot.nonEmpty) {
         val snapshotInfoNode = entity.currentSnapshot.get.toNeo4jGraph(entity.currentSnapshot.get)
-        Neo4jRepository.createRelation(volumeInfo_SnapshotInfo_Relation, node, snapshotInfoNode)
+        Neo4jRepository.createRelation(volumeInfoSnapshotInfoRelation, node, snapshotInfoNode)
       }
 
       node
@@ -68,13 +68,13 @@ object VolumeInfo {
         if (Neo4jRepository.hasLabel(node, volumeInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "volumeId", "size", "snapshotId", "availabilityZone", "state", "createTime", "volumeType")
 
-          val childNodeIds_keyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, volumeInfo_Tag_Relation)
-          val keyValueInfos: List[KeyValueInfo] = childNodeIds_keyValueInfos.flatMap { childId =>
+          val childNodeIdsKeyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, volumeInfoTagRelation)
+          val keyValueInfos: List[KeyValueInfo] = childNodeIdsKeyValueInfos.flatMap { childId =>
             KeyValueInfo.fromNeo4jGraph(childId)
           }
 
-          val childNodeIds_snapshots = Neo4jRepository.getChildNodeIds(nodeId, volumeInfo_SnapshotInfo_Relation)
-          val snapshotInfo: List[SnapshotInfo] = childNodeIds_snapshots.flatMap { childId =>
+          val childNodeIdsSnapshots = Neo4jRepository.getChildNodeIds(nodeId, volumeInfoSnapshotInfoRelation)
+          val snapshotInfo: List[SnapshotInfo] = childNodeIdsSnapshots.flatMap { childId =>
             SnapshotInfo.fromNeo4jGraph(childId)
           }
           Some(VolumeInfo(Some(nodeId),
