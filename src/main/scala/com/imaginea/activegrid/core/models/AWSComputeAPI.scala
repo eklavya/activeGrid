@@ -28,11 +28,15 @@ object AWSComputeAPI {
       .foldLeft(Map[String, SecurityGroup]())((map, sg) => map + ((sg.getGroupId, sg)))
     val addresses = amazonEC2.describeAddresses.getAddresses
       .foldLeft(Map[String, Address]())((map, address) => map + ((address.getInstanceId, address)))
-    val imageIds = awsInstancesResult.foldLeft(List[String]())((list, awsInstance) => awsInstance.getImageId :: list)
-    val imagesMap = getImageInformation(amazonEC2, imageIds)
-    val volumesMap: Map[String, Volume] = Map.empty[String, Volume]
-    val snapshotsMap: Map[String, List[Snapshot]] = Map.empty
-    //val imageInfoMap = getImageInfoMap(imagesMap )
+    val imageIdsAndVolumeIds = awsInstancesResult.foldLeft((List[String](), List[String]()))((list, awsInstance) => {
+      val volumeids = awsInstance.getBlockDeviceMappings.map(mapping => mapping.getEbs.getVolumeId)
+      (awsInstance.getImageId :: list._1, volumeids.toList ::: list._2)
+    })
+    val defaultSize = 200
+    val imagesMap = getImageInformation(amazonEC2, imageIdsAndVolumeIds._1)
+    val subList = imageIdsAndVolumeIds._2.subList(0, if (imageIdsAndVolumeIds._2.size > defaultSize) defaultSize else imageIdsAndVolumeIds._2.size).toList
+    val volumesMap: Map[String, Volume] = getVolumeInfoMap(amazonEC2, subList)
+    val snapshotsMap: Map[String, List[Snapshot]] = getSnapshotsMap(amazonEC2, subList)
 
     val instances: List[Instance] = awsInstancesResult.map {
       awsInstance =>
@@ -325,4 +329,34 @@ object AWSComputeAPI {
     }
   }
 
+  def getSnapshotsMap(amazonEC2: AmazonEC2, volumeIds: List[String]): Map[String, List[Snapshot]] = {
+    if (volumeIds.nonEmpty) {
+      val describeSnapshotsRequest: DescribeSnapshotsRequest = new DescribeSnapshotsRequest
+      val filter = new com.amazonaws.services.ec2.model.Filter("volume-id", volumeIds)
+      val describeSnapshotsResult: DescribeSnapshotsResult = amazonEC2.describeSnapshots(describeSnapshotsRequest
+        .withFilters(filter))
+      describeSnapshotsResult.getSnapshots.foldLeft(Map[String, List[Snapshot]]()) { (map, snapshot) =>
+        val volumeId = snapshot.getVolumeId
+        val list = map.get(volumeId)
+        if (list.nonEmpty) {
+          map + ((volumeId, snapshot :: list.get))
+        } else {
+          map + ((volumeId, List(snapshot)))
+        }
+      }
+    } else {
+      Map.empty[String, List[Snapshot]]
+    }
+  }
+
+  def getVolumeInfoMap(amazonEC2: AmazonEC2, list: List[String]): Map[String, Volume] = {
+    if (list.nonEmpty) {
+      val describeVolumesRequest = new DescribeVolumesRequest()
+      describeVolumesRequest.setVolumeIds(list)
+      val describedVolumes = amazonEC2.describeVolumes(describeVolumesRequest)
+      describedVolumes.getVolumes.foldLeft(Map.empty[String, Volume])((map, volume) => map + ((volume.getVolumeId, volume)))
+    } else {
+      Map.empty[String, Volume]
+    }
+  }
 }
