@@ -4,7 +4,7 @@ import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 
 /**
   * Created by nagulmeeras on 27/10/16.
@@ -62,11 +62,15 @@ object SnapshotInfo {
     maybeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, snapshotInfoLabel)) {
-          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress", "ownerId", "ownerAlias", "description", "volumeSize")
+          val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress",
+            "ownerId", "ownerAlias", "description", "volumeSize")
           val keyValueInfo = node.getRelationships.foldLeft(List.empty[KeyValueInfo]) {
             (list, relationship) =>
               val keyValInfo = KeyValueInfo.fromNeo4jGraph(relationship.getEndNode.getId)
-              if (keyValInfo.nonEmpty) keyValInfo.get :: list else list
+              keyValInfo match {
+                case Some(keyValList) => keyValList :: list
+                case None => list
+              }
           }
           Some(SnapshotInfo(
             Some(nodeId),

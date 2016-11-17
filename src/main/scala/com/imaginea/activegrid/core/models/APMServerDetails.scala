@@ -3,7 +3,7 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 
 /**
   * Created by nagulmeeras on 14/10/16.
@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 case class APMServerDetails(override val id: Option[Long],
                             name: String,
                             serverUrl: String,
-                            monitoredSite: Option[Site],
+                            monitoredSite: Option[Site1],
                             provider: APMProvider,
                             headers: Option[Map[String, String]]) extends BaseEntity
 
@@ -33,14 +33,18 @@ object APMServerDetails {
           if (!aPMServerDetails.name.isEmpty) node.setProperty("name", aPMServerDetails.name)
           node.setProperty("serverUrl", aPMServerDetails.serverUrl)
           node.setProperty("provider", aPMServerDetails.provider.toString)
-          if (aPMServerDetails.headers.nonEmpty) {
-            val headersNode = neo4JRepository.createNode(headersLabel)(neo)
-            aPMServerDetails.headers.get.foreach { case (key, value) => headersNode.setProperty(key, value) }
-            createRelationShip(node, headersNode, apmServer_header_relation)
+          aPMServerDetails.headers match {
+            case Some(headers) =>
+              val headersNode = neo4JRepository.createNode(headersLabel)(neo)
+              headers.foreach { case (key, value) => headersNode.setProperty(key, value) }
+              createRelationShip(node, headersNode, apmServer_header_relation)
+            case None => None
           }
-          if (aPMServerDetails.monitoredSite.nonEmpty) {
-            val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph(aPMServerDetails.monitoredSite.get)
-            createRelationShip(node, siteNode, apmServer_site_relation)
+          aPMServerDetails.monitoredSite match {
+            case Some(site) =>
+              val siteNode = site.toNeo4jGraph(site)
+              createRelationShip(node, siteNode, apmServer_site_relation)
+            case None => None
           }
           node
       }
@@ -70,20 +74,24 @@ object APMServerDetails {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
 
-            val siteAndHeaders = node.getRelationships.foldLeft((Site.apply(1), Map.empty[String, String])) {
+            val siteAndHeaders = node.getRelationships.foldLeft((Site1.apply(1), Map.empty[String, String])) {
               (result, relationsip) =>
                 val childNode = relationsip.getEndNode
                 relationsip.getType.name match {
-                  case `apmServer_site_relation` => val site = Site.fromNeo4jGraph(childNode.getId)
+                  case `apmServer_site_relation` => val site = Site1.fromNeo4jGraph(childNode.getId)
                     if (site.nonEmpty) (site.get, result._2) else result
-                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) => map + ((property._1, property._2.asInstanceOf[String]))))
+                  case `apmServer_header_relation` => (result._1, childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
+                    map + ((property._1, property._2.asInstanceOf[String]))))
+                  case _ => result
+
+
                 }
             }
             Some(new APMServerDetails(
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              Option(siteAndHeaders._1.asInstanceOf[Site]),
+              Option(siteAndHeaders._1.asInstanceOf[Site1]),
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
               Option(siteAndHeaders._2)
             ))
