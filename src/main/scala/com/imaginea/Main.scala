@@ -425,7 +425,8 @@ object Main extends App {
     }
   }
 
-  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) {
+  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) // scalastyle:ignore
+  {
     post {
       entity(as[APMServerDetails]) { apmServerDetails =>
         logger.debug(s"Executing $getClass :: saveAPMServerDetails")
@@ -858,7 +859,7 @@ object Main extends App {
   }
 
 
-  def catalogRoutes = pathPrefix("catalog") {
+  def catalogRoutes : Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {
@@ -977,7 +978,7 @@ object Main extends App {
     }
   }
 
-  def nodeRoutes = pathPrefix("node") {
+  def nodeRoutes : Route = pathPrefix("node") {
     path("list") {
       get {
         val listOfAllInstanceNodes = Future {
@@ -1035,7 +1036,7 @@ object Main extends App {
     }
   }
 
-  val appsettingRoutes = pathPrefix("config") {
+  val appsettingRoutes : Route = pathPrefix("config") {
     path("ApplicationSettings") {
       post {
         entity(as[ApplicationSettings]) { appSettings =>
@@ -1482,7 +1483,56 @@ object Main extends App {
     }
   }
 
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+  def siteServices : Route = pathPrefix("sites") {
+    val siteViewFilter = new SiteViewFilter()
+    get {
+      parameters('viewLevel.as[String]) {
+        (viewLevel) =>
+          val result = Future {
+            logger.info("View level is..." + viewLevel)
+            Neo4jRepository.getNodesByLabel("Site1").map { siteNode =>
+              Site1.fromNeo4jGraph(siteNode.getId) match {
+                case Some(siteObj) => Some(siteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel)))
+                case None => None
+              }
+            }
+          }
+          onComplete(result) {
+            case Success(sitesList) => complete(StatusCodes.OK, sitesList)
+            case Failure(ex) => logger.error("Unable to retrieve sites information", ex)
+              complete(StatusCodes.BadRequest, "Failed to get results")
+          }
+      }
+    }
+  } ~ path("sites" / LongNumber) {
+    siteId => delete {
+      val maybeDelete = Future {
+        Site1.delete(siteId)
+      }
+      onComplete(maybeDelete) {
+        case Success(deleteStatus) => complete(StatusCodes.OK, ExecutionStatus.getMsg(deleteStatus))
+        case Failure(ex) => logger.info("Failed to delete entity", ex)
+          complete(StatusCodes.BadRequest, "Deletion failed")
+      }
+    }
+  } ~ path("sites" / LongNumber/"instances"/ Segment) {
+    (siteId,instanceId) =>  {
+      delete {
+        val mayBeDelete = Future {
+          SiteManagerImpl.deleteIntanceFromSite(siteId, instanceId)
+        }
+        onComplete(mayBeDelete) {
+          case Success(delete) => complete(StatusCodes.OK, ExecutionStatus.getMsg(delete))
+          case Failure(ex) => logger.error("Failed to delete the insatnce", ex)
+            complete(StatusCodes.BadRequest, "Failed to delete instance")
+        }
+      }
+    }
+  }
+
+
+  val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
 
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
@@ -1688,5 +1738,7 @@ object Main extends App {
         }
       case _ => false
     }
+
+
   }
 }
