@@ -1,5 +1,7 @@
 package com.imaginea.activegrid.core.models
 
+import java.util.concurrent.{Executors, TimeUnit}
+
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -24,6 +26,12 @@ object Site1 {
   val site_IG_Relation = "HAS_InstanceGroup"
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
+
+  def apply(id: Long): Site1 = {
+    Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails], List.empty[SiteFilter],
+      List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup])
+
+  }
 
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
@@ -65,7 +73,7 @@ object Site1 {
         val reservedInstance: List[ReservedInstanceDetails] = childNodeIds_rid.flatMap { childId =>
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
-
+        //logger.info(s"Printing : ${instances.head.blockDeviceMappings}")
         Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
@@ -76,14 +84,26 @@ object Site1 {
   implicit class RichSite1(site1: Site1) extends Neo4jRep[Site1] {
 
     override def toNeo4jGraph(entity: Site1): Node = {
+      logger.debug(s"Executing $getClass :: toNeo4jgraph of site")
       val label = "Site1"
       val mapPrimitives = Map("siteName" -> entity.siteName)
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
+      logger.info("After saving site primitive types ")
       val relationship_inst = "HAS_Instance"
-      entity.instances.foreach { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+      val threadPoolSize = 10
+      val executorService = Executors.newFixedThreadPool(threadPoolSize)
+      entity.instances.foreach {
+        instance =>
+          executorService.submit(new Runnable {
+            override def run(): Unit = {
+              val instanceNode = instance.toNeo4jGraph(instance)
+              Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+            }
+          })
       }
+      val awaitTime = 5
+      executorService.awaitTermination(awaitTime, TimeUnit.SECONDS)
+      executorService.shutdown()
 
       entity.filters.foreach { filter =>
         val filterNode = filter.toNeo4jGraph(filter)

@@ -34,7 +34,7 @@ case object ResourceTypeAll extends ResourceType {
 }
 
 object ResourceType {
-  implicit def toResourceType(name: String): ResourceType = name match {
+  def toResourceType(name: String): ResourceType = name match {
     case "Site" => SiteResourceType
     case "Workflow" => WorkflowResourceType
     case "Instance" => InstanceResourceType

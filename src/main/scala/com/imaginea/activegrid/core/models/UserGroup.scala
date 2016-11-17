@@ -1,8 +1,8 @@
 package com.imaginea.activegrid.core.models
 
 /**
- * Created by ranjithrajd on 25/10/16.
- */
+  * Created by ranjithrajd on 25/10/16.
+  */
 
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
@@ -12,6 +12,7 @@ case class UserGroup(override val id: Option[Long]
                      , name: String
                      , users: Set[User] = Set.empty
                      , accesses: Set[ResourceACL] = Set.empty) extends BaseEntity
+
 
 object UserGroup {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))

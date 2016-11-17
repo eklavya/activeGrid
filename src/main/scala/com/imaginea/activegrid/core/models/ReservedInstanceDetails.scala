@@ -5,8 +5,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
- * Created by nagulmeeras on 31/10/16.
- */
+  * Created by nagulmeeras on 31/10/16.
+  */
 case class ReservedInstanceDetails(override val id: Option[Long],
                                    instanceType: Option[String],
                                    reservedInstancesId: Option[String],

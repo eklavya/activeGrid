@@ -3,9 +3,7 @@ package com.imaginea.activegrid.core.models
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
-
 import scala.collection.JavaConversions._
-
 /**
   * Created by nagulmeeras on 27/10/16.
   */

@@ -22,7 +22,7 @@ case object IncorrectUploadKeyPair extends KeyPairStatus {
 }
 
 object KeyPairStatus {
-  implicit def toKeyPairStatus(name: String): KeyPairStatus = name match {
+  def toKeyPairStatus(name: String): KeyPairStatus = name match {
     case "UPLOADED" => UploadedKeyPair
     case "NOT_YET_UPLOADED" => NotYetUploadedKeyPair
     case "INCORRECT_UPLOAD" => IncorrectUploadKeyPair

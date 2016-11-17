@@ -6,8 +6,8 @@ import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
- * Created by babjik on 26/9/16.
- */
+  * Created by babjik on 26/9/16.
+  */
 case class User(override val id: Option[Long]
                 , username: String
                 , password: String
@@ -107,7 +107,7 @@ object UserUtils {
     }
   }
 
-  def getUserKeysDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
+  def getUserKeysDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
 
   def getKeyDirPath(userId: Long): String = s"$getUserKeysDir${Constants.FILE_SEPARATOR}${userId.toString}${Constants.FILE_SEPARATOR}"
 

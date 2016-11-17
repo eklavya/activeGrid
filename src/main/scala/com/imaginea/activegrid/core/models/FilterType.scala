@@ -6,7 +6,7 @@ package com.imaginea.activegrid.core.models
 sealed trait FilterType {
   def filterType: String
 
-  override def toString: String = super.toString
+  override def toString: String = filterType
 }
 
 case object TAGS extends FilterType {
@@ -33,6 +33,10 @@ case object STATUS extends FilterType {
   override def filterType: String = "STATUS"
 }
 
+case object UNKNOWN extends FilterType {
+  override def filterType: String = "UNKNOWN"
+}
+
 case object FilterType {
   def toFilteType(filterType: String): FilterType = {
     filterType match {
@@ -42,6 +46,7 @@ case object FilterType {
       case "IP_RANGES" => IP_RANGES
       case "INSTANCE_IDS" => INSTANCE_IDS
       case "STATUS" => STATUS
+      case _ => UNKNOWN
     }
   }
 }

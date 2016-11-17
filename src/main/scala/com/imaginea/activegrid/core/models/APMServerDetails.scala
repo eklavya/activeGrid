@@ -2,8 +2,8 @@ package com.imaginea.activegrid.core.models
 
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
+import scala.collection.JavaConversions._ // scalastyle:off underscore.import
 
-import scala.collection.JavaConversions._
 
 /**
   * Created by nagulmeeras on 14/10/16.
@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 case class APMServerDetails(override val id: Option[Long],
                             name: String,
                             serverUrl: String,
-                            monitoredSite: Option[Site],
+                            monitoredSite: Option[Site1],
                             provider: APMProvider,
                             headers: Option[Map[String, String]]) extends BaseEntity
 
@@ -87,7 +87,7 @@ object APMServerDetails {
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              Option(siteAndHeaders._1.asInstanceOf[Site]),
+              Option(siteAndHeaders._1.asInstanceOf[Site1]),
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
               Option(siteAndHeaders._2)
             ))

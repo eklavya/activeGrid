@@ -42,40 +42,35 @@ case class Instance(override val id: Option[Long],
 object Instance {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  val LaunchTime = 100
 
   def apply(instanceId: Option[String], name: String, state: Option[String], instanceType: Option[String],
             platform: Option[String], architecture: Option[String], publicDnsName: Option[String], launchTime: Option[Long],
             memoryInfo: Option[StorageInfo], rootDiskInfo: Option[StorageInfo], tags: List[KeyValueInfo],
-            imageInfo: Option[ImageInfo], sshAccessInfo: Option[SSHAccessInfo]): Instance =
-    Instance(None, instanceId, name, state, instanceType, platform, architecture, publicDnsName,
-      launchTime, memoryInfo, rootDiskInfo, tags, sshAccessInfo, List.empty[InstanceConnection],
-      List.empty[InstanceConnection], Set.empty[ProcessInfo], imageInfo, List.empty[InstanceUser],
-      None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None
-    )
+            imageInfo: Option[ImageInfo], sshAccessInfo: Option[SSHAccessInfo]
+           ): Instance =
+    Instance(None, instanceId, name, state, instanceType, platform, architecture, publicDnsName, launchTime,
+      memoryInfo, rootDiskInfo, tags, sshAccessInfo, List.empty[InstanceConnection], List.empty[InstanceConnection],
+      Set.empty[ProcessInfo], imageInfo, List.empty[InstanceUser], None, None, None, None, None, None, None, None,
+      List.empty, List.empty, reservedInstance = false, None)
 
   def apply(name: String, tags: List[KeyValueInfo], processes: Set[ProcessInfo]): Instance =
     Instance(None, None, name, None, None, None, None, None, None, None, None, tags, None,
-      List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None,
-      List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty,
-      List.empty, reservedInstance = false, None
-    )
+      List.empty[InstanceConnection], List.empty[InstanceConnection], processes, None, List.empty[InstanceUser],
+      None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
   def apply(name: String): Instance =
     Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo],
-      None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None,
-      List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty,
-      false, None
-    )
+      None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo],
+      None, List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty, reservedInstance = false, None)
 
+  // scalastyle:off method.length
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
       case Some(node) =>
         val map = Neo4jRepository.getProperties(node, "instanceId", "name", "state", "instanceType", "platform",
-          "architecture","publicDnsName", "availabilityZone", "privateDnsName", "privateIpAddress", "publicIpAddress",
-          "elasticIP", "monitoring","rootDeviceType", "reservedInstance", "region")
-
+          "architecture", "publicDnsName", "availabilityZone", "privateDnsName", "privateIpAddress", "publicIpAddress",
+          "elasticIP", "monitoring", "rootDeviceType", "reservedInstance", "region")
         val instanceId = map.get("instanceId").asInstanceOf[Option[String]]
         val name = map("name").toString
         val state = map.get("state").asInstanceOf[Option[String]]
@@ -90,28 +85,24 @@ object Instance {
         val elasticIP = map.get("elasticIP").asInstanceOf[Option[String]]
         val monitoring = map.get("monitoring").asInstanceOf[Option[String]]
         val rootDeviceType = map.get("rootDeviceType").asInstanceOf[Option[String]]
-        val reservedInstance = map.get("reservedInstance").toString.toBoolean
+        val reservedInstance = if (map.get("reservedInstance").nonEmpty) map("reservedInstance").asInstanceOf[Boolean] else false
         val region = map.get("region").asInstanceOf[Option[String]]
         //TO DO
         //val launchTime: Date = new Date(map.get("launchTime").get.toString.toLong)
-        val launchTime: Option[Long] = Some(LaunchTime)
+        val launchTime: Long = 100
         //map.get("launchTime").get.toString.toLong
 
         val relationship_info1 = "HAS_storageInfo1"
-        val memoryInfo: Option[StorageInfo] =
-          Neo4jRepository.getChildNodeId(nodeId, relationship_info1).flatMap(id => StorageInfo.fromNeo4jGraph(id))
+        val memoryInfo: Option[StorageInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship_info1).flatMap(id => StorageInfo.fromNeo4jGraph(id))
 
         val relationship_info2 = "HAS_storageInfo2"
-        val rootDiskInfo: Option[StorageInfo] =
-          Neo4jRepository.getChildNodeId(nodeId, relationship_info2).flatMap(id => StorageInfo.fromNeo4jGraph(id))
+        val rootDiskInfo: Option[StorageInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship_info2).flatMap(id => StorageInfo.fromNeo4jGraph(id))
 
         val relationship_ssh = "HAS_sshAccessInfo"
-        val sshAccessInfo: Option[SSHAccessInfo] =
-          Neo4jRepository.getChildNodeId(nodeId, relationship_ssh).flatMap(id => SSHAccessInfo.fromNeo4jGraph(id))
+        val sshAccessInfo: Option[SSHAccessInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship_ssh).flatMap(id => SSHAccessInfo.fromNeo4jGraph(id))
 
         val relationship_image = "HAS_imageInfo"
-        val imageInfo: Option[ImageInfo] =
-          Neo4jRepository.getChildNodeId(nodeId, relationship_image).flatMap(id => ImageInfo.fromNeo4jGraph(id))
+        val imageInfo: Option[ImageInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship_image).flatMap(id => ImageInfo.fromNeo4jGraph(id))
 
         val relationship_keyValueInfo = "HAS_keyValueInfo"
         val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship_keyValueInfo)
@@ -145,8 +136,9 @@ object Instance {
 
         val relationship_blockDevice = "HAS_blockDeviceMapping"
         val childNodeIds_blockDevice = Neo4jRepository.getChildNodeIds(nodeId, relationship_blockDevice)
-        val blockDeviceMappings: List[InstanceBlockDeviceMappingInfo] =
-          childNodeIds_blockDevice.flatMap { childId => InstanceBlockDeviceMappingInfo.fromNeo4jGraph(childId)}
+        val blockDeviceMappings: List[InstanceBlockDeviceMappingInfo] = childNodeIds_blockDevice.flatMap { childId =>
+          InstanceBlockDeviceMappingInfo.fromNeo4jGraph(childId)
+        }
 
         val relationship_securityGroup = "HAS_securityGroup"
         val childNodeIds_securityGroup = Neo4jRepository.getChildNodeIds(nodeId, relationship_securityGroup)
@@ -154,10 +146,9 @@ object Instance {
           SecurityGroupInfo.fromNeo4jGraph(childId)
         }
 
-        Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture,
-          publicDnsName, launchTime, memoryInfo, rootDiskInfo,tags, sshAccessInfo, liveConnections,
-          estimatedConnections, processes, imageInfo, existingUsers,None, availabilityZone, privateDnsName,
-          privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, blockDeviceMappings,
+        Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture, publicDnsName, Some(launchTime), memoryInfo, rootDiskInfo,
+          tags, sshAccessInfo, liveConnections, estimatedConnections, processes, imageInfo, existingUsers,
+          None, availabilityZone, privateDnsName, privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, blockDeviceMappings,
           securityGroups, reservedInstance, region))
       case None =>
         logger.warn(s"could not find node for Instance with nodeId $nodeId")
@@ -166,9 +157,11 @@ object Instance {
 
   }
 
+  // scalastyle:on method.length
   implicit class InstanceImpl(instance: Instance) extends Neo4jRep[Instance] {
-
+    // scalastyle:off method.length
     override def toNeo4jGraph(entity: Instance): Node = {
+      logger.info(s"Executing $getClass :: toNeo4jGraph")
       val label = "Instance"
       val mapPrimitives = Map("instanceId" -> entity.instanceId,
         "name" -> entity.name,
@@ -188,6 +181,7 @@ object Instance {
         "reservedInstance" -> entity.reservedInstance,
         "region" -> entity.region
       )
+      //logger.info(s"Printging Instance : $entity  : ID : ${entity.id.get.getClass}")
       val node = Neo4jRepository.saveEntity[Instance](label, entity.id, mapPrimitives)
 
       entity.memoryInfo match {
@@ -261,11 +255,12 @@ object Instance {
       val relationship_securityGroup = "HAS_securityGroup"
       entity.securityGroups.foreach { securityGroup =>
         val securityGroupNode = securityGroup.toNeo4jGraph(securityGroup)
-        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_process)
+        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_securityGroup)
       }
       node
     }
 
+    // scalastyle:off method.length
     override def fromNeo4jGraph(id: Long): Option[Instance] = {
       Instance.fromNeo4jGraph(id)
     }
