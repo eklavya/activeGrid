@@ -180,37 +180,16 @@ object Main extends App {
             getProperty[String](map, "architecture"),
             getProperty[String](map, "publicDnsName"),
             getProperty[Long](map, "launchTime"),
-            if (getProperty[String](map, "memoryInfo").nonEmpty) {
-              Some(storageInfoFormat.read(getProperty[String](map, "memoryInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
-            if (getProperty[String](map, "rootDiskInfo").nonEmpty) {
-              Some(storageInfoFormat.read(getProperty[String](map, "rootDiskInfo").get.asInstanceOf[JsValue]))
-            }
-            else {
-              None
-            },
+            getProperty[String](map, "memoryInfo").flatMap(memoryInfo => Some(storageInfoFormat.read(memoryInfo.asInstanceOf[JsValue]))),
+            getProperty[String](map, "rootDiskInfo").flatMap(rootDiskInfo => Some(storageInfoFormat.read(rootDiskInfo.asInstanceOf[JsValue]))),
             getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
-            if (getProperty[String](map, "sshAccessInfo").nonEmpty) {
-              Some(sshAccessInfoFormat.read(getProperty[String](map, "sshAccessInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "sshAccessInfo").flatMap(sshAccessInfo => Some(sshAccessInfoFormat.read(sshAccessInfo.asInstanceOf[JsValue]))),
             getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
             getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
             getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
-            if (getProperty[String](map, "imageInfo").nonEmpty) {
-              Some(imageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "imageInfo").flatMap(imageInfo => Some(imageFormat.read(imageInfo.asInstanceOf[JsValue]))),
             getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
-            if (getProperty[String](map, "account").nonEmpty) {
-              Some(accountInfoFormat.read(getProperty[String](map, "acoount").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "account").flatMap(accountInfo => Some(accountInfoFormat.read(accountInfo.asInstanceOf[JsValue]))),
             getProperty[String](map, "availabilityZone"),
             getProperty[String](map, "privateDnsName"),
             getProperty[String](map, "privateIpAddress"),
