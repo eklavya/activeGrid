@@ -10,7 +10,7 @@ object SiteManagerImpl {
     siteNode match {
       case None => ExecutionStatus(false, s"Site ${siteId} not available")
       case Some(site) =>
-        val instance = site.instances.map(instance => instance.id.toString == instanceId)
+        //val instance = site.instances.map(instance => instance.id.toString == instanceId)
 
         //Removing instance  from groups list
         site.groupsList.map(instanceGroup => Neo4jRepository.deleteRelation(instanceId, instanceGroup, "instances"))

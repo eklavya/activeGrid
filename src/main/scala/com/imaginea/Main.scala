@@ -1484,7 +1484,6 @@ object Main extends App {
   }
 
   def siteServices : Route = pathPrefix("sites") {
-    val siteViewFilter = new SiteViewFilter()
     get {
       parameters('viewLevel.as[String]) {
         (viewLevel) =>
@@ -1492,7 +1491,7 @@ object Main extends App {
             logger.info("View level is..." + viewLevel)
             Neo4jRepository.getNodesByLabel("Site1").map { siteNode =>
               Site1.fromNeo4jGraph(siteNode.getId) match {
-                case Some(siteObj) => Some(siteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel)))
+                case Some(siteObj) => Some(SiteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel)))
                 case None => None
               }
             }
