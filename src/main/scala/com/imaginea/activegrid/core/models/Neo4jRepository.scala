@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb._
@@ -10,10 +11,11 @@ import scala.collection.JavaConversions._
 /**
   * Created by babjik on 23/9/16.
   */
+
 object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServiceProvider {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def neo4jStoreDir = "./graphdb/activegrid/test"
+  def neo4jStoreDir: String = AGU.DBPATH
 
   def hasLabel(node: Node, label: String): Boolean = {
     node.hasLabel(label)
@@ -139,9 +141,9 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 
-  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String) = withTx { neo =>
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String):Unit = withTx { neo =>
     val relType = DynamicRelationshipType.withName(relation)
-    logger.debug(s"setting relationhip : $relation")
+    logger.debug(s"setting relationship : $relation")
     fromNode --> relType --> toNode
     /*start --> relType --> end <
      start.getSingleRelationship(relType, Direction.OUTGOING)*/

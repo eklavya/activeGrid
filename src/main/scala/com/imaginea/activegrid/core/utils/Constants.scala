@@ -13,6 +13,7 @@ object Constants {
   val TEMP_DIR_LOC: String = config.getString("tmp.dir")
   val USER_KEYS: String = "userkeys"
   val FILE_SEPARATOR = File.separator
+  val NAME_TAG_KEY = "Name"
 
-  def getTempDirectoryLocation = TEMP_DIR_LOC
+  def getTempDirectoryLocation: String = TEMP_DIR_LOC
 }
