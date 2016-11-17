@@ -1243,7 +1243,7 @@ object Main extends App {
               val response = Future {
                 val mayBeSite = Site1.fromNeo4jGraph(siteId)
                 mayBeSite match {
-                  case Some(site) => site.groupsList.filter(group => group.groupType.get.equals(groupType))
+                  case Some(site) => site.groupsList.filter(group => group.groupType.contains(groupType))
                   case None => throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
                 }
               }
