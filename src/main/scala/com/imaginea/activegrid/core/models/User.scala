@@ -59,16 +59,8 @@ object User {
   def fromNeo4jGraph(nodeId: Long): Option[User] = {
     Neo4jRepository.findNodeById(nodeId) match {
       case Some(node) =>
-        val map = Neo4jRepository.getProperties(node
-          , "username"
-          , "password"
-          , "email"
-          , "uniqueId"
-          , "accountNonExpired"
-          , "accountNonLocked"
-          , "credentialsNonExpired"
-          , "enabled"
-          , "displayName")
+        val map = Neo4jRepository.getProperties(node, "username", "password", "email", "uniqueId",
+          "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
 
         val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
 

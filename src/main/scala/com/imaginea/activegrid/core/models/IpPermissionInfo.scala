@@ -21,9 +21,9 @@ object IpPermissionInfo {
     override def toNeo4jGraph(entity: IpPermissionInfo): Node = {
       val map = Map("fromPort" -> entity.fromPort,
         "toPort" -> entity.toPort,
-        "ipProtocol" -> entity.ipProtocol,
-        "groupIds" -> entity.groupIds,
-        "ipRanges" -> entity.ipRanges)
+        "ipProtocol" -> entity.ipProtocol.value,
+        "groupIds" -> entity.groupIds.toArray,
+        "ipRanges" -> entity.ipRanges.toArray)
       Neo4jRepository.saveEntity[IpPermissionInfo](ipPermissionLabel, entity.id, map)
     }
 
@@ -42,8 +42,8 @@ object IpPermissionInfo {
             map("fromPort").asInstanceOf[Int],
             map("toPort").asInstanceOf[Int],
             IpProtocol.toProtocol(map("ipProtocol").asInstanceOf[String]),
-            map("groupIds").asInstanceOf[Set[String]],
-            map("ipRanges").asInstanceOf[List[String]]))
+            map("groupIds").asInstanceOf[Array[String]].toSet,
+            map("ipRanges").asInstanceOf[Array[String]].toList))
         } else {
           None
         }

@@ -3,11 +3,10 @@ package com.imaginea.activegrid.core.models
 import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
-import org.neo4j.graphdb._
+import org.neo4j.graphdb.{Node,Direction,NotFoundException,DynamicRelationshipType,Relationship}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
+import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 /**
   * Created by babjik on 23/9/16.
   */
@@ -18,11 +17,17 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def neo4jStoreDir: String = AGU.DBPATH
 
   def hasLabel(node: Node, label: String): Boolean = {
-    node.hasLabel(label)
+    withTx {
+      neo =>
+        node.hasLabel(label)
+    }
   }
 
   def getProperty[T: Manifest](node: Node, name: String): Option[T] = {
-    if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+    withTx {
+      neo =>
+        if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+    }
   }
 
   def getSingleNodeByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any): Option[Node] = withTx { implicit neo =>
@@ -141,12 +146,14 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 
-  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String):Unit = withTx { neo =>
-    val relType = DynamicRelationshipType.withName(relation)
-    logger.debug(s"setting relationship : $relation")
-    fromNode --> relType --> toNode
-    /*start --> relType --> end <
-     start.getSingleRelationship(relType, Direction.OUTGOING)*/
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String): Unit = {
+    withTx { neo =>
+      val relType = DynamicRelationshipType.withName(relation)
+      logger.debug(s"setting relationhip : $relation")
+      fromNode --> relType --> toNode
+      /*start --> relType --> end <
+       start.getSingleRelationship(relType, Direction.OUTGOING)*/
+    }
   }
 
   def getChildNodeId(parentNode: Long, relation: String): Option[Long] = withTx { neo =>

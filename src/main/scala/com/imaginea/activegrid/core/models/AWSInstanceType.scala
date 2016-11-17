@@ -196,7 +196,7 @@ case object AWSInstanceType {
 
     override def rootPartitionSize: Double = 1D
   }
-
+  //scalastyle:off
   def toAWSInstanceType(awsInstanceName: String): AWSInstanceType = {
     awsInstanceName match {
       case "t1.micro" => T1Micro
@@ -224,4 +224,5 @@ case object AWSInstanceType {
       case _ => NEWERBETTER
     }
   }
+  //scalastyle:on
 }

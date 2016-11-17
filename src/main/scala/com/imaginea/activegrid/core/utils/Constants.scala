@@ -14,6 +14,7 @@ object Constants {
   val USER_KEYS: String = "userkeys"
   val FILE_SEPARATOR = File.separator
   val NAME_TAG_KEY = "Name"
+  val MAX_SIZE_IMAGE_AND_VOLUME_IDS = 200
 
   def getTempDirectoryLocation: String = TEMP_DIR_LOC
 }

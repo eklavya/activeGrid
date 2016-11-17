@@ -5,9 +5,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
- * Created by ranjithrajd on 25/10/16.
- */
-
+  * Created by ranjithrajd on 25/10/16.
+  */
 case class ResourceACL(override val id: Option[Long]
                        , resources: String = ResourceTypeAll.name
                        , permission: String = All.name
@@ -24,7 +23,7 @@ object ResourceACL {
         , "permission" -> entity.permission
         , "resourceIds" -> entity.resourceIds
       )
-      Neo4jRepository.saveEntity[ResourceACL](label,entity.id,resourceMap)
+      Neo4jRepository.saveEntity[ResourceACL](label, entity.id, resourceMap)
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[ResourceACL] = fromNeo4jGraph(nodeId)

@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -10,7 +11,7 @@ import org.slf4j.LoggerFactory
 case class ScalingGroup(override val id: Option[Long],
                         name: String,
                         launchConfigurationName: String,
-                        status: String,
+                        status: Option[String],
                         availabilityZones: List[String],
                         instanceIds: List[String],
                         loadBalancerNames: List[String],
@@ -26,11 +27,8 @@ object ScalingGroup {
     val mayBeNode = Neo4jRepository.findNodeById(id)
     mayBeNode match {
       case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "name",
-          "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames",
-          "desiredCapacity", "maxCapacity", "minCapacity"
-        )
-
+        val map = Neo4jRepository.getProperties(node, "name", "launchConfigurationName", "status", "availabilityZones",
+          "instanceIds", "loadBalancerNames", "desiredCapacity", "maxCapacity", "minCapacity")
         val relationship_keyValueInfo = "HAS_keyValueInfo"
         val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, relationship_keyValueInfo)
         val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
@@ -41,7 +39,7 @@ object ScalingGroup {
           Some(node.getId),
           map("name").toString,
           map("launchConfigurationName").toString,
-          map("status").toString,
+          ActiveGridUtils.getValueFromMapAs[String](map, "status"),
           map("availabilityZones").asInstanceOf[Array[String]].toList,
           map("instanceIds").asInstanceOf[Array[String]].toList,
           map("loadBalancerNames").asInstanceOf[Array[String]].toList,

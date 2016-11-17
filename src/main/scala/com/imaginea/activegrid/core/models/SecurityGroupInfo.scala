@@ -1,8 +1,9 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._// scalastyle:ignore underscore.import
 
 /**
   * Created by nagulmeeras on 27/10/16.
@@ -27,25 +28,23 @@ object SecurityGroupInfo {
 
   implicit class SecurityGroupInfoImpl(securityGroupInfo: SecurityGroupInfo) extends Neo4jRep[SecurityGroupInfo] {
     override def toNeo4jGraph(entity: SecurityGroupInfo): Node = {
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(securityGroupInfoLabel)(neo)
-          if (entity.groupName.nonEmpty) node.setProperty("groupName", entity.groupName)
-          if (entity.groupId.nonEmpty) node.setProperty("groupId", entity.groupId)
-          if (entity.ownerId.nonEmpty) node.setProperty("ownerId", entity.ownerId)
-          if (entity.description.nonEmpty) node.setProperty("description", entity.description)
-          entity.ipPermissions.foreach {
-            ipPermission =>
-              val ipPermissionNode = ipPermission.toNeo4jGraph(ipPermission)
-              repository.createRelation(securityGroup_IpPermission_Relation, node, ipPermissionNode)
-          }
-          entity.tags.foreach {
-            tag =>
-              val tagNode = tag.toNeo4jGraph(tag)
-              repository.createRelation(securityGroup_KeyValue_Relation, node, tagNode)
-          }
-          node
+      val map = Map("groupName" -> entity.groupName,
+        "groupId" -> entity.groupId,
+        "ownerId" -> entity.ownerId,
+        "description" -> entity.description)
+      val node = Neo4jRepository.saveEntity[SecurityGroupInfo](securityGroupInfoLabel, entity.id, map)
+
+      entity.ipPermissions.foreach {
+        ipPermission =>
+          val ipPermissionNode = ipPermission.toNeo4jGraph(ipPermission)
+          repository.createRelation(securityGroup_IpPermission_Relation, node, ipPermissionNode)
       }
+      entity.tags.foreach {
+        tag =>
+          val tagNode = tag.toNeo4jGraph(tag)
+          repository.createRelation(securityGroup_KeyValue_Relation, node, tagNode)
+      }
+      node
     }
 
     override def fromNeo4jGraph(nodeId: Long): Option[SecurityGroupInfo] = {
@@ -54,10 +53,11 @@ object SecurityGroupInfo {
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[SecurityGroupInfo] = {
-    repository.withTx {
-      neo =>
-        val node = repository.getNodeById(nodeId)(neo)
-        if (repository.hasLabel(node, securityGroupInfoLabel)) {
+    val maybeNode = Neo4jRepository.findNodeById(nodeId)
+    maybeNode match {
+      case Some(node) =>
+        if (Neo4jRepository.hasLabel(node, securityGroupInfoLabel)) {
+          val map = Neo4jRepository.getProperties(node, "groupName", "groupId", "ownerId", "description")
           val keyValAndIpPermission = node.getRelationships.foldLeft((List.empty[IpPermissionInfo], List.empty[KeyValueInfo])) {
             (result, relationship) =>
               val childNode = relationship.getEndNode
@@ -67,15 +67,16 @@ object SecurityGroupInfo {
               }
           }
           Some(SecurityGroupInfo(Some(nodeId),
-            repository.getProperty[String](node, "groupName"),
-            repository.getProperty[String](node, "groupId"),
-            repository.getProperty[String](node, "ownerId"),
-            repository.getProperty[String](node, "description"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "groupName"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "groupId"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "ownerId"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "description"),
             keyValAndIpPermission._1,
             keyValAndIpPermission._2))
         } else {
           None
         }
+      case None => None
     }
   }
 }

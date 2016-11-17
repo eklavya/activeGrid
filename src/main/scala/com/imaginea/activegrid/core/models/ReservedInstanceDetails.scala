@@ -20,9 +20,7 @@ object ReservedInstanceDetails {
   val reservedInstanceDetailsLabel = "ReservedInstanceDetails"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails)
-    extends Neo4jRep[ReservedInstanceDetails] {
-
+  implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails) extends Neo4jRep[ReservedInstanceDetails] {
     override def toNeo4jGraph(entity: ReservedInstanceDetails): Node = {
       val map = Map("instanceType" -> entity.instanceType,
         "reservedInstancesId" -> entity.reservedInstancesId,
@@ -44,8 +42,8 @@ object ReservedInstanceDetails {
     mayBeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, reservedInstanceDetailsLabel)) {
-          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone", "tenancy",
-            "offeringType", "productDescription", "count")
+          val map = Neo4jRepository.getProperties(node, "instanceType", "reservedInstancesId", "availabilityZone",
+            "tenancy", "offeringType", "productDescription", "count")
 
           Some(ReservedInstanceDetails(Some(nodeId),
             ActiveGridUtils.getValueFromMapAs[String](map, "instanceType"),

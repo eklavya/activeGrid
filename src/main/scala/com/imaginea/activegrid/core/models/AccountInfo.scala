@@ -34,7 +34,7 @@ object AccountInfo {
         "accessKey" -> entity.accessKey,
         "secretKey" -> entity.secretKey,
         "regionName" -> entity.regionName,
-        "regions" -> entity.regions,
+        "regions" -> entity.regions.toArray,
         "networkCIDR" -> entity.networkCIDR)
       Neo4jRepository.saveEntity[AccountInfo](accountInfoLabel, entity.id, map)
 
@@ -51,9 +51,8 @@ object AccountInfo {
     maybeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, accountInfoLabel)) {
-          val map = Neo4jRepository.getProperties(node, "accountId", "providerType", "ownerAlias", "accessKey", "secretKey",
-            "regionName", "regions", "networkCIDR")
-
+          val map = Neo4jRepository.getProperties(node, "accountId", "providerType", "ownerAlias", "accessKey",
+            "secretKey", "regionName", "regions", "networkCIDR")
           Some(new AccountInfo(Some(node.getId),
             ActiveGridUtils.getValueFromMapAs[String](map, "accountId"),
             InstanceProvider.toInstanceProvider(map("providerType").asInstanceOf[String]),
@@ -61,7 +60,7 @@ object AccountInfo {
             ActiveGridUtils.getValueFromMapAs[String](map, "accessKey"),
             ActiveGridUtils.getValueFromMapAs[String](map, "secretKey"),
             ActiveGridUtils.getValueFromMapAs[String](map, "regionName"),
-            map("regions").asInstanceOf[List[String]],
+            map("regions").asInstanceOf[Array[String]].toList,
             ActiveGridUtils.getValueFromMapAs[String](map, "networkCIDR")
           ))
         } else {
