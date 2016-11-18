@@ -3,7 +3,7 @@ package com.imaginea.activegrid.core.models
 /**
   * Created by sivag on 28/10/16.
   */
-class SiteViewFilter extends  ViewFilter[Site1]{
+object SiteViewFilter extends  ViewFilter[Site1]{
 
   def getDetailedSiteView(t: Site1): Site1 ={
     Site1(t.id,t.siteName,t.instances,t.reservedInstanceDetails,t.filters,t.loadBalancers,t.scalingGroups,t.groupsList)

@@ -1489,10 +1489,12 @@ object Main extends App {
         (viewLevel) =>
           val result = Future {
             logger.info("View level is..." + viewLevel)
-            Neo4jRepository.getNodesByLabel("Site1").map { siteNode =>
-              Site1.fromNeo4jGraph(siteNode.getId) match {
-                case Some(siteObj) => Some(SiteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel)))
-                case None => None
+            //Instead of applying map and flat operations at distinct  places,flatMap used directly though container holds only List[Nodes]
+            //Use of map here produces results like List[Option[Site]] but List[Site1] would be better option for next operations.
+            Neo4jRepository.getNodesByLabel("Site1").flatMap{ siteNode =>
+              Site1.fromNeo4jGraph(siteNode.getId).map {
+                siteObj => SiteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel))
+
               }
             }
           }

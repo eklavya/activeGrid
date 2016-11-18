@@ -13,7 +13,7 @@ object SiteManagerImpl {
         //val instance = site.instances.map(instance => instance.id.toString == instanceId)
 
         //Removing instance  from groups list
-        site.groupsList.map(instanceGroup => Neo4jRepository.deleteRelation(instanceId, instanceGroup, "instances"))
+        site.groupsList.foreach(instanceGroup => Neo4jRepository.deleteRelation(instanceId, instanceGroup, "instances"))
         //Need to remove from application.
 
 
@@ -22,4 +22,5 @@ object SiteManagerImpl {
         ExecutionStatus(true, s"Instance ${instanceId} deleted from site ${siteId}")
     }
   }
+
 }
