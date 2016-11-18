@@ -22,7 +22,7 @@ object Software {
 
   implicit class SoftwareImpl(software: Software) extends Neo4jRep[Software] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    val label = "SoftwaresTest2"
+    val label = "Softwares"
 
     override def toNeo4jGraph(software: Software): Node = {
       logger.debug(s"In toGraph for Software: $software")

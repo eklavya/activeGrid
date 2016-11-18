@@ -2,19 +2,19 @@ package com.imaginea
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._  // scalastyle:ignore underscore.import
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.Directives._  // scalastyle:ignore underscore.import
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.{InstanceGroup, _}  // scalastyle:ignore underscore.import
+import com.imaginea.activegrid.core.models.{InstanceGroup, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol._  // scalastyle:ignore underscore.import
-import spray.json._  // scalastyle:ignore underscore.import
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -433,7 +433,7 @@ object Main extends App {
     }
   }
 
-  def apmServiceRoutes: Route  = path(PathMatchers.separateOnSlashes("apm")) {
+  def apmServiceRoutes: Route = path(PathMatchers.separateOnSlashes("apm")) {
     post {
       entity(as[APMServerDetails]) { apmServerDetails =>
         logger.debug(s"Executing $getClass :: saveAPMServerDetails")
@@ -868,10 +868,10 @@ object Main extends App {
   }
 
 
-  def catalogRoutes: Route  = pathPrefix("catalog") {
+  def catalogRoutes: Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
-        val getImages: Future[Page[ImageInfo]] = Future {
+        val Images: Future[Page[ImageInfo]] = Future {
           val imageLabel: String = "ImageInfo"
           val nodesList = Neo4jRepository.getNodesByLabel(imageLabel)
           val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
@@ -879,7 +879,7 @@ object Main extends App {
           Page[ImageInfo](imageInfoList)
         }
 
-        onComplete(getImages) {
+        onComplete(Images) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
             logger.error(s"Unable to Retrieve ImageInfo List. Failed with : ${exception.getMessage}", exception)
@@ -945,13 +945,13 @@ object Main extends App {
       }
     } ~ path("softwares") {
       get {
-        val getSoftwares = Future {
+        val softwares = Future {
           val softwareLabel: String = "SoftwaresTest2"
           val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
           val softwaresList = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
           Page[Software](softwaresList)
         }
-        onComplete(getSoftwares) {
+        onComplete(softwares) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
             logger.error(s"Unable to Retrieve Softwares List. Failed with :  ${exception.getMessage}", exception)
@@ -987,7 +987,7 @@ object Main extends App {
     }
   }
 
-  def nodeRoutes: Route  = pathPrefix("node") {
+  def nodeRoutes: Route = pathPrefix("node") {
     path("list") {
       get {
         val listOfAllInstanceNodes = Future {
@@ -1045,7 +1045,7 @@ object Main extends App {
     }
   }
 
-  val appsettingRoutes: Route  = pathPrefix("config") {
+  val appsettingRoutes: Route = pathPrefix("config") {
     path("ApplicationSettings") {
       post {
         entity(as[ApplicationSettings]) { appSettings =>
@@ -1174,7 +1174,7 @@ object Main extends App {
 
   }
 
-  val discoveryRoutes: Route  = pathPrefix("discover") {
+  val discoveryRoutes: Route = pathPrefix("discover") {
     path("site") {
       put {
         entity(as[Site1]) { site =>
@@ -1415,7 +1415,7 @@ object Main extends App {
   }
 
 
-  def siteServiceRoutes: Route  = pathPrefix("sites") {
+  def siteServiceRoutes: Route = pathPrefix("sites") {
     path("site" / LongNumber) { siteId =>
       get {
         parameter("type") { view =>
