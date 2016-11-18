@@ -9,9 +9,5 @@ case class ExecutionStatus(status:Boolean,msg:String)
 object ExecutionStatus
 {
   def apply(status: Boolean): ExecutionStatus = ExecutionStatus(status, "")
-
-  def getMsg(statusObject:ExecutionStatus): String = {
-    statusObject.msg
-  }
 }
 

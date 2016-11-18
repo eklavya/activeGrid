@@ -1509,7 +1509,7 @@ object Main extends App {
         Site1.delete(siteId)
       }
       onComplete(maybeDelete) {
-        case Success(deleteStatus) => complete(StatusCodes.OK, ExecutionStatus.getMsg(deleteStatus))
+        case Success(executionStatus) => complete(StatusCodes.OK, executionStatus.msg)
         case Failure(ex) => logger.info("Failed to delete entity", ex)
           complete(StatusCodes.BadRequest, "Deletion failed")
       }
@@ -1521,7 +1521,7 @@ object Main extends App {
           SiteManagerImpl.deleteIntanceFromSite(siteId, instanceId)
         }
         onComplete(mayBeDelete) {
-          case Success(delete) => complete(StatusCodes.OK, ExecutionStatus.getMsg(delete))
+          case Success(executionStatus) => complete(StatusCodes.OK, executionStatus.msg)
           case Failure(ex) => logger.error("Failed to delete the insatnce", ex)
             complete(StatusCodes.BadRequest, "Failed to delete instance")
         }
