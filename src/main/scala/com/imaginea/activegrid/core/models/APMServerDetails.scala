@@ -39,7 +39,7 @@ object APMServerDetails {
 
           aPMServerDetails.monitoredSite match {
             case Some(site) =>
-              val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph(site)
+              val siteNode = site.toNeo4jGraph(site)
               createRelationShip(node, siteNode, apmServer_site_relation)
             case None => logger.debug("APM Server Details entity has no Sit information")
           }
