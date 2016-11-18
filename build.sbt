@@ -19,6 +19,11 @@ libraryDependencies ++= {
     "eu.fakod" % "neo4j-scala_2.11" % neo4jScalaVersion,
     "org.apache.jclouds.provider" % "aws-ec2" % "1.6.3",
     "org.apache.jclouds.provider" % "aws-s3" % "1.6.3",
-    "com.amazonaws" % "aws-java-sdk" % "1.11.46"
+    "com.amazonaws" % "aws-java-sdk" % "1.11.46",
+    "com.jcraft" % "jsch" % "0.1.50",
+
+    "org.scalactic" %% "scalactic" % "3.0.0",
+    "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+    "org.scalamock" %% "scalamock-scalatest-support" % "3.3.0" % "test"
   )
 }
