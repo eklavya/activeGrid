@@ -1,16 +1,17 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-/**
+/*
  * Created by shareefn on 7/10/16.
  */
 case class ProcessInfo(override val id: Option[Long],
-                       pid: Int,
-                       parentPid: Int,
-                       name: String,
+                       pid: Option[Int],
+                       parentPid: Option[Int],
+                       name: Option[String],
                        command: Option[String],
                        owner: Option[String],
                        residentBytes: Option[Long],
@@ -22,20 +23,20 @@ object ProcessInfo {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def apply(pid: Int, parentPid: Int, name: String): ProcessInfo =
-    ProcessInfo(None, 1, 1, "init", None, None, None, None, None)
+    ProcessInfo(None, Some(pid), Some(parentPid), Some(name), None, None, None, None, None)
 
   def fromNeo4jGraph(nodeId: Long): Option[ProcessInfo] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
       case Some(node) =>
         val map = Neo4jRepository.getProperties(node, "pid", "parentPid", "name", "command", "owner", "residentBytes", "softwareVersion")
-        val pid = map("pid").toString.toInt
-        val parentPid = map("parentPid").toString.toInt
-        val name = map("name").toString
-        val command = map.get("command").asInstanceOf[Option[String]]
-        val owner = map.get("owner").asInstanceOf[Option[String]]
-        val residentBytes = map.get("residentBytes").asInstanceOf[Option[Long]]
-        val softwareVersion = map.get("softwareVersion").asInstanceOf[Option[String]]
+        val pid = ActiveGridUtils.getValueFromMapAs[Int](map, "pid")
+        val parentPid = ActiveGridUtils.getValueFromMapAs[Int](map, "parentPid")
+        val name = ActiveGridUtils.getValueFromMapAs[String](map, "name")
+        val command = ActiveGridUtils.getValueFromMapAs[String](map, "command")
+        val owner = ActiveGridUtils.getValueFromMapAs[String](map, "owner")
+        val residentBytes = ActiveGridUtils.getValueFromMapAs[Long](map, "residentBytes")
+        val softwareVersion = ActiveGridUtils.getValueFromMapAs[String](map, "softwareVersion")
         val relationship = "HAS_software"
         val software = Neo4jRepository.getChildNodeId(nodeId, relationship).flatMap(id => Software.fromNeo4jGraph(id))
 

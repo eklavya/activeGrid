@@ -18,11 +18,17 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def neo4jStoreDir: String = AGU.DBPATH
 
   def hasLabel(node: Node, label: String): Boolean = {
-    node.hasLabel(label)
+    withTx {
+      neo =>
+        node.hasLabel(label)
+    }
   }
 
   def getProperty[T: Manifest](node: Node, name: String): Option[T] = {
-    if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+    withTx {
+      neo =>
+        if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+    }
   }
 
   def getSingleNodeByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any): Option[Node] = withTx { implicit neo =>
@@ -141,7 +147,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 
-  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String):Unit = withTx { neo =>
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String): Unit = withTx { neo =>
     val relType = DynamicRelationshipType.withName(relation)
     logger.debug(s"setting relationship : $relation")
     fromNode --> relType --> toNode
