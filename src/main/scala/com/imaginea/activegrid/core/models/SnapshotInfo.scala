@@ -4,8 +4,6 @@ import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
 /**
   * Created by nagulmeeras on 27/10/16.
   */
@@ -23,7 +21,7 @@ case class SnapshotInfo(override val id: Option[Long],
 
 object SnapshotInfo {
   val snapshotInfoLabel = "SnapshotInfo"
-  val snapshotInfo_KeyValue_Relation = "HAS_KEY_VALUE"
+  val snapshotInfoAndKeyValueRelation = "HAS_KEY_VALUE"
   val logger = LoggerFactory.getLogger(getClass)
 
   def appply(id: Long): SnapshotInfo = {
@@ -46,7 +44,7 @@ object SnapshotInfo {
       entity.tags.foreach {
         tag =>
           val tagNode = tag.toNeo4jGraph(tag)
-          Neo4jRepository.createRelation(snapshotInfo_KeyValue_Relation, node, tagNode)
+          Neo4jRepository.createRelation(snapshotInfoAndKeyValueRelation, node, tagNode)
       }
       node
     }
@@ -65,10 +63,9 @@ object SnapshotInfo {
           val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress", "ownerId",
             "ownerAlias", "description", "volumeSize")
 
-          val keyValueInfo = node.getRelationships.foldLeft(List.empty[KeyValueInfo]) {
-            (list, relationship) =>
-              val keyValInfo = KeyValueInfo.fromNeo4jGraph(relationship.getEndNode.getId)
-              if (keyValInfo.nonEmpty) keyValInfo.get :: list else list
+          val keyValueInfoNodeIds = Neo4jRepository.getChildNodeIds(nodeId, snapshotInfoAndKeyValueRelation)
+          val keyValueInfos: List[KeyValueInfo] = keyValueInfoNodeIds.flatMap { childId =>
+            KeyValueInfo.fromNeo4jGraph(childId)
           }
           Some(SnapshotInfo(
             Some(nodeId),
@@ -81,7 +78,7 @@ object SnapshotInfo {
             ActiveGridUtils.getValueFromMapAs[String](map, "ownerAlias"),
             ActiveGridUtils.getValueFromMapAs[String](map, "description"),
             ActiveGridUtils.getValueFromMapAs[Int](map, "volumeSize"),
-            keyValueInfo.asInstanceOf[List[KeyValueInfo]]))
+            keyValueInfos))
         } else {
           None
         }

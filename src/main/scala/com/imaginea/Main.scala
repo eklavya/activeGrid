@@ -344,7 +344,7 @@ object Main extends App {
           onComplete(Future {
             appsetting.toNeo4jGraph(appsetting)
           }) {
-            case Success(response) => complete(StatusCodes.OK, "Done")
+            case Success(response) => complete(StatusCodes.OK, "Saved successfully!")
             case Failure(exception) =>
               logger.error(s"Unable to save App Settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save App Settings")
@@ -375,7 +375,7 @@ object Main extends App {
             AppSettings.updateAppSettings(setting, "Has_Settings")
           }
           onComplete(response) {
-            case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+            case Success(responseMessage) => complete(StatusCodes.OK, "Updated successfully!")
             case Failure(exception) =>
               logger.error(s"Unable to save the settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save the settings")
@@ -390,7 +390,7 @@ object Main extends App {
             AppSettings.updateAppSettings(setting, "Has_AuthSettings")
           }
           onComplete(response) {
-            case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+            case Success(responseMessage) => complete(StatusCodes.OK, "Updated successfully!")
             case Failure(exception) =>
               logger.error(s"Unable to save the Auth settings ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest, "Unable to save the Auth settings")
@@ -416,7 +416,7 @@ object Main extends App {
           AppSettings.deleteSettings(list, "Has_Settings")
         }
         onComplete(isDeleted) {
-          case Success(response) => complete(StatusCodes.OK, "Done")
+          case Success(response) => complete(StatusCodes.OK, "Deleted Successfully!")
           case Failure(exception) =>
             logger.error(s"Unable to delete settings ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to delete  settings")
@@ -1255,8 +1255,6 @@ object Main extends App {
                   logger.error(s"Unable to get Instance Groups ${exception.getMessage}", exception)
                   complete(StatusCodes.BadRequest, "Unable to get Instance Groups")
               }
-              logger.info(s"Site Id : $siteId , Group Type : $groupType")
-              complete("Done")
           }
       }
     } ~ put {
@@ -1265,23 +1263,25 @@ object Main extends App {
           entity(as[InstanceGroup]) {
             instanceGroup =>
               val response = Future {
-                val site = Site1.fromNeo4jGraph(siteId)
-                if (site.nonEmpty) {
-                  val groups = site.get.groupsList
-                  val groupToSave = groups.find(group => instanceGroup.name.equals(group.name))
-                  if (groupToSave.nonEmpty) {
-                    groupToSave.get.instances ++ instanceGroup.instances
-                    groupToSave.get.toNeo4jGraph(groupToSave.get)
-                  } else {
-                    instanceGroup.toNeo4jGraph(instanceGroup)
-                  }
-                } else {
-                  throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+                val mayBeSite = Site1.fromNeo4jGraph(siteId)
+                mayBeSite match {
+                  case Some(site) => val groups = site.groupsList
+                    val mayBeGroup = groups.find(group => instanceGroup.name.equals(group.name))
+                    mayBeGroup match {
+                      case Some(groupToSave) =>
+                        val instanceGroupToSave = groupToSave.copy(instances = groupToSave.instances ::: instanceGroup.instances)
+                        instanceGroupToSave.toNeo4jGraph(instanceGroupToSave)
+                      case None =>
+                        val instanceGroupNode = instanceGroup.toNeo4jGraph(instanceGroup)
+                        val siteNode = Neo4jRepository.findNodeById(siteId)
+                        Neo4jRepository.createRelation("HAS_InstanceGroup", siteNode.get, instanceGroupNode)
+                    }
+                  case None => throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
                 }
               }
               logger.info(s"Site Id : $siteId ")
               onComplete(response) {
-                case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+                case Success(responseMessage) => complete(StatusCodes.OK, "Saved successfully!")
                 case Failure(exception) =>
                   logger.error(s"Unable to save the Instance group ${exception.getMessage}", exception)
                   complete(StatusCodes.BadRequest, "Unable save the instance group")
