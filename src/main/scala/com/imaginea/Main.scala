@@ -180,16 +180,16 @@ object Main extends App {
             getProperty[String](map, "architecture"),
             getProperty[String](map, "publicDnsName"),
             getProperty[Long](map, "launchTime"),
-            getProperty[String](map, "memoryInfo").flatMap(memoryInfo => Some(storageInfoFormat.read(memoryInfo.asInstanceOf[JsValue]))),
-            getProperty[String](map, "rootDiskInfo").flatMap(rootDiskInfo => Some(storageInfoFormat.read(rootDiskInfo.asInstanceOf[JsValue]))),
+            getProperty[String](map, "memoryInfo").map(memoryInfo => storageInfoFormat.read(memoryInfo.asInstanceOf[JsValue])),
+            getProperty[String](map, "rootDiskInfo").map(rootDiskInfo => storageInfoFormat.read(rootDiskInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
-            getProperty[String](map, "sshAccessInfo").flatMap(sshAccessInfo => Some(sshAccessInfoFormat.read(sshAccessInfo.asInstanceOf[JsValue]))),
+            getProperty[String](map, "sshAccessInfo").map(sshAccessInfo => sshAccessInfoFormat.read(sshAccessInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
             getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
             getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
-            getProperty[String](map, "imageInfo").flatMap(imageInfo => Some(imageFormat.read(imageInfo.asInstanceOf[JsValue]))),
+            getProperty[String](map, "imageInfo").map(imageInfo => imageFormat.read(imageInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
-            getProperty[String](map, "account").flatMap(accountInfo => Some(accountInfoFormat.read(accountInfo.asInstanceOf[JsValue]))),
+            getProperty[String](map, "account").map(accountInfo => accountInfoFormat.read(accountInfo.asInstanceOf[JsValue])),
             getProperty[String](map, "availabilityZone"),
             getProperty[String](map, "privateDnsName"),
             getProperty[String](map, "privateIpAddress"),
@@ -441,7 +441,7 @@ object Main extends App {
       get {
         logger.info(s"getting into request context : $serverId")
         val serverDetailsList = Future {
-          APMServerDetails.fromNeo4jGraph(serverId).flatMap(serverDetails => Some(serverDetails.serverUrl))
+          APMServerDetails.fromNeo4jGraph(serverId).map(serverDetails => serverDetails.serverUrl)
         }
         onComplete(serverDetailsList) {
           case Success(response) =>
@@ -458,14 +458,14 @@ object Main extends App {
     siteId => get {
 
       val serverDetails = Future {
-        Site.fromNeo4jGraph(siteId).flatMap { site =>
+        Site.fromNeo4jGraph(siteId).map { site =>
           val aPMServerDetails = getAPMServers
           logger.info(s"All Sever details : $aPMServerDetails")
           val list = aPMServerDetails.filter(server => {
             if (server.monitoredSite.nonEmpty) server.monitoredSite.get.id == site.id else false
           })
           logger.info(s"Filtered Server details : $list")
-          Some(list.toList)
+          list.toList
         }
       }
       onComplete(serverDetails) {
@@ -1350,7 +1350,7 @@ object Main extends App {
                 val listOfSiteFilters = siteFilters.map { siteFilter => SiteFilter(siteFilter.id, siteFilter.accountInfo, filters) }
                 val listOfInstances = instances.flatMap { instance =>
                   val filterExists = filters.find(filter => filterExistsInTags(instance, filter))
-                  filterExists.flatMap(filter => Some(instance))
+                  filterExists.map(filter => instance)
                 }
                 (listOfSiteFilters, listOfInstances)
               }

@@ -66,7 +66,7 @@ object AWSComputeAPI {
           Option(awsInstance.getPrivateDnsName),
           Option(awsInstance.getPrivateIpAddress),
           Option(awsInstance.getPublicIpAddress),
-          addresses.get(awsInstance.getInstanceId).flatMap { address => Some(address.getPublicIp) },
+          addresses.get(awsInstance.getInstanceId).map(address => address.getPublicIp),
           Option(awsInstance.getMonitoring.getState),
           Option(awsInstance.getRootDeviceType),
           createBlockDeviceMapping(awsInstance.getBlockDeviceMappings.toList, volumesMap, snapshotsMap),
@@ -146,7 +146,7 @@ object AWSComputeAPI {
   def createSSHAccessInfo(keyName: String): Option[SSHAccessInfo] = {
     val node = Neo4jRepository.getNodeByProperty("KeyPairInfo", "keyName", keyName)
     val keyPairInfo = node.flatMap { node => KeyPairInfo.fromNeo4jGraph(node.getId) }
-    keyPairInfo.flatMap(info => Some(SSHAccessInfo(None, info, "", 0)))
+    keyPairInfo.map(info => SSHAccessInfo(None, info, "", 0))
   }
 
   def getSecurityGroupInfo(totalSecurityGroups: Map[String, SecurityGroup], instanceGroupIdentifiers: List[GroupIdentifier]): List[SecurityGroupInfo] = {
@@ -259,7 +259,7 @@ object AWSComputeAPI {
   def createBlockDeviceMapping(blockDeviceMapping: List[InstanceBlockDeviceMapping]
                                , volumesMap: Map[String, Volume]
                                , snapshotsMap: Map[String
-                               , List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
+    , List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
 
     blockDeviceMapping.map { instanceBlockDeviceMapping =>
       val volumeId = instanceBlockDeviceMapping.getEbs.getVolumeId
@@ -296,10 +296,10 @@ object AWSComputeAPI {
 
     if (snapshots.nonEmpty) {
       val currentSnapshot = snapshots.reduceLeft { (current, next) =>
-        if (next.getStartTime.compareTo(current.getStartTime) > 0 && next.getProgress.equals("100%")){
+        if (next.getStartTime.compareTo(current.getStartTime) > 0 && next.getProgress.equals("100%")) {
           next
         }
-        else{
+        else {
           current
         }
       }
@@ -309,7 +309,7 @@ object AWSComputeAPI {
         , Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount)
         , Some(currentSnapshotInfo))
     }
-    else{
+    else {
       VolumeInfo(None, Some(volumeId), Some(size), Some(snapshotId), Some(availabilityZone)
         , Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount), None)
     }
