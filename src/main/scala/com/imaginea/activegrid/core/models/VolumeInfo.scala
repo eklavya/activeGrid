@@ -23,8 +23,8 @@ case class VolumeInfo(override val id: Option[Long],
 
 object VolumeInfo {
   val volumeInfoLabel = "VolumeInfo"
-  val volumeInfo_Tag_Relation = "HAS_TAGS"
-  val volumeInfo_SnapshotInfo_Relation = "HAS_SNAPSHOT"
+  val volumeInfoTagRelation = "HAS_TAGS"
+  val volumeInfoSnapshotInfoRelation = "HAS_SNAPSHOT"
   val logger = LoggerFactory.getLogger(getClass)
 
   def apply(id: Long): VolumeInfo = {
@@ -47,11 +47,11 @@ object VolumeInfo {
       entity.tags.foreach {
         tag =>
           val tagNode = tag.toNeo4jGraph(tag)
-          Neo4jRepository.createRelation(volumeInfo_Tag_Relation, node, tagNode)
+          Neo4jRepository.createRelation(volumeInfoTagRelation, node, tagNode)
       }
       if (entity.currentSnapshot.nonEmpty) {
         val snapshotInfoNode = entity.currentSnapshot.get.toNeo4jGraph(entity.currentSnapshot.get)
-        Neo4jRepository.createRelation(volumeInfo_SnapshotInfo_Relation, node, snapshotInfoNode)
+        Neo4jRepository.createRelation(volumeInfoSnapshotInfoRelation, node, snapshotInfoNode)
       }
 
       node
@@ -73,9 +73,9 @@ object VolumeInfo {
             (result, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `volumeInfo_Tag_Relation` => val keyValueInfo = KeyValueInfo.fromNeo4jGraph(childNode.getId)
+                case `volumeInfoTagRelation` => val keyValueInfo = KeyValueInfo.fromNeo4jGraph(childNode.getId)
                   if (keyValueInfo.nonEmpty) (keyValueInfo.get :: result._1, result._2) else result
-                case `volumeInfo_SnapshotInfo_Relation` => val snapshotInfoObj = SnapshotInfo.fromNeo4jGraph(childNode.getId)
+                case `volumeInfoSnapshotInfoRelation` => val snapshotInfoObj = SnapshotInfo.fromNeo4jGraph(childNode.getId)
                   if (snapshotInfoObj.nonEmpty) (result._1, snapshotInfoObj.get) else result
               }
           }

@@ -18,7 +18,7 @@ case class InstanceBlockDeviceMappingInfo(override val id: Option[Long],
 
 object InstanceBlockDeviceMappingInfo {
   val instanceBlockDeviceMappingInfoLabel = "InstanceBlockDeviceMappingInfo"
-  val ibd_VolumeInfo_Relation = "HAS_VOLUME_INFO"
+  val ibdVolumeInfoRelation = "HAS_VOLUME_INFO"
   val logger = LoggerFactory.getLogger(getClass)
 
   implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo)
@@ -31,7 +31,7 @@ object InstanceBlockDeviceMappingInfo {
         "usage" -> entity.usage)
       val node = Neo4jRepository.saveEntity[InstanceBlockDeviceMappingInfo](instanceBlockDeviceMappingInfoLabel, entity.id, map)
       val childNode = entity.volume.toNeo4jGraph(entity.volume)
-      Neo4jRepository.createRelation(ibd_VolumeInfo_Relation, node, childNode)
+      Neo4jRepository.createRelation(ibdVolumeInfoRelation, node, childNode)
       node
     }
 
@@ -44,7 +44,7 @@ object InstanceBlockDeviceMappingInfo {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
       case Some(node) =>
-        if (Neo4jRepository.hasLabel(node, ibd_VolumeInfo_Relation)) {
+        if (Neo4jRepository.hasLabel(node, ibdVolumeInfoRelation)) {
           val volumeInfoObj = node.getRelationships.foldLeft(Option(VolumeInfo.apply(1))) {
             (reference, relationship) =>
               val childNode = relationship.getEndNode

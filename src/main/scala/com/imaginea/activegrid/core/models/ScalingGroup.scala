@@ -32,8 +32,8 @@ object ScalingGroup {
         )
 
         val keyValueInfoRelation = "HAS_keyValueInfo"
-        val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, keyValueInfoRelation)
-        val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
+        val childNodeIdsKeyVal: List[Long] = Neo4jRepository.getChildNodeIds(id, keyValueInfoRelation)
+        val tags: List[KeyValueInfo] = childNodeIdsKeyVal.flatMap { childId =>
           KeyValueInfo.fromNeo4jGraph(childId)
         }
 

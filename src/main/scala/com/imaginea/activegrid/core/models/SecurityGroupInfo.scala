@@ -22,8 +22,8 @@ object SecurityGroupInfo {
 
   val repository = Neo4jRepository
   val securityGroupInfoLabel = "SecurityGroupInfo"
-  val securityGroup_IpPermission_Relation = "HAS_IP_PERMISSION"
-  val securityGroup_KeyValue_Relation = "HAS_KEY_VALUE"
+  val securityGroupIpPermissionRelation = "HAS_IP_PERMISSION"
+  val securityGroupKeyValueRelation = "HAS_KEY_VALUE"
 
   implicit class SecurityGroupInfoImpl(securityGroupInfo: SecurityGroupInfo) extends Neo4jRep[SecurityGroupInfo] {
     override def toNeo4jGraph(entity: SecurityGroupInfo): Node = {
@@ -37,12 +37,12 @@ object SecurityGroupInfo {
           entity.ipPermissions.foreach {
             ipPermission =>
               val ipPermissionNode = ipPermission.toNeo4jGraph(ipPermission)
-              repository.createRelation(securityGroup_IpPermission_Relation, node, ipPermissionNode)
+              repository.createRelation(securityGroupIpPermissionRelation, node, ipPermissionNode)
           }
           entity.tags.foreach {
             tag =>
               val tagNode = tag.toNeo4jGraph(tag)
-              repository.createRelation(securityGroup_KeyValue_Relation, node, tagNode)
+              repository.createRelation(securityGroupKeyValueRelation, node, tagNode)
           }
           node
       }
@@ -62,8 +62,8 @@ object SecurityGroupInfo {
             (result, relationship) =>
               val childNode = relationship.getEndNode
               relationship.getType.name match {
-                case `securityGroup_KeyValue_Relation` => (result._1, KeyValueInfo.fromNeo4jGraph(childNode.getId).get :: result._2)
-                case `securityGroup_IpPermission_Relation` => (IpPermissionInfo.fromNeo4jGraph(childNode.getId).get :: result._1, result._2)
+                case `securityGroupKeyValueRelation` => (result._1, KeyValueInfo.fromNeo4jGraph(childNode.getId).get :: result._2)
+                case `securityGroupIpPermissionRelation` => (IpPermissionInfo.fromNeo4jGraph(childNode.getId).get :: result._1, result._2)
               }
           }
           Some(SecurityGroupInfo(Some(nodeId),

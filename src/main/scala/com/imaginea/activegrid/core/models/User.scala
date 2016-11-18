@@ -70,7 +70,7 @@ object User {
           , "enabled"
           , "displayName")
 
-        val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
+        val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.hasPublicKeys)
 
         val keyPairInfos = keyPairInfoNodes.flatMap(keyPairNode => {
           KeyPairInfo.fromNeo4jGraph(keyPairNode.getId)
@@ -96,13 +96,13 @@ object User {
 }
 
 object UserUtils {
-  val has_publicKeys = "HAS_publicKeys"
+  val hasPublicKeys = "HAS_publicKeys"
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Option[Relationship] = {
     Neo4jRepository.findNodeById(userId) match {
       case Some(userNode) =>
         val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
-        Some(Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode))
+        Some(Neo4jRepository.createRelation(hasPublicKeys, userNode, publicKeyNode))
       case None => None
     }
   }

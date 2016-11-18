@@ -17,7 +17,7 @@ case class InstanceGroup(override val id: Option[Long],
 object InstanceGroup {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val instanceGroupLabel = "InstanceGroup"
-  val instanceGroup_Instance_Relation = "HAS_INSTANCE"
+  val instanceGroupInstanceRelation = "HAS_INSTANCE"
 
   implicit class InstanceGroupImpl(instanceGroup: InstanceGroup) extends Neo4jRep[InstanceGroup] {
     override def toNeo4jGraph(entity: InstanceGroup): Node = {
@@ -28,7 +28,7 @@ object InstanceGroup {
       entity.instances.foreach {
         instance =>
           val childNode = instance.toNeo4jGraph(instance)
-          Neo4jRepository.createRelation(instanceGroup_Instance_Relation, node, childNode)
+          Neo4jRepository.createRelation(instanceGroupInstanceRelation, node, childNode)
       }
       node
     }

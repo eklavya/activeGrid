@@ -20,8 +20,8 @@ object APMServerDetails {
   val logger = LoggerFactory.getLogger(getClass)
   val apmServerDetailsLabel = "APMServerDetails"
   val headersLabel = "Headers"
-  val apmServer_site_relation = "HAS"
-  val apmServer_header_relation = "HAS_HEADERS"
+  val apmServerSiteRelation = "HAS_SITE"
+  val apmServerHeaderRelation = "HAS_HEADERS"
 
   implicit class APMServerDetailImpl(aPMServerDetails: APMServerDetails) extends Neo4jRep[APMServerDetails] {
 
@@ -36,11 +36,11 @@ object APMServerDetails {
           if (aPMServerDetails.headers.nonEmpty) {
             val headersNode = neo4JRepository.createNode(headersLabel)(neo)
             aPMServerDetails.headers.get.foreach { case (key, value) => headersNode.setProperty(key, value) }
-            createRelationShip(node, headersNode, apmServer_header_relation)
+            createRelationShip(node, headersNode, apmServerHeaderRelation)
           }
           if (aPMServerDetails.monitoredSite.nonEmpty) {
             val siteNode = aPMServerDetails.monitoredSite.get.toNeo4jGraph(aPMServerDetails.monitoredSite.get)
-            createRelationShip(node, siteNode, apmServer_site_relation)
+            createRelationShip(node, siteNode, apmServerSiteRelation)
           }
           node
       }
@@ -74,9 +74,9 @@ object APMServerDetails {
               (result, relationship) =>
                 val childNode = relationship.getEndNode
                 relationship.getType.name match {
-                  case `apmServer_site_relation` => val site = Site.fromNeo4jGraph(childNode.getId)
+                  case `apmServerSiteRelation` => val site = Site.fromNeo4jGraph(childNode.getId)
                     if (site.nonEmpty) (site.get, result._2) else result
-                  case `apmServer_header_relation` =>
+                  case `apmServerHeaderRelation` =>
                     val propertyMap = childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
                       map + ((property._1, property._2.asInstanceOf[String])))
                     (result._1, propertyMap)

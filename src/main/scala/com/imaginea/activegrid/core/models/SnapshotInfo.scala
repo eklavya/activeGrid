@@ -23,7 +23,7 @@ case class SnapshotInfo(override val id: Option[Long],
 
 object SnapshotInfo {
   val snapshotInfoLabel = "SnapshotInfo"
-  val snapshotInfo_KeyValue_Relation = "HAS_KEY_VALUE"
+  val snapshotInfoKeyValueRelation = "HAS_KEY_VALUE"
   val logger = LoggerFactory.getLogger(getClass)
 
   def appply(id: Long): SnapshotInfo = {
@@ -46,7 +46,7 @@ object SnapshotInfo {
       entity.tags.foreach {
         tag =>
           val tagNode = tag.toNeo4jGraph(tag)
-          Neo4jRepository.createRelation(snapshotInfo_KeyValue_Relation, node, tagNode)
+          Neo4jRepository.createRelation(snapshotInfoKeyValueRelation, node, tagNode)
       }
       node
     }

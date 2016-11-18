@@ -118,43 +118,43 @@ object Instance {
           Neo4jRepository.getChildNodeId(nodeId, imageRelation).flatMap(id => ImageInfo.fromNeo4jGraph(id))
 
         val keyValueInfoRelation = "HAS_keyValueInfo"
-        val childNodeIds_keyVal: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, keyValueInfoRelation)
-        val tags: List[KeyValueInfo] = childNodeIds_keyVal.flatMap { childId =>
+        val childNodeIdsKeyVal: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, keyValueInfoRelation)
+        val tags: List[KeyValueInfo] = childNodeIdsKeyVal.flatMap { childId =>
           KeyValueInfo.fromNeo4jGraph(childId)
         }
 
         val instanceConnectionRelation1 = "HAS_instanceConnection1"
-        val childNodeIds_inst1: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceConnectionRelation1)
-        val liveConnections: List[InstanceConnection] = childNodeIds_inst1.flatMap { childId =>
+        val childNodeIdsInst1: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceConnectionRelation1)
+        val liveConnections: List[InstanceConnection] = childNodeIdsInst1.flatMap { childId =>
           InstanceConnection.fromNeo4jGraph(childId)
         }
 
         val instanceConnectionRelation2 = "HAS_instanceConnection2"
-        val childNodeIds_inst2: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceConnectionRelation2)
-        val estimatedConnections: List[InstanceConnection] = childNodeIds_inst2.flatMap { childId =>
+        val childNodeIdsInst2: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceConnectionRelation2)
+        val estimatedConnections: List[InstanceConnection] = childNodeIdsInst2.flatMap { childId =>
           InstanceConnection.fromNeo4jGraph(childId)
         }
 
         val userRelation = "HAS_instanceUser"
-        val childNodeIds_user: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, userRelation)
-        val existingUsers: List[InstanceUser] = childNodeIds_user.flatMap { childId =>
+        val childNodeIdsUser: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, userRelation)
+        val existingUsers: List[InstanceUser] = childNodeIdsUser.flatMap { childId =>
           InstanceUser.fromNeo4jGraph(childId)
         }
 
         val processRelation = "HAS_processInfo"
-        val childNodeIds_process: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, processRelation)
-        val processes: Set[ProcessInfo] = childNodeIds_process.flatMap { childId =>
+        val childNodeIdsProcess: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, processRelation)
+        val processes: Set[ProcessInfo] = childNodeIdsProcess.flatMap { childId =>
           ProcessInfo.fromNeo4jGraph(childId)
         }.toSet
 
         val blockDeviceRelation = "HAS_blockDeviceMapping"
-        val childNodeIds_blockDevice = Neo4jRepository.getChildNodeIds(nodeId, blockDeviceRelation)
+        val childNodeIdsBlockDevice = Neo4jRepository.getChildNodeIds(nodeId, blockDeviceRelation)
         val blockDeviceMappings: List[InstanceBlockDeviceMappingInfo] =
-          childNodeIds_blockDevice.flatMap { childId => InstanceBlockDeviceMappingInfo.fromNeo4jGraph(childId) }
+          childNodeIdsBlockDevice.flatMap { childId => InstanceBlockDeviceMappingInfo.fromNeo4jGraph(childId) }
 
         val securityGroupRelation = "HAS_securityGroup"
-        val childNodeIds_securityGroup = Neo4jRepository.getChildNodeIds(nodeId, securityGroupRelation)
-        val securityGroups: List[SecurityGroupInfo] = childNodeIds_securityGroup.flatMap { childId =>
+        val childNodeIdsSecurityGroup = Neo4jRepository.getChildNodeIds(nodeId, securityGroupRelation)
+        val securityGroups: List[SecurityGroupInfo] = childNodeIdsSecurityGroup.flatMap { childId =>
           SecurityGroupInfo.fromNeo4jGraph(childId)
         }
 
