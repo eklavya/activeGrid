@@ -18,6 +18,7 @@ import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObjec
 
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationLong
 import scala.util.{Failure, Success}
 
 object Main extends App {
@@ -1183,6 +1184,7 @@ object Main extends App {
             }
             val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
             site1.toNeo4jGraph(site1)
+            logger.info(s"Printing SITE : $site1")
             site1
           }
           onComplete(buildSite) {
@@ -1193,11 +1195,31 @@ object Main extends App {
           }
         }
       }
+    }~ path("site" / "save" / LongNumber) { siteId =>
+      withRequestTimeout(4.minutes){
+        put {
+          val siteResponse = Future {
+            val mayBeSite = cachedSite.get(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                site.toNeo4jGraph(site)
+              case None => throw new NotFoundException(s"Site with id : $siteId")
+            }
+          }
+          onComplete(siteResponse) {
+            case Success(response) => complete(StatusCodes.OK, "Site saved successfully!")
+            case Failure(exception) =>
+              logger.error(s"Unable to save the site ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to save the site")
+          }
+        }
+      }
     } ~ path("site" / LongNumber) {
       siteId =>
         get {
           val siteObj = Future {
-            Site1.fromNeo4jGraph(siteId)
+            logger.info(s"Printing Site : $cachedSite")
+            cachedSite.get(siteId)
           }
           onComplete(siteObj) {
             case Success(response) => complete(StatusCodes.OK, response)
@@ -1292,11 +1314,12 @@ object Main extends App {
       path("tags" / LongNumber) {
         siteId =>
           val tags = Future {
-            val site = Site1.fromNeo4jGraph(siteId)
-            if (site.nonEmpty) {
-              site.get.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
-            } else {
-              throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+            val mayBeSite = cachedSite.get(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
+              case None =>
+                throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
             }
           }
           onComplete(tags) {
@@ -1310,7 +1333,7 @@ object Main extends App {
   } ~ path("keypairs" / LongNumber) { siteId =>
     get {
       val listOfKeyPairs = Future {
-        val mayBeSite = Site1.fromNeo4jGraph(siteId)
+        val mayBeSite = cachedSite.get(siteId)
         mayBeSite match {
           case Some(site) =>
             val keyPairs = site.instances.flatMap { instance =>

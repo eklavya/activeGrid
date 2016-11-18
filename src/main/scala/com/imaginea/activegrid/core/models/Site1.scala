@@ -1,5 +1,8 @@
 package com.imaginea.activegrid.core.models
 
+import java.util.concurrent.{Executors, TimeUnit}
+
+import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -80,10 +83,18 @@ object Site1 {
       val mapPrimitives = Map("siteName" -> entity.siteName)
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
       val relationship_inst = "HAS_Instance"
-      entity.instances.foreach { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+      val executorService = Executors.newFixedThreadPool(Constants.THREAD_POOL_SIZE)
+      entity.instances.foreach {
+        instance =>
+          executorService.submit(new Runnable {
+            override def run(): Unit = {
+              val instanceNode = instance.toNeo4jGraph(instance)
+              Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+            }
+          })
       }
+      executorService.awaitTermination(Constants.MAX_AWAIT_TIME, TimeUnit.SECONDS)
+      executorService.shutdown()
 
       entity.filters.foreach { filter =>
         val filterNode = filter.toNeo4jGraph(filter)
