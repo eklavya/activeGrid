@@ -1495,7 +1495,8 @@ object Main extends App {
       }
     }
   }
-  val route: Route = serviceRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+  val route: Route = serviceRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
 
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
