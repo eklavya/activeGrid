@@ -1481,8 +1481,21 @@ object Main extends App {
       }
     }
   }
-
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+  val serviceRoutes :Route = path("site"/LongNumber/"policies"/Segment){
+    (siteId,policyId) => {
+      delete {
+        val maybeDelete = Future {
+            SiteManagerImpl.deletePolicy(policyId)
+        }
+        onComplete(maybeDelete){
+          case Success(executionStatus) => complete(StatusCodes.OK,executionStatus.msg)
+          case Failure(ex) => logger.info(s"Error while deleting policy $policyId",ex)
+            complete(StatusCodes.BadRequest,"Error while deleting policy")
+        }
+      }
+    }
+  }
+  val route: Route = serviceRoutes ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
 
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
