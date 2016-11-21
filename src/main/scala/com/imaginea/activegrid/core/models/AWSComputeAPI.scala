@@ -44,8 +44,7 @@ object AWSComputeAPI {
         val imageInfo = getImageInfo(awsInstance.getImageId, imagesMap)
         val instanceSecurityGroups = awsInstance.getSecurityGroups
         val securityGroupInfos = getSecurityGroupInfo(totalsecurityGroups, instanceSecurityGroups.toList)
-        val keyName = Option(awsInstance.getKeyName)
-        keyName.flatMap { name => Some(name.replaceAll("'", "")) }
+        val keyName = Option(awsInstance.getKeyName.replaceAll("'", ""))
         val tags = awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList
         val tag = tags.find(tag => tag.key.equals(Constants.NAME_TAG_KEY))
         val instanceName = tag match {
