@@ -30,6 +30,20 @@ object Site1 {
       List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup])
   }
 
+
+  def delete(siteId: Long): ExecutionStatus = {
+    val maybeNode = Neo4jRepository.findNodeById(siteId)
+    maybeNode match {
+      case Some(node) => {
+        logger.info(s"Site is ${siteId} available,It properties are...." + node.toString)
+        Neo4jRepository.deleteEntity(node.getId)
+        ExecutionStatus(true,"Site deleted successfully")
+      }
+      case None =>
+        ExecutionStatus(false,s"Site ${siteId}not available")
+    }
+  }
+
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {

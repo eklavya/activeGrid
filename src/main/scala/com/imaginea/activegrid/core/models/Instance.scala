@@ -65,7 +65,7 @@ object Instance {
     Instance(None, None, name, None, None, None, None, None, None, None, None, List.empty[KeyValueInfo],
       None, List.empty[InstanceConnection], List.empty[InstanceConnection], Set.empty[ProcessInfo], None,
       List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty,
-      false, None
+      reservedInstance = false, None
     )
 
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
@@ -73,8 +73,8 @@ object Instance {
     mayBeNode match {
       case Some(node) =>
         val map = Neo4jRepository.getProperties(node, "instanceId", "name", "state", "instanceType", "platform",
-          "architecture","publicDnsName", "availabilityZone", "privateDnsName", "privateIpAddress", "publicIpAddress",
-          "elasticIP", "monitoring","rootDeviceType", "reservedInstance", "region")
+          "architecture", "publicDnsName", "availabilityZone", "privateDnsName", "privateIpAddress", "publicIpAddress",
+          "elasticIP", "monitoring", "rootDeviceType", "reservedInstance", "region")
 
         val instanceId = map.get("instanceId").asInstanceOf[Option[String]]
         val name = map("name").toString
@@ -90,7 +90,10 @@ object Instance {
         val elasticIP = map.get("elasticIP").asInstanceOf[Option[String]]
         val monitoring = map.get("monitoring").asInstanceOf[Option[String]]
         val rootDeviceType = map.get("rootDeviceType").asInstanceOf[Option[String]]
-        val reservedInstance = map.get("reservedInstance").toString.toBoolean
+        val reservedInstance = map.get("reservedInstance") match {
+          case Some(value) => value.asInstanceOf[Boolean]
+          case _ => false
+        }
         val region = map.get("region").asInstanceOf[Option[String]]
         //TO DO
         //val launchTime: Date = new Date(map.get("launchTime").get.toString.toLong)
@@ -146,7 +149,7 @@ object Instance {
         val relationship_blockDevice = "HAS_blockDeviceMapping"
         val childNodeIds_blockDevice = Neo4jRepository.getChildNodeIds(nodeId, relationship_blockDevice)
         val blockDeviceMappings: List[InstanceBlockDeviceMappingInfo] =
-          childNodeIds_blockDevice.flatMap { childId => InstanceBlockDeviceMappingInfo.fromNeo4jGraph(childId)}
+          childNodeIds_blockDevice.flatMap { childId => InstanceBlockDeviceMappingInfo.fromNeo4jGraph(childId) }
 
         val relationship_securityGroup = "HAS_securityGroup"
         val childNodeIds_securityGroup = Neo4jRepository.getChildNodeIds(nodeId, relationship_securityGroup)
@@ -155,8 +158,8 @@ object Instance {
         }
 
         Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture,
-          publicDnsName, launchTime, memoryInfo, rootDiskInfo,tags, sshAccessInfo, liveConnections,
-          estimatedConnections, processes, imageInfo, existingUsers,None, availabilityZone, privateDnsName,
+          publicDnsName, launchTime, memoryInfo, rootDiskInfo, tags, sshAccessInfo, liveConnections,
+          estimatedConnections, processes, imageInfo, existingUsers, None, availabilityZone, privateDnsName,
           privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, blockDeviceMappings,
           securityGroups, reservedInstance, region))
       case None =>
