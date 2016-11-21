@@ -51,10 +51,16 @@ object SoftwareProcess {
     override def name: String = "python"
   }
 
+  case object NoOpt extends SoftwareProcess {
+    override def name: String = ""
+  }
+
   val getAllProcess: List[SoftwareProcess] =
     JavaProcess :: MysqlDProcess :: MysqlProcess ::
       RubyProcess :: CollectDProcess ::
       ApacheProcess :: Apache2Process :: PythonProcess :: NginxProcess :: Nil
+
+  def isKnownProcess(processName: String): Boolean = getAllProcess.contains(toSoftwareProcess(processName))
 
   def toSoftwareProcess(process: String): SoftwareProcess = {
     process match {
@@ -68,6 +74,7 @@ object SoftwareProcess {
       case "mysql" => MysqlProcess
       case "java" => JavaProcess
       case "python" => PythonProcess
+      case _ => NoOpt
     }
   }
 }

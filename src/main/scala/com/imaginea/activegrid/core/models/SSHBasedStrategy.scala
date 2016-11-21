@@ -26,17 +26,17 @@ case class SSHBasedStrategy(topology: Topology,
           keyPair.filePath.map(keyFilePath => {
             //Add AKKA for concurrent
             val userName = instance.sshAccessInfo.flatMap(ssh => ssh.userName)
-                .orElse(keyPair.defaultUser)
-                .fold(throw new IllegalArgumentException("userName is not available to perform SSH"))(name => name)
+              .orElse(keyPair.defaultUser)
+              .fold(throw new IllegalArgumentException("userName is not available to perform SSH"))(name => name)
 
-            val (newInstance,site) = collectInstanceDetails(topology.site, instance, userName, keyFilePath, keyPair.passPhrase)
+            val (newInstance, site) = collectInstanceDetails(topology.site, instance, userName, keyFilePath, keyPair.passPhrase)
             logger.info(s"Establishing service to collect instance details ${newInstance}")
+            //TODO: site need to saved
+            //topology.copy(site = site)
             newInstance
           })).getOrElse(instance)
       }
-    }else{
-      topology.nodes
-    }
+    } else topology.nodes
   }
 
   def collectInstanceDetails(site: Site1, instance: Instance, userName: String, keyLocation: String, passPharse: Option[String]): (Instance, Site1) = {
@@ -55,12 +55,12 @@ case class SSHBasedStrategy(topology: Topology,
           keyLocation = keyLocation,
           passPhrase = passPharse,
           port = portOption)
-        grepForInstanceDetails(sshSession, acc._1, acc._2)
+        grepInstanceDetails(sshSession, acc._1, acc._2)
       }).getOrElse(acc)
     })
   }
 
-  private def grepForInstanceDetails(sshSession: SSHSession, instance: Instance, site: Site1): (Instance, Site1) = {
+  private def grepInstanceDetails(sshSession: SSHSession, instance: Instance, site: Site1): (Instance, Site1) = {
 
     sshSession.start()
     logger.info("Establishing Ssh connection")
@@ -87,7 +87,7 @@ case class SSHBasedStrategy(topology: Topology,
       }).getOrElse(instance1, site)
 
     logger.info(s"Cloud instance  $cloudInstanceResult site $siteResult")
-    sshSession.close();
+    sshSession.close()
     logger.info("Closing Ssh connection")
     (cloudInstanceResult, siteResult)
   }
@@ -101,16 +101,16 @@ case class SSHBasedStrategy(topology: Topology,
   }
 
   /*
-     * Collect map of process id and name and
-     * filter with know software process
-     */
+   * Collect map of process id and name and
+   * filter with know software process
+   */
   private def toProcessMap(processList: String): Map[String, String] = {
     processList.split(";").map(process => {
       val index = process.indexOf("/")
       val pid = process.substring(0, index)
       val pName = process.substring(index + 1)
       (pid -> pName)
-    }).toMap.filter(process => SoftwareProcess.getAllProcess.contains(process._2))
+    }).toMap.filter(process => SoftwareProcess.isKnownProcess(process._2))
   }
 
   /* Find process name for JavaProcess and Python Process */
@@ -143,22 +143,20 @@ case class SSHBasedStrategy(topology: Topology,
   }
 
   private def resolveProcesses(site: Site1, instance: Instance, process: Map[String, String], sshSession: SSHSession): (Instance, Site1) = {
-
     // Find the process map
     // Iterate and add process details in Instance
-    process.foldLeft((instance -> site))((acc, process) => {
+    process.foldLeft((instance -> site))((accInstanceSite, process) => {
       val (pId, pName) = process
-      val (instance, site) = acc
+      val (instance, site) = accInstanceSite
       //Find process name with clazz name
       val processName = findProcessName(sshSession, pId, pName)
 
       // Collect all software which associated with process name
       val softwareAssociatedWithProcessOpt = findSoftwareAssociatedWithProcess(processName)
 
-      //asInstance need to handle using type
-      // Update processInfo and tags in Instance
-      val instanceWithProcessInfo: Instance = instance.copy(processes = instance.processes +
-        new ProcessInfo(pid = Option(pId.toInt)
+      //Update processInfo and tags in Instance
+      //Func: Add process to list and Add tags list
+      val processes = new ProcessInfo(pid = Option(pId.toInt)
           , parentPid = Option(pId.toInt)
           , name = Option(processName)
           , software = softwareAssociatedWithProcessOpt
@@ -168,38 +166,47 @@ case class SSHBasedStrategy(topology: Topology,
           , residentBytes = None
           , softwareVersion = None
         )
-        , tags = KeyValueInfo(None, PROCESS_TAG, processName) :: instance.tags)
+      val instanceTags = KeyValueInfo(None, PROCESS_TAG, processName) :: instance.tags
 
-      softwareAssociatedWithProcessOpt.map(software => {
-        val instanceWithRole = setRole(instanceWithProcessInfo, software)
-        if (software.discoverApplications) {
-          val apps = resolveApplication(sshSession, pId, pName, software)
+      //Func: Add tag to instance and applications to site
+      val (tags,apps) = softwareAssociatedWithProcessOpt.flatMap(software => {
+        applicationDetails(instance,software,sshSession,pId,pName)
+      }).getOrElse(instanceTags,List.empty)
 
-          val cloudInstanceFinal = apps.foldLeft(instanceWithRole)((accInstance, app) => {
-            accInstance.copy(tags = accInstance.tags :+ KeyValueInfo(None, APPLICATION_TAG_KEY, app))
-          })
-          val applicationsAndInstance = apps.map(app => {
-            new Application(None, app, app, "1.0", List(instanceWithRole), software, List.empty, /*None,*/ 0)
-          }).toList
-
-          cloudInstanceFinal -> site.copy(applications = applicationsAndInstance)
-        } else {
-          instanceWithRole -> site
-        }
-      }).getOrElse(instance -> site)
+      instance.copy(tags = instanceTags ++ tags,processes = instance.processes + processes ) -> site.copy(applications = apps)
     })
+  }
+
+  /* Get application details for the given instance with know software*/
+  private def applicationDetails(instance:Instance,
+                               software: Software,
+                               sshSession: SSHSession,
+                               pId: String,
+                               pName: String): Option[(Set[KeyValueInfo],List[Application])]={
+    val roleTagOption = setRole(instance, software)
+
+    if (software.discoverApplications) {
+      val apps = resolveApplication(sshSession, pId, pName, software)
+
+      val appsTagOption = apps.map(app =>  KeyValueInfo(None, APPLICATION_TAG_KEY, app))
+      val tags = roleTagOption.map(roleTag => appsTagOption + roleTag).getOrElse(appsTagOption)
+
+      val applications = apps.map(app => {
+        new Application(None, app, app, "1.0", List(instance), software, List.empty, /*None,*/ 0)
+      }).toList
+      Some((tags -> applications))
+    } else None
   }
 
   /* Resolve application */
   private def resolveApplication(sshSession: SSHSession, pid: String, processName: String, software: Software): Set[String] = {
     def processFileName(fileName: String): Option[String] = {
       val f = fileName.trim
-      if (f.contains("/WEB-INF")) {
-        f.split("/WEB-INF")(0)
-        Some(f.substring(f.lastIndexOf("/") + 1))
-      } else {
-        None
-      }
+       (f.contains("/WEB-INF")) match {
+         case true => f.split("/WEB-INF")(0)
+           Some(f.substring(f.lastIndexOf("/") + 1))
+         case false => None
+       }
     }
     val fileInfoOption = sshSession.executeCommand("sudo lsof -p " + pid
       + "| awk 'BEGIN {OFS=\"|\";ORS=\";\"} NR > 0 {print $3,$9,$7}'")
@@ -218,16 +225,14 @@ case class SSHBasedStrategy(topology: Topology,
     }
   }
 
-  private def setRole(instance: Instance, softwareAssociatedWithProcess: Software): Instance = {
+  private def setRole(instance: Instance, softwareAssociatedWithProcess: Software): Option[KeyValueInfo] = {
     val roleOption = InstanceRole.hasSoftware(softwareAssociatedWithProcess)
     val tagOption = instance.tags.find(tag => tag.value.equals(ROLES_TAG_KEY))
-    val role = roleOption.map(r => {
+    roleOption.map(r => {
       tagOption.map(tag => {
         tag.copy(value = r.name)
       }).getOrElse(KeyValueInfo(None, ROLES_TAG_KEY, r.name))
     })
-    role.map(role => instance.copy(tags = instance.tags))
-      .getOrElse(instance)
   }
 
   private def findSoftwares: List[Software] = {
