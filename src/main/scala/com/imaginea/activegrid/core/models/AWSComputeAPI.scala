@@ -316,18 +316,18 @@ object AWSComputeAPI {
   }
 
   def createSnapshotInfo(snapshot: Snapshot): SnapshotInfo = {
-    val snapshotId = snapshot.getSnapshotId
-    val volumeId = snapshot.getVolumeId
-    val state = snapshot.getState
-    val startTime = snapshot.getStartTime.toString
-    val progress = snapshot.getProgress
-    val ownerId = snapshot.getOwnerId
-    val ownerAlias = snapshot.getOwnerAlias
-    val description = snapshot.getDescription
-    val volumeSize = snapshot.getVolumeSize
+    val snapshotId = Option(snapshot.getSnapshotId)
+    val volumeId = Option(snapshot.getVolumeId)
+    val state = Option(snapshot.getState)
+    val startTime = Option(snapshot.getStartTime.toString)
+    val progress = Option(snapshot.getProgress)
+    val ownerId = Option(snapshot.getOwnerId)
+    val ownerAlias = Option(snapshot.getOwnerAlias)
+    val description = Option(snapshot.getDescription)
+    val volumeSize = Option(snapshot.getVolumeSize.toInt)
     val tags = createKeyValueInfo(snapshot.getTags.toList)
-    SnapshotInfo(None, Some(snapshotId), Some(volumeId), Some(state), Some(startTime)
-      , Some(progress), Some(ownerId), Some(ownerAlias), Some(description), Some(volumeSize), tags)
+    SnapshotInfo(None, snapshotId, volumeId, state, startTime,
+      progress, ownerId, ownerAlias, description, volumeSize, tags)
   }
 
   def createKeyValueInfo(tags: List[com.amazonaws.services.ec2.model.Tag]): List[KeyValueInfo] = {
