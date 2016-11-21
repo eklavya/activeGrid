@@ -117,7 +117,11 @@ object Main extends App {
   implicit val keyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
 
   implicit val ipPermissionInfoFormat = jsonFormat(IpPermissionInfo.apply, "id", "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
-  implicit val securityGroupInfoFormat = jsonFormat(SecurityGroupInfo.apply, "id", "groupName", "groupId", "ownerId", "description", "IpPermissions", "tags")
+  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+  implicit val snapshotInfoFormat = jsonFormat11(SnapshotInfo.apply)
+  implicit val volumeInfoFormat = jsonFormat11(VolumeInfo.apply)
+  implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
+  implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
 
   implicit object instanceFormat extends RootJsonFormat[Instance] {
     override def write(i: Instance): JsValue = {
@@ -176,37 +180,16 @@ object Main extends App {
             getProperty[String](map, "architecture"),
             getProperty[String](map, "publicDnsName"),
             getProperty[Long](map, "launchTime"),
-            if (getProperty[String](map, "memoryInfo").nonEmpty) {
-              Some(storageInfoFormat.read(getProperty[String](map, "memoryInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
-            if (getProperty[String](map, "rootDiskInfo").nonEmpty) {
-              Some(storageInfoFormat.read(getProperty[String](map, "rootDiskInfo").get.asInstanceOf[JsValue]))
-            }
-            else {
-              None
-            },
+            getProperty[String](map, "memoryInfo").map(memoryInfo => storageInfoFormat.read(memoryInfo.asInstanceOf[JsValue])),
+            getProperty[String](map, "rootDiskInfo").map(rootDiskInfo => storageInfoFormat.read(rootDiskInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
-            if (getProperty[String](map, "sshAccessInfo").nonEmpty) {
-              Some(sshAccessInfoFormat.read(getProperty[String](map, "sshAccessInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "sshAccessInfo").map(sshAccessInfo => sshAccessInfoFormat.read(sshAccessInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
             getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
             getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
-            if (getProperty[String](map, "imageInfo").nonEmpty) {
-              Some(imageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "imageInfo").map(imageInfo => imageFormat.read(imageInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
-            if (getProperty[String](map, "account").nonEmpty) {
-              Some(accountInfoFormat.read(getProperty[String](map, "acoount").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "account").map(accountInfo => accountInfoFormat.read(accountInfo.asInstanceOf[JsValue])),
             getProperty[String](map, "availabilityZone"),
             getProperty[String](map, "privateDnsName"),
             getProperty[String](map, "privateIpAddress"),
@@ -282,11 +265,6 @@ object Main extends App {
     }
   }
 
-  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
-  implicit val snapshotInfoFormat = jsonFormat11(SnapshotInfo.apply)
-  implicit val volumeInfoFormat = jsonFormat11(VolumeInfo.apply)
-  implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
-  implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
@@ -438,7 +416,8 @@ object Main extends App {
     }
   }
 
-  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) {
+  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) // scalastyle:ignore
+  {
     post {
       entity(as[APMServerDetails]) { apmServerDetails =>
         logger.debug(s"Executing $getClass :: saveAPMServerDetails")
@@ -476,7 +455,7 @@ object Main extends App {
       get {
         logger.info(s"getting into request context : $serverId")
         val serverDetailsList = Future {
-          APMServerDetails.fromNeo4jGraph(serverId).flatMap(serverDetails => Some(serverDetails.serverUrl))
+          APMServerDetails.fromNeo4jGraph(serverId).map(serverDetails => serverDetails.serverUrl)
         }
         onComplete(serverDetailsList) {
           case Success(response) =>
@@ -493,14 +472,14 @@ object Main extends App {
     siteId => get {
 
       val serverDetails = Future {
-        Site.fromNeo4jGraph(siteId).flatMap { site =>
+        Site.fromNeo4jGraph(siteId).map { site =>
           val aPMServerDetails = getAPMServers
           logger.info(s"All Sever details : $aPMServerDetails")
           val list = aPMServerDetails.filter(server => {
             if (server.monitoredSite.nonEmpty) server.monitoredSite.get.id == site.id else false
           })
           logger.info(s"Filtered Server details : $list")
-          Some(list.toList)
+          list.toList
         }
       }
       onComplete(serverDetails) {
@@ -871,7 +850,7 @@ object Main extends App {
   }
 
 
-  def catalogRoutes = pathPrefix("catalog") {
+  def catalogRoutes : Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {
@@ -990,7 +969,7 @@ object Main extends App {
     }
   }
 
-  def nodeRoutes = pathPrefix("node") {
+  def nodeRoutes : Route = pathPrefix("node") {
     path("list") {
       get {
         val listOfAllInstanceNodes = Future {
@@ -1048,7 +1027,7 @@ object Main extends App {
     }
   }
 
-  val appsettingRoutes = pathPrefix("config") {
+  val appsettingRoutes : Route = pathPrefix("config") {
     path("ApplicationSettings") {
       post {
         entity(as[ApplicationSettings]) { appSettings =>
@@ -1182,7 +1161,7 @@ object Main extends App {
       put {
         entity(as[Site1]) { site =>
           val buildSite = Future {
-           populateInstances(site)
+            populateInstances(site)
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1241,11 +1220,10 @@ object Main extends App {
           pathPrefix("groups" / Segment) {
             groupType =>
               val response = Future {
-                val site = Site1.fromNeo4jGraph(siteId)
-                if (site.nonEmpty) {
-                  site.get.groupsList.filter(group => group.groupType.get.equals(groupType))
-                } else {
-                  throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+                val mayBeSite = Site1.fromNeo4jGraph(siteId)
+                mayBeSite match {
+                  case Some(site) => site.groupsList.filter(group => group.groupType.contains(groupType))
+                  case None => throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
                 }
               }
               onComplete(response) {
@@ -1254,8 +1232,6 @@ object Main extends App {
                   logger.error(s"Unable to get Instance Groups ${exception.getMessage}", exception)
                   complete(StatusCodes.BadRequest, "Unable to get Instance Groups")
               }
-              logger.info(s"Site Id : $siteId , Group Type : $groupType")
-              complete("Done")
           }
       }
     } ~ put {
@@ -1264,21 +1240,22 @@ object Main extends App {
           entity(as[InstanceGroup]) {
             instanceGroup =>
               val response = Future {
-                val site = Site1.fromNeo4jGraph(siteId)
-                if (site.nonEmpty) {
-                  val groups = site.get.groupsList
-                  val groupToSave = groups.find(group => instanceGroup.name.equals(group.name))
-                  if (groupToSave.nonEmpty) {
-                    groupToSave.get.instances ++ instanceGroup.instances
-                    groupToSave.get.toNeo4jGraph(groupToSave.get)
-                  } else {
-                    instanceGroup.toNeo4jGraph(instanceGroup)
-                  }
-                } else {
-                  throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+                val mayBeSite = Site1.fromNeo4jGraph(siteId)
+                mayBeSite match {
+                  case Some(site) => val groups = site.groupsList
+                    val mayBeGroup = groups.find(group => instanceGroup.name.equals(group.name))
+                    mayBeGroup match {
+                      case Some(groupToSave) =>
+                        val instanceGroupToSave = groupToSave.copy(instances = groupToSave.instances ::: instanceGroup.instances)
+                        instanceGroupToSave.toNeo4jGraph(instanceGroupToSave)
+                      case None =>
+                        val instanceGroupNode = instanceGroup.toNeo4jGraph(instanceGroup)
+                        val siteNode = Neo4jRepository.findNodeById(siteId)
+                        Neo4jRepository.createRelation("HAS_InstanceGroup", siteNode.get, instanceGroupNode)
+                    }
+                  case None => throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
                 }
               }
-              logger.info(s"Site Id : $siteId ")
               onComplete(response) {
                 case Success(responseMessage) => complete(StatusCodes.OK, "Done")
                 case Failure(exception) =>
@@ -1375,6 +1352,7 @@ object Main extends App {
       }
     }
   }
+
 
   def siteServiceRoutes = pathPrefix("sites") {
     path("site" / LongNumber) { siteId =>
@@ -1550,31 +1528,80 @@ object Main extends App {
                   }
                   val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
                     SiteDeltaStatus.toDeltaStatus ("CHANGED")
-                  }
-                  else {
+                  } else {
                     SiteDeltaStatus.toDeltaStatus ("UNCHANGED")
                   }
                   Some(SiteDelta (site.id, deltaStatus, addedInstances, deletedInstances))
                 case None =>
-                  //logger.warn(s"could not get site from cache for siteId : $siteId)
+                  logger.warn(s"could not get site from cache for siteId : $siteId")
                   None
               }
             case None =>
-              //logger.warn(s"could not get site with siteId : $siteId)
+              logger.warn(s"could not get site with siteId : $siteId")
               None
           }
         }
         onComplete(siteDelta) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
-            //logger.error(s"Unable to get Site Delta. Failed with : ${exception.getMessage}", exception)
+            logger.error(s"Unable to get Site Delta. Failed with : ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to get Site Delta.")
         }
       }
     }
   }
 
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+  def siteServices : Route = pathPrefix("sites") {
+    get {
+      parameters('viewLevel.as[String]) {
+        (viewLevel) =>
+          val result = Future {
+            logger.info("View level is..." + viewLevel)
+            //Instead of applying map and flat operations at distinct  places,flatMap used directly though container holds only List[Nodes]
+            //Use of map here produces results like List[Option[Site]] but List[Site1] would be better option for next operations.
+            Neo4jRepository.getNodesByLabel("Site1").flatMap{ siteNode =>
+              Site1.fromNeo4jGraph(siteNode.getId).map {
+                siteObj => SiteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel))
+
+              }
+            }
+          }
+          onComplete(result) {
+            case Success(sitesList) => complete(StatusCodes.OK, sitesList)
+            case Failure(ex) => logger.error("Unable to retrieve sites information", ex)
+              complete(StatusCodes.BadRequest, "Failed to get results")
+          }
+      }
+    }
+  } ~ path("sites" / LongNumber) {
+    siteId => delete {
+      val maybeDelete = Future {
+        Site1.delete(siteId)
+      }
+      onComplete(maybeDelete) {
+        case Success(executionStatus) => complete(StatusCodes.OK, executionStatus.msg)
+        case Failure(ex) => logger.info("Failed to delete entity", ex)
+          complete(StatusCodes.BadRequest, "Deletion failed")
+      }
+    }
+  } ~ path("sites" / LongNumber/"instances"/ Segment) {
+    (siteId,instanceId) =>  {
+      delete {
+        val mayBeDelete = Future {
+          SiteManagerImpl.deleteIntanceFromSite(siteId, instanceId)
+        }
+        onComplete(mayBeDelete) {
+          case Success(executionStatus) => complete(StatusCodes.OK, executionStatus.msg)
+          case Failure(ex) => logger.error("Failed to delete the insatnce", ex)
+            complete(StatusCodes.BadRequest, "Failed to delete instance")
+        }
+      }
+    }
+  }
+
+
+  val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
 
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
@@ -1601,7 +1628,7 @@ object Main extends App {
   def saveKeyPair(keyPairInfo: KeyPairInfo): Option[KeyPairInfo] = {
     val filePath = getKeyFilePath(keyPairInfo.keyName)
     try {
-      FileUtils.createDirectories(getKeyFilesDir)
+      FileUtils.createDirectories(keyFilesDir)
       FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
       // TODO: change permissions to 600
     } catch {
@@ -1611,9 +1638,9 @@ object Main extends App {
     KeyPairInfo.fromNeo4jGraph(node.getId)
   }
 
-  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
+  val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
-  def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
+  def getKeyFilePath(keyName: String) = s"$keyFilesDir$keyName.pem"
 
   def getAPMServers: mutable.MutableList[APMServerDetails] = {
     logger.debug(s"Executing $getClass :: getAPMServers")
@@ -1832,6 +1859,7 @@ object Main extends App {
     site1.toNeo4jGraph(site1)
     site1
   }
+
   def saveCachedSite(siteId: Long): Boolean = {
     val mayBeSite = cachedSite.get(siteId)
     mayBeSite.exists { site =>
@@ -1840,4 +1868,5 @@ object Main extends App {
       true
     }
   }
+
 }

@@ -15,5 +15,5 @@ object Constants {
   val FILE_SEPARATOR = File.separator
   val NAME_TAG_KEY = "Name"
 
-  def getTempDirectoryLocation: String = TEMP_DIR_LOC
+  def tempDirectoryLocation: String = TEMP_DIR_LOC
 }
