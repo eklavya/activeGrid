@@ -403,7 +403,8 @@ object Main extends App {
     }
   }
 
-  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) {
+  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) // scalastyle:ignore
+  {
     post {
       entity(as[APMServerDetails]) { apmServerDetails =>
         logger.debug(s"Executing $getClass :: saveAPMServerDetails")
@@ -836,7 +837,7 @@ object Main extends App {
   }
 
 
-  def catalogRoutes = pathPrefix("catalog") {
+  def catalogRoutes : Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {
@@ -955,7 +956,7 @@ object Main extends App {
     }
   }
 
-  def nodeRoutes = pathPrefix("node") {
+  def nodeRoutes : Route = pathPrefix("node") {
     path("list") {
       get {
         val listOfAllInstanceNodes = Future {
@@ -1013,7 +1014,7 @@ object Main extends App {
     }
   }
 
-  val appsettingRoutes = pathPrefix("config") {
+  val appsettingRoutes : Route = pathPrefix("config") {
     path("ApplicationSettings") {
       post {
         entity(as[ApplicationSettings]) { appSettings =>
@@ -1458,7 +1459,57 @@ object Main extends App {
     }
   }
 
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+  def siteServices : Route = pathPrefix("sites") {
+    get {
+      parameters('viewLevel.as[String]) {
+        (viewLevel) =>
+          val result = Future {
+            logger.info("View level is..." + viewLevel)
+            //Instead of applying map and flat operations at distinct  places,flatMap used directly though container holds only List[Nodes]
+            //Use of map here produces results like List[Option[Site]] but List[Site1] would be better option for next operations.
+            Neo4jRepository.getNodesByLabel("Site1").flatMap{ siteNode =>
+              Site1.fromNeo4jGraph(siteNode.getId).map {
+                siteObj => SiteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel))
+
+              }
+            }
+          }
+          onComplete(result) {
+            case Success(sitesList) => complete(StatusCodes.OK, sitesList)
+            case Failure(ex) => logger.error("Unable to retrieve sites information", ex)
+              complete(StatusCodes.BadRequest, "Failed to get results")
+          }
+      }
+    }
+  } ~ path("sites" / LongNumber) {
+    siteId => delete {
+      val maybeDelete = Future {
+        Site1.delete(siteId)
+      }
+      onComplete(maybeDelete) {
+        case Success(executionStatus) => complete(StatusCodes.OK, executionStatus.msg)
+        case Failure(ex) => logger.info("Failed to delete entity", ex)
+          complete(StatusCodes.BadRequest, "Deletion failed")
+      }
+    }
+  } ~ path("sites" / LongNumber/"instances"/ Segment) {
+    (siteId,instanceId) =>  {
+      delete {
+        val mayBeDelete = Future {
+          SiteManagerImpl.deleteIntanceFromSite(siteId, instanceId)
+        }
+        onComplete(mayBeDelete) {
+          case Success(executionStatus) => complete(StatusCodes.OK, executionStatus.msg)
+          case Failure(ex) => logger.error("Failed to delete the insatnce", ex)
+            complete(StatusCodes.BadRequest, "Failed to delete instance")
+        }
+      }
+    }
+  }
+
+
+  val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
 
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
@@ -1664,5 +1715,7 @@ object Main extends App {
         }
       case _ => false
     }
+
+
   }
 }
