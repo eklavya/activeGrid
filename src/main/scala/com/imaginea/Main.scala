@@ -1640,7 +1640,7 @@ object Main extends App {
 
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
-  def getKeyFilePath(keyName: String) = s"$keyFilesDir$keyName.pem"
+  def getKeyFilePath(keyName: String): String = s"$keyFilesDir$keyName.pem"
 
   def getAPMServers: mutable.MutableList[APMServerDetails] = {
     logger.debug(s"Executing $getClass :: getAPMServers")
