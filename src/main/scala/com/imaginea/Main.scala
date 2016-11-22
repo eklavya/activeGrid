@@ -314,6 +314,7 @@ object Main extends App {
   implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  // scalastyle:off cyclomatic.complexity
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -836,7 +837,7 @@ object Main extends App {
     }
   }
 
-
+  // scalastyle:off cyclomatic.complexity method.length
   def catalogRoutes : Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
@@ -1381,7 +1382,6 @@ object Main extends App {
     }
   }
 
-
   def siteServiceRoutes = pathPrefix("sites") {
     path("site" / LongNumber) { siteId =>
       get {
@@ -1458,19 +1458,16 @@ object Main extends App {
       }
     }
   }
-
   def siteServices : Route = pathPrefix("site") {
-    get {
-      parameters('viewLevel.as[String]) {
-        (viewLevel) =>
-          val result = Future {
+    get { parameters('viewLevel.as[String]) {
+         (viewLevel) =>
+           val result = Future {
             logger.info("View level is..." + viewLevel)
             //Instead of applying map and flat operations at distinct  places,flatMap used directly though container holds only List[Nodes]
             //Use of map here produces results like List[Option[Site]] but List[Site1] would be better option for next operations.
             Neo4jRepository.getNodesByLabel("Site1").flatMap{ siteNode =>
               Site1.fromNeo4jGraph(siteNode.getId).map {
                 siteObj => SiteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel))
-
               }
             }
           }
