@@ -10,4 +10,3 @@ object ExecutionStatus
 {
   def apply(status: Boolean): ExecutionStatus = ExecutionStatus(status, "")
 }
-
