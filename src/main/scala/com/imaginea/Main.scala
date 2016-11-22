@@ -1505,7 +1505,21 @@ object Main extends App {
         }
       }
     }
-  }
+  } ~
+    path("site"/LongNumber/"policies"/Segment){
+      (siteId,policyId) => {
+        delete {
+          val maybeDelete = Future {
+            SiteManagerImpl.deletePolicy(policyId)
+          }
+          onComplete(maybeDelete){
+            case Success(executionStatus) => complete(StatusCodes.OK,executionStatus.msg)
+            case Failure(ex) => logger.info(s"Error while deleting policy $policyId",ex)
+              complete(StatusCodes.BadRequest,"Error while deleting policy")
+          }
+        }
+      }
+    }
 
 
   val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
