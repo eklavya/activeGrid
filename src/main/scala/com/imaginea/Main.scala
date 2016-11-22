@@ -1862,11 +1862,11 @@ object Main extends App {
 
   def saveCachedSite(siteId: Long): Boolean = {
     val mayBeSite = cachedSite.get(siteId)
-    mayBeSite.exists { site =>
+    mayBeSite.foreach { site =>
       site.toNeo4jGraph(site)
       cachedSite.remove(siteId)
-      true
     }
+    mayBeSite.isDefined
   }
 
 }
