@@ -1375,15 +1375,16 @@ object Main extends App {
         val siteTopology = Future {
           val siteOption = Site1.fromNeo4jGraph(siteId)
           siteOption.map { site =>
-            val topology = new Topology(site)
+
             val softwareLabel: String = "SoftwaresTest2"
             val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
             val softwares = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
-            val sshBaseStrategy = new SSHBasedStrategy(topology, softwares, true)
+            val sshBaseStrategy = new SSHBasedStrategy(new Topology(site), softwares, true)
             //TODO: InstanceGroup & Application save
-            site.copy(instances = sshBaseStrategy.findInstanceDetails)
+            val topologyResult = sshBaseStrategy.getTopology
+
             //Saving the Site with collected instance details
-            site.toNeo4jGraph(site)
+            site.toNeo4jGraph(topologyResult.site)
           }
         }
         onComplete(siteTopology) {
