@@ -99,7 +99,7 @@ object KnownSoftware {
   }
 
   case object Apache extends KnownSoftware {
-    override val name: String = "Tomcat"
+    override val name: String = "Apache"
     override val applicationDiscoveryHelper: Option[ApplicationDiscovery] = None
     override val provider: String = "Apache Software Foundation"
     override val process: List[SoftwareProcess] = List(SoftwareProcess.ApacheProcess, SoftwareProcess.Apache2Process)
