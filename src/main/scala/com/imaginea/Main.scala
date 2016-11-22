@@ -1551,7 +1551,7 @@ object Main extends App {
     }
   }
 
-  def siteServices : Route = pathPrefix("sites") {
+  def siteServices : Route = pathPrefix("site") {
     get {
       parameters('viewLevel.as[String]) {
         (viewLevel) =>
@@ -1573,7 +1573,7 @@ object Main extends App {
           }
       }
     }
-  } ~ path("sites" / LongNumber) {
+  } ~ path("site" / LongNumber) {
     siteId => delete {
       val maybeDelete = Future {
         Site1.delete(siteId)
@@ -1584,7 +1584,7 @@ object Main extends App {
           complete(StatusCodes.BadRequest, "Deletion failed")
       }
     }
-  } ~ path("sites" / LongNumber/"instances"/ Segment) {
+  } ~ path("site" / LongNumber/"instances"/ Segment) {
     (siteId,instanceId) =>  {
       delete {
         val mayBeDelete = Future {
