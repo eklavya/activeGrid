@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.models
 
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 /**
@@ -34,8 +34,8 @@ object IpPermissionInfo {
 
   def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
-    maybeNode match {
-      case Some(node) =>
+    maybeNode.flatMap {
+      node =>
         if (Neo4jRepository.hasLabel(node, ipPermissionLabel)) {
           val map = Neo4jRepository.getProperties(node, "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
           Some(IpPermissionInfo(Some(nodeId),
@@ -45,9 +45,9 @@ object IpPermissionInfo {
             map("groupIds").asInstanceOf[Array[String]].toSet,
             map("ipRanges").asInstanceOf[Array[String]].toList))
         } else {
+          logger.warn(s"IpPermission Node with id $nodeId is not found")
           None
         }
-      case None => None
     }
   }
 }

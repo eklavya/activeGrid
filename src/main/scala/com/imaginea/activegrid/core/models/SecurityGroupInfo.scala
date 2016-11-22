@@ -1,7 +1,9 @@
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
+import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 /**
   * Created by nagulmeeras on 27/10/16.
@@ -22,6 +24,7 @@ object SecurityGroupInfo {
   val securityGroupInfoLabel = "SecurityGroupInfo"
   val securityGroupAndIpPermissionRelation = "HAS_IP_PERMISSION"
   val securityGroupAndKeyValueRelation = "HAS_KEY_VALUE"
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   implicit class SecurityGroupInfoImpl(securityGroupInfo: SecurityGroupInfo) extends Neo4jRep[SecurityGroupInfo] {
     override def toNeo4jGraph(entity: SecurityGroupInfo): Node = {
@@ -52,8 +55,8 @@ object SecurityGroupInfo {
 
   def fromNeo4jGraph(nodeId: Long): Option[SecurityGroupInfo] = {
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
-    maybeNode match {
-      case Some(node) =>
+    maybeNode.flatMap {
+      node =>
         if (Neo4jRepository.hasLabel(node, securityGroupInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "groupName", "groupId", "ownerId", "description")
           val keyValuesNodeIds = Neo4jRepository.getChildNodeIds(nodeId, securityGroupAndKeyValueRelation)
@@ -73,9 +76,9 @@ object SecurityGroupInfo {
             ipPermissions,
             keyValueInfos))
         } else {
+          logger.warn(s"SecurityGroupInfo node with id $nodeId is not found")
           None
         }
-      case None => None
     }
   }
 }
