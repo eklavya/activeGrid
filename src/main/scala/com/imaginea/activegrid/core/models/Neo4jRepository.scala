@@ -84,24 +84,27 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   def deleteRelation(instanceId: String, parentEntity: BaseEntity, relationName: String): ExecutionStatus = withTx {
     implicit neo =>
-    parentEntity.id match {
-      case Some(id) => val parent = getNodeById(id)
-        //Fetching relations that maps instance to site
-        val relationList = parent.getRelationships(Direction.OUTGOING).toList.filter(relation => relation.getType.name.equals(relationName))
+      parentEntity.id match {
+        case Some(id) => val parent = getNodeById(id)
+          //Fetching relations that maps instance to site
+          val relationList = parent.getRelationships(Direction.OUTGOING).toList.filter(relation => relation.getType.name.equals(relationName))
 
-        //Deleting insatnce node and relation.
-        relationList.foreach {
-          relation => val instanceNode = relation.getEndNode
-            if(instanceNode.getId == instanceId) {
-              instanceNode.delete()
-              relation.delete()
-            }
-        }
-        ExecutionStatus(true,s"Instace ${instanceId} from ${parentEntity.id} removed successfully")
-      // If parent id invalid
-      case _ => ExecutionStatus(false,s"Parent node ${parentEntity.id} not available")
-    }
+          //Deleting insatnce node and relation.
+          relationList.foreach {
+            relation => val instanceNode = relation.getEndNode
+              if(instanceNode.getId == instanceId) {
+                instanceNode.delete()
+                relation.delete()
+              }
+          }
+          ExecutionStatus(true,s"Instace ${instanceId} from ${parentEntity.id} removed successfully")
+        // If parent id invalid
+        case _ => ExecutionStatus(false,s"Parent node ${parentEntity.id} not available")
+      }
   }
+
+
+
 
   def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
     val mayBeNode = findNodeById(nodeId)
