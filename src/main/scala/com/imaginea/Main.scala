@@ -314,6 +314,19 @@ object Main extends App {
   implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
+    override def write(obj: SiteDeltaStatus): JsValue = {
+      JsString(obj.deltaStatus.toString)
+    }
+
+    override def read(json: JsValue): SiteDeltaStatus = {
+      json match {
+        case JsString(str) => SiteDeltaStatus.toDeltaStatus(str)
+        case _ => throw DeserializationException("Unable to deserialize SiteDeltaStatus")
+      }
+    }
+  }
+  implicit val siteDeltaFormat = jsonFormat(SiteDelta.apply, "siteId", "deltaStatus", "addedInstances", "deletedInstances")
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -1148,21 +1161,7 @@ object Main extends App {
       put {
         entity(as[Site1]) { site =>
           val buildSite = Future {
-            val siteFilters = site.filters
-            logger.info(s"Parsing instance : ${site.instances}")
-            val computedResult = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
-              (result, siteFilter) =>
-                val accountInfo = siteFilter.accountInfo
-                val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
-                val instances = AWSComputeAPI.getInstances(amazonEC2, accountInfo)
-                val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
-                val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
-                val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
-                (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
-            }
-            val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
-            site1.toNeo4jGraph(site1)
-            site1
+            populateInstances(site)
           }
           onComplete(buildSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1342,34 +1341,7 @@ object Main extends App {
       entity(as[SiteFilter]) { siteFilter =>
         val filteredSite = Future {
           val filters = siteFilter.filters
-          val mayBeSite = cachedSite.get(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val instances = site.instances
-              val (siteFiltersToSave, filteredInstances) = if (filters.nonEmpty) {
-                val siteFilters = site.filters
-                val listOfSiteFilters = siteFilters.map { siteFilter => SiteFilter(siteFilter.id, siteFilter.accountInfo, filters) }
-                val listOfInstances = instances.flatMap { instance =>
-                  val filterExists = filters.find(filter => filterExistsInTags(instance, filter))
-                  filterExists.map(filter => instance)
-                }
-                (listOfSiteFilters, listOfInstances)
-              }
-              else {
-                (site.filters, instances)
-              }
-              val instancesToSave = getInstancesToSave(filteredInstances.toSet)
-              val lbsToSave = getLoadBalancersToSave(site.loadBalancers)
-              val sgsToSave = getScalingGroupsToSave(site.scalingGroups)
-              val rInstancesToSave = getReservedInstancesToSave(site.reservedInstanceDetails)
-              val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList)
-              siteToSave.toNeo4jGraph(siteToSave)
-              cachedSite.put(siteId, siteToSave)
-              Some(siteToSave)
-            case None => logger.warn(s"could not get Site from cache for siteId : $siteId")
-              None
-
-          }
+          populateFilteredInstances(siteId, filters)
         }
         onComplete(filteredSite) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1456,6 +1428,126 @@ object Main extends App {
           }
         }
       }
+    } ~ path(LongNumber / "scalegroups") { siteId =>
+      get {
+        parameter("type") {
+          viewType =>
+            val scalingGroups = Future {
+              val mayBeSite = Site1.fromNeo4jGraph(siteId)
+              mayBeSite.map(site => site.scalingGroups).getOrElse(List.empty[ScalingGroup])
+            }
+
+            onComplete(scalingGroups) {
+              case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case Failure(exception) =>
+                logger.error(s"Unable to get ScalingGroups. Failed with : ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to get Scaling Groups.")
+            }
+        }
+      }
+    } ~ path(LongNumber / "instances") { siteId =>
+      put {
+        entity(as[Instance]) { instance =>
+          val buildInstance = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                val listOfInstances = site.instances
+                val newListOfInstances = instance :: listOfInstances
+                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList)
+                siteToSave.toNeo4jGraph(siteToSave)
+                "Instance added successfully to Site"
+              case None =>
+                throw new NotFoundException(s"Site Entity with ID : $siteId Not Found")
+            }
+          }
+
+          onComplete(buildInstance) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to build Instance. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to build Instance.")
+          }
+        }
+      }
+    } ~ path(LongNumber / "instances" / Segment) { (siteId, id) =>
+      get {
+        parameter("type") {
+          view =>
+            val instance = Future {
+              val mayBeSite = Site1.fromNeo4jGraph(siteId)
+              val mayBeInstance = mayBeSite match {
+                case Some(site) => site.instances.find(instance => instance.instanceId.contains(id))
+                case None => throw new NotFoundException(s"Site Entity with ID : $siteId Not Found")
+              }
+              mayBeInstance.map { instance =>
+                val viewType = ViewType.toViewType(view)
+                val filteredInstance = viewType match {
+                  case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("DETAILED"))
+                  case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("DETAILED"))
+                  case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("DETAILED"))
+                }
+                filteredInstance
+              }
+            }
+            onComplete(instance) {
+              case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case Failure(exception) =>
+                logger.error(s"Unable to get Instance. Failed with : ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to get Instance.")
+            }
+        }
+      }
+    } ~ path(LongNumber / "delta") { siteId =>
+      get {
+        val siteDelta = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site) =>
+              val instancesBeforeSync = site.instances
+              val synchedSite = populateInstances(site)
+              val filteredSite = populateFilteredInstances(siteId, List.empty[Filter])
+              saveCachedSite(siteId)
+              filteredSite match {
+                case Some(siteInCache) =>
+                  val instancesAfterSync = siteInCache.instances
+                  val beforeSyncInstanceIds = instancesBeforeSync.flatMap (instance => instance.instanceId).toSet
+                  val afterSyncInstanceIds = instancesAfterSync.flatMap (instance => instance.instanceId).toSet
+                  val commonInstanceIds = beforeSyncInstanceIds.intersect (afterSyncInstanceIds)
+                  val deletedInstances = instancesBeforeSync.filterNot {
+                    instance =>
+                      instance.instanceId.exists { id =>
+                        commonInstanceIds.contains(id)
+                      }
+                  }
+                  val addedInstances = instancesAfterSync.filterNot {
+                    instance =>
+                      instance.instanceId.exists { id =>
+                        commonInstanceIds.contains(id)
+                      }
+                  }
+                  val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
+                    SiteDeltaStatus.toDeltaStatus ("CHANGED")
+                  } else {
+                    SiteDeltaStatus.toDeltaStatus ("UNCHANGED")
+                  }
+                  Some(SiteDelta (site.id, deltaStatus, addedInstances, deletedInstances))
+                case None =>
+                  logger.warn(s"could not get site from cache for siteId : $siteId")
+                  None
+              }
+            case None =>
+              logger.warn(s"could not get site with siteId : $siteId")
+              None
+          }
+        }
+        onComplete(siteDelta) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to get Site Delta. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get Site Delta.")
+        }
+      }
     }
   }
 
@@ -1536,7 +1628,7 @@ object Main extends App {
   def saveKeyPair(keyPairInfo: KeyPairInfo): Option[KeyPairInfo] = {
     val filePath = getKeyFilePath(keyPairInfo.keyName)
     try {
-      FileUtils.createDirectories(getKeyFilesDir)
+      FileUtils.createDirectories(keyFilesDir)
       FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
       // TODO: change permissions to 600
     } catch {
@@ -1546,9 +1638,9 @@ object Main extends App {
     KeyPairInfo.fromNeo4jGraph(node.getId)
   }
 
-  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
+  val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
-  def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
+  def getKeyFilePath(keyName: String): String = s"$keyFilesDir$keyName.pem"
 
   def getAPMServers: mutable.MutableList[APMServerDetails] = {
     logger.debug(s"Executing $getClass :: getAPMServers")
@@ -1715,7 +1807,66 @@ object Main extends App {
         }
       case _ => false
     }
-
-
   }
+
+  def populateFilteredInstances(siteId: Long,  filters: List[Filter]) : Option[Site1] = {
+    val mayBeSite = cachedSite.get(siteId)
+    mayBeSite match {
+      case Some (site) =>
+        val instances = site.instances
+        val (siteFiltersToSave, filteredInstances) = if (filters.nonEmpty) {
+          val siteFilters = site.filters
+          val listOfSiteFilters = siteFilters.map {
+            siteFilter => SiteFilter (siteFilter.id, siteFilter.accountInfo, filters)
+          }
+          val listOfInstances = instances.flatMap {
+            instance =>
+              val filterExists = filters.find (filter => filterExistsInTags (instance, filter) )
+              filterExists.map (filter => instance)
+          }
+          (listOfSiteFilters, listOfInstances)
+        }
+        else {
+          (site.filters, instances)
+        }
+        val instancesToSave = getInstancesToSave (filteredInstances.toSet)
+        val lbsToSave = getLoadBalancersToSave (site.loadBalancers)
+        val sgsToSave = getScalingGroupsToSave (site.scalingGroups)
+        val rInstancesToSave = getReservedInstancesToSave (site.reservedInstanceDetails)
+        val siteToSave = Site1 (site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList)
+        siteToSave.toNeo4jGraph (siteToSave)
+        cachedSite.put (siteId, siteToSave)
+        Some (siteToSave)
+      case None => logger.warn (s"could not get Site from cache for siteId : $siteId")
+        None
+    }
+  }
+
+  def populateInstances(site: Site1): Site1 = {
+    val siteFilters = site.filters
+    logger.info(s"Parsing instance : ${site.instances}")
+    val computedResult = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+      (result, siteFilter) =>
+        val accountInfo = siteFilter.accountInfo
+        val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
+        val instances = AWSComputeAPI.getInstances(amazonEC2, accountInfo)
+        val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
+        val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
+        val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
+        (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
+    }
+    val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
+    site1.toNeo4jGraph(site1)
+    site1
+  }
+
+  def saveCachedSite(siteId: Long): Boolean = {
+    val mayBeSite = cachedSite.get(siteId)
+    mayBeSite.foreach { site =>
+      site.toNeo4jGraph(site)
+      cachedSite.remove(siteId)
+    }
+    mayBeSite.isDefined
+  }
+
 }
