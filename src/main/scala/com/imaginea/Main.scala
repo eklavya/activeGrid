@@ -1550,8 +1550,8 @@ object Main extends App {
       }
     }
   }
-
-  def siteServices : Route = pathPrefix("sites") {
+  // scalastyle:off method.length
+  def siteServices : Route = pathPrefix("site") {
     get {
       parameters('viewLevel.as[String]) {
         (viewLevel) =>
@@ -1573,7 +1573,7 @@ object Main extends App {
           }
       }
     }
-  } ~ path("sites" / LongNumber) {
+  } ~ path("site" / LongNumber) {
     siteId => delete {
       val maybeDelete = Future {
         Site1.delete(siteId)
@@ -1584,7 +1584,7 @@ object Main extends App {
           complete(StatusCodes.BadRequest, "Deletion failed")
       }
     }
-  } ~ path("sites" / LongNumber/"instances"/ Segment) {
+  } ~ path("site" / LongNumber/"instances"/ Segment) {
     (siteId,instanceId) =>  {
       delete {
         val mayBeDelete = Future {
@@ -1597,7 +1597,21 @@ object Main extends App {
         }
       }
     }
-  }
+  } ~
+    path("site"/LongNumber/"policies"/Segment){
+      (siteId,policyId) => {
+        delete {
+          val maybeDelete = Future {
+            SiteManagerImpl.deletePolicy(policyId)
+          }
+          onComplete(maybeDelete){
+            case Success(executionStatus) => complete(StatusCodes.OK,executionStatus.msg)
+            case Failure(ex) => logger.info(s"Error while deleting policy $policyId",ex)
+              complete(StatusCodes.BadRequest,"Error while deleting policy")
+          }
+        }
+      }
+    }
 
 
   val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
