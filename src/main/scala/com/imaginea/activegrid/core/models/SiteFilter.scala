@@ -39,8 +39,8 @@ object SiteFilter {
   def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
     logger.debug(s"Executing $getClass :: fromNeo4jGraph")
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
-    maybeNode match {
-      case Some(node) =>
+    maybeNode.flatMap {
+      node =>
         if (Neo4jRepository.hasLabel(node, siteFilterLabel)) {
           val accountInfoNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteFilterAndAccountRelation)
           val accountInfos: List[AccountInfo] = accountInfoNodeIds.flatMap { childId =>
@@ -54,7 +54,6 @@ object SiteFilter {
         } else {
           None
         }
-      case None => None
     }
   }
 }

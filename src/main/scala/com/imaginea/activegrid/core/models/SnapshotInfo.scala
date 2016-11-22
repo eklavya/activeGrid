@@ -57,8 +57,8 @@ object SnapshotInfo {
   def fromNeo4jGraph(nodeId: Long): Option[SnapshotInfo] = {
     logger.debug(s"Executing $getClass :: fromNeo4jGraph")
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
-    maybeNode match {
-      case Some(node) =>
+    maybeNode.flatMap {
+      node =>
         if (Neo4jRepository.hasLabel(node, snapshotInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "snapshotId", "volumeId", "state", "startTime", "progress", "ownerId",
             "ownerAlias", "description", "volumeSize")
@@ -82,7 +82,6 @@ object SnapshotInfo {
         } else {
           None
         }
-      case None => None
     }
   }
 }

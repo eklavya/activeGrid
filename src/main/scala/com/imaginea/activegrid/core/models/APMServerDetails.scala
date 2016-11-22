@@ -37,11 +37,10 @@ object APMServerDetails {
           aPMServerDetails.headers.foreach { case (key, value) => headersNode.setProperty(key, value) }
           createRelationShip(node, headersNode, apmServer_header_relation)
 
-          aPMServerDetails.monitoredSite match {
-            case Some(site) =>
+          aPMServerDetails.monitoredSite.foreach {
+            site =>
               val siteNode = site.toNeo4jGraph(site)
               createRelationShip(node, siteNode, apmServer_site_relation)
-            case None => logger.debug("APM Server Details entity has no Sit information")
           }
           node
       }

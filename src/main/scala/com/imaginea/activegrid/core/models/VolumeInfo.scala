@@ -63,8 +63,8 @@ object VolumeInfo {
   def fromNeo4jGraph(nodeId: Long): Option[VolumeInfo] = {
     logger.debug(s"Executing $getClass :: fromNeo4jGraph")
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
-    maybeNode match {
-      case Some(node) =>
+    maybeNode.flatMap {
+      node =>
         if (Neo4jRepository.hasLabel(node, volumeInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "volumeId", "size", "snapshotId", "availabilityZone", "state", "createTime", "volumeType")
           val childNodeIds_keyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, volumeInfo_Tag_Relation)
@@ -91,7 +91,6 @@ object VolumeInfo {
         } else {
           None
         }
-      case None => None
     }
   }
 
