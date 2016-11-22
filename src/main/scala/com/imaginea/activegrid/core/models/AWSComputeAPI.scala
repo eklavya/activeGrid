@@ -319,7 +319,7 @@ object AWSComputeAPI {
     val snapshotId = Option(snapshot.getSnapshotId)
     val volumeId = Option(snapshot.getVolumeId)
     val state = Option(snapshot.getState)
-    val startTime = Option(snapshot.getStartTime.toString)
+    val startTime = Option(snapshot.getStartTime).map(startTime => startTime.toString)
     val progress = Option(snapshot.getProgress)
     val ownerId = Option(snapshot.getOwnerId)
     val ownerAlias = Option(snapshot.getOwnerAlias)
