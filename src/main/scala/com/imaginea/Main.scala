@@ -1550,7 +1550,7 @@ object Main extends App {
       }
     }
   }
-
+  // scalastyle:off method.length
   def siteServices : Route = pathPrefix("site") {
     get {
       parameters('viewLevel.as[String]) {
