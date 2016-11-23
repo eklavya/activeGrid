@@ -1556,20 +1556,20 @@ object Main extends App {
       delete{
         val response = Future{
           val mayBeSite = Site1.fromNeo4jGraph(siteId)
-          val mayBeInstance = mayBeSite.map{
-            site =>
+          mayBeSite match {
+            case Some(site) =>
               val mayBeInstance =  site.instances.find(instance => instance.instanceId.contains(instanceId))
-              mayBeInstance.map{
-                instance =>
+              mayBeInstance match {
+                case Some(instance) =>
                   site.groupsList.foreach{group =>
                     val mayBeInstanceGroup =  group.instances.find(instanceInGroup => instanceInGroup.instanceId.contains(instanceId))
                     mayBeInstanceGroup.map(instanceGroup => Neo4jRepository.deleteRelationship(instanceGroup.id.get , instance.id.get , "HAS_Instance"))
                   }
                   Neo4jRepository.deleteRelationship(site.id.get , instance.id.get , "HAS_Instance")
-                  "Deleted Successfully!"
+                case None => throw new NotFoundException(s"Instance Entity with id : $instanceId is not found")
               }
+            case None => throw new NotFoundException(s"Site Entity with id : $siteId is not found")
           }
-          s"Unable to delete the Instance with id $instanceId"
         }
         onComplete(response) {
           case Success(responseMessage) => complete(StatusCodes.OK , "Deleted Successfully!")
@@ -1584,10 +1584,10 @@ object Main extends App {
         tagsToAdd =>
           val response = Future{
             addTags(siteId , instanceId , tagsToAdd)
-            "Updated"
+            "Updated successfully!"
           }
           onComplete(response){
-            case Success(responseMessage) => complete(StatusCodes.OK , "Updated successfully!")
+            case Success(responseMessage) => complete(StatusCodes.OK , responseMessage)
             case Failure(exception) =>
               logger.error(s"Unable to update the tags ${exception.getMessage}", exception)
               complete(StatusCodes.BadRequest , "Unable to update the tags!")
@@ -1599,13 +1599,13 @@ object Main extends App {
       entity(as[Map[String,JsValue]]){
         map =>
           val response = Future {
-            if(map.get("instanceIds").nonEmpty){
+            if(map.contains("instanceIds")){
               val instanceIds = map("instanceIds").asInstanceOf[List[String]]
               val tags = map("tags").asInstanceOf[List[KeyValueInfo]]
               instanceIds.foreach(instanceId => addTags(siteId , instanceId , tags))
               "Updated successfully"
             }else{
-              "Unable to update tags for instances"
+              throw new Exception("Unable get istanceIds from request")
             }
           }
           onComplete(response){
@@ -1661,6 +1661,27 @@ object Main extends App {
           case Failure(exception) =>
             logger.error(s"Unable to delete the Application with ID : $appId ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest , s"Unable to delete the Application with ID : $appId"  )
+        }
+      }
+  }~path(LongNumber /"applications"){
+    (siteId) =>
+      post {
+        entity(as[Application]) {
+          application =>
+          val response = Future {
+            if(application.id.nonEmpty) {
+              application.toNeo4jGraph(application)
+              "Updated successfully!"
+            }else{
+              throw new Exception("Entity ID is mandatory for updating")
+            }
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to update the Applicaation ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Unable to update Application with id ${application.id}")
+          }
         }
       }
   }
