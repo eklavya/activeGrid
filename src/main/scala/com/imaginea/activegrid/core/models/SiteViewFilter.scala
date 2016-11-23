@@ -6,12 +6,12 @@ package com.imaginea.activegrid.core.models
 object SiteViewFilter extends  ViewFilter[Site1]{
 
   def getDetailedSiteView(t: Site1): Site1 ={
-    Site1(t.id,t.siteName,t.instances,t.reservedInstanceDetails,t.filters,t.loadBalancers,t.scalingGroups,t.groupsList)
+    Site1(t.id,t.siteName,t.instances,t.reservedInstanceDetails,t.filters,t.loadBalancers,t.scalingGroups,List.empty[Application],t.groupsList)
   }
 
   def getSummarySiteView(t: Site1): Site1 = {
     Site1(t.id,t.siteName,t.instances,List.empty[ReservedInstanceDetails],
-      List.empty[SiteFilter],List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[InstanceGroup])
+      List.empty[SiteFilter],List.empty[LoadBalancer],List.empty[ScalingGroup],List.empty[Application],List.empty[InstanceGroup])
   }
   override def filterInstance(t: Site1, viewLevel: ViewLevel): Site1 = {
     viewLevel match {

@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models.{InstanceGroup, _}
-import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
+import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU, Constants, FileUtils}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
@@ -312,8 +312,13 @@ object Main extends App {
   implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
   implicit val pageLoadBalancerFormat = jsonFormat4(Page[LoadBalancer])
   implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
+
+  implicit val applicationTire = jsonFormat(ApplicationTier.apply, "id", "name", "description", "instances")
+  implicit val applicationTires = jsonFormat(ApplicationTiers.apply, "id", "name", "descritption", "instances")
+  implicit val applicationFormat = jsonFormat(Application.apply, "id", "name", "descritption","version", "instances","software","tiers","responseTime")
+
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups","applications", "groupsList")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
       JsString(obj.deltaStatus.toString)
@@ -1282,7 +1287,32 @@ object Main extends App {
               complete(StatusCodes.BadRequest, "Unable to get tags")
           }
       }
-    }
+    } ~
+      path("sites" / LongNumber / "topology") { siteId =>
+        post {
+          val siteTopology = Future {
+            val siteOption = Site1.fromNeo4jGraph(siteId)
+            siteOption.map { site =>
+              val topology = new Topology(site)
+              val softwareLabel: String = "SoftwaresTest2"
+              val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
+              val softwares = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
+              val sshBaseStrategy = new SSHBasedStrategy(topology, softwares, true)
+              //TODO: InstanceGroup & Application save
+              val toplogyResponse = sshBaseStrategy.getTopology
+              //Saving the Site with collected instance details
+              site.toNeo4jGraph(toplogyResponse.site)
+            }
+          }
+          onComplete(siteTopology) {
+            case Success(successResponse) => complete(StatusCodes.OK, "Saved the site topology")
+            case Failure(ex) =>
+              logger.error(s"Unable to find topology; Failed with ${ex.getMessage}", ex)
+              complete(StatusCodes.BadRequest, "Unable to find topology for the Site")
+
+          }
+        }
+      }
   } ~ path("keypairs" / LongNumber) { siteId =>
     get {
       val listOfKeyPairs = Future {
@@ -1322,7 +1352,7 @@ object Main extends App {
 
               }
               Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.reservedInstanceDetails,
-                site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+                site.filters, site.loadBalancers, site.scalingGroups,List.empty[Application], site.groupsList))
             case None =>
               logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
               None
@@ -1370,7 +1400,8 @@ object Main extends App {
                     case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
                   }
                 }
-                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers,
+                  site.scalingGroups,List.empty[Application], site.groupsList))
               case None =>
                 logger.warn(s"Failed in fromNeo4jGraph of Site for siteId : $siteId")
                 None
@@ -1454,7 +1485,8 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val newListOfInstances = instance :: listOfInstances
-                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList)
+                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site
+                  .scalingGroups,List.empty, site.groupsList)
                 siteToSave.toNeo4jGraph(siteToSave)
                 "Instance added successfully to Site"
               case None =>
@@ -1847,7 +1879,7 @@ object Main extends App {
         val lbsToSave = getLoadBalancersToSave (site.loadBalancers)
         val sgsToSave = getScalingGroupsToSave (site.scalingGroups)
         val rInstancesToSave = getReservedInstancesToSave (site.reservedInstanceDetails)
-        val siteToSave = Site1 (site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList)
+        val siteToSave = Site1 (site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave,List.empty[Application], site.groupsList)
         siteToSave.toNeo4jGraph (siteToSave)
         cachedSite.put (siteId, siteToSave)
         Some (siteToSave)
@@ -1869,7 +1901,7 @@ object Main extends App {
         val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
         (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
     }
-    val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
+    val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4,List.empty, List())
     site1.toNeo4jGraph(site1)
     site1
   }

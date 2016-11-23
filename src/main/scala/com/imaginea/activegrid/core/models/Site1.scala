@@ -1,12 +1,14 @@
 package com.imaginea.activegrid.core.models
 
+import java.util.concurrent.{Callable, Executors, FutureTask, TimeUnit}
+
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
-  * Created by shareefn on 25/10/16.
-  */
+ * Created by shareefn on 25/10/16.
+ */
 case class Site1(override val id: Option[Long],
                  siteName: String,
                  instances: List[Instance],
@@ -14,6 +16,7 @@ case class Site1(override val id: Option[Long],
                  filters: List[SiteFilter],
                  loadBalancers: List[LoadBalancer],
                  scalingGroups: List[ScalingGroup],
+                 applications: List[Application],
                  groupsList: List[InstanceGroup]) extends BaseEntity
 
 object Site1 {
@@ -24,7 +27,6 @@ object Site1 {
   val site_IG_Relation = "HAS_InstanceGroup"
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
-
 
   def delete(siteId: Long): ExecutionStatus = {
     val maybeNode = Neo4jRepository.findNodeById(siteId)
@@ -79,8 +81,10 @@ object Site1 {
         val reservedInstance: List[ReservedInstanceDetails] = childNodeIds_rid.flatMap { childId =>
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
-
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups))
+        //logger.info(s"Printing : ${instances.head.blockDeviceMappings}")
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance,
+          siteFilters, loadBalancers, scalingGroups,List.empty,
+          instanceGroups))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -90,14 +94,36 @@ object Site1 {
   implicit class RichSite1(site1: Site1) extends Neo4jRep[Site1] {
 
     override def toNeo4jGraph(entity: Site1): Node = {
+      logger.debug(s"Executing $getClass :: toNeo4jgraph of site")
       val label = "Site1"
       val mapPrimitives = Map("siteName" -> entity.siteName)
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
+      logger.info("After saving site primitive types ")
       val relationship_inst = "HAS_Instance"
-      entity.instances.foreach { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+
+      //      entity.instances.foreach { instance =>
+      //        logger.info("Executing instance")
+      //         new FutureTask[String](new Callable[String] {
+      //           override def call(): String = {
+      //
+      //             "Done"
+      //           }
+      //         })
+      //      }
+      //val executorService = Executors.newFixedThreadPool(15)
+      entity.instances.filter(ins => ins.name.contains("Live")).foreach{
+        instance =>
+         /* executorService.submit(new Runnable {
+            override def run(): Unit = {*/
+              val instanceNode = instance.toNeo4jGraph(instance)
+              Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+            /*}
+          })*/
       }
+/*
+      executorService.awaitTermination(5 , TimeUnit.SECONDS)
+      executorService.shutdown()
+*/
 
       entity.filters.foreach { filter =>
         val filterNode = filter.toNeo4jGraph(filter)
@@ -130,4 +156,10 @@ object Site1 {
     }
   }
 
+}
+
+class InstanceSaver(instance: Instance) extends Runnable{
+  override def run(): Unit = {
+    instance.toNeo4jGraph(instance)
+  }
 }
