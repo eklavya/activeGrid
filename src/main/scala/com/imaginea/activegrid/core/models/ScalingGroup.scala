@@ -22,6 +22,8 @@ case class ScalingGroup(override val id: Option[Long],
 
 object ScalingGroup {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  val lable = ScalingGroup.getClass.getSimpleName
+  val relationLable = ActiveGridUtils.relationLbl(lable)
 
   def fromNeo4jGraph(id: Long): Option[ScalingGroup] = {
     val mayBeNode = Neo4jRepository.findNodeById(id)
