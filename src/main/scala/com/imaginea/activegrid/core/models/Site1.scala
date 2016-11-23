@@ -29,7 +29,8 @@ object Site1 {
   def delete(siteId: Long): Boolean = {
     val maybeNode = Neo4jRepository.findNodeById(siteId)
     maybeNode.map {
-      node => {logger.info(s"Site is ${siteId} available,It properties are...." + node.toString)
+      node => {
+        logger.info(s"Site is ${siteId} available,It properties are...." + node.toString)
         Neo4jRepository.deleteEntity(node.getId)
       }
     }

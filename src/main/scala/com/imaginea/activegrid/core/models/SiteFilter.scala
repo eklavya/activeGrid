@@ -19,28 +19,6 @@ object SiteFilter {
   val siteFilter_Filters_Rel = "HAS_FILTERS"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class SiteFilterImpl(siteFilter: SiteFilter) extends Neo4jRep[SiteFilter] {
-    override def toNeo4jGraph(entity: SiteFilter): Node = {
-      logger.debug(s"Executing $getClass :: toNeo4jGraph")
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(siteFilterLabel)(neo)
-          val accountInfoNode = entity.accountInfo.toNeo4jGraph(entity.accountInfo)
-          repository.createRelation(siteFilter_AccountInfo_Rel, node, accountInfoNode)
-          entity.filters.foreach {
-            filter =>
-              val filterNode = filter.toNeo4jGraph(filter)
-              repository.createRelation(siteFilter_Filters_Rel, node, filterNode)
-          }
-          node
-      }
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
-      SiteFilter.fromNeo4jGraph(nodeId)
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
     logger.debug(s"Executing $getClass :: fromNeo4jGraph")
     repository.withTx {
@@ -68,6 +46,28 @@ object SiteFilter {
             logger.warn(nfe.getMessage, nfe)
             None
         }
+    }
+  }
+
+  implicit class SiteFilterImpl(siteFilter: SiteFilter) extends Neo4jRep[SiteFilter] {
+    override def toNeo4jGraph(entity: SiteFilter): Node = {
+      logger.debug(s"Executing $getClass :: toNeo4jGraph")
+      repository.withTx {
+        neo =>
+          val node = repository.createNode(siteFilterLabel)(neo)
+          val accountInfoNode = entity.accountInfo.toNeo4jGraph(entity.accountInfo)
+          repository.createRelation(siteFilter_AccountInfo_Rel, node, accountInfoNode)
+          entity.filters.foreach {
+            filter =>
+              val filterNode = filter.toNeo4jGraph(filter)
+              repository.createRelation(siteFilter_Filters_Rel, node, filterNode)
+          }
+          node
+      }
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
+      SiteFilter.fromNeo4jGraph(nodeId)
     }
   }
 }
