@@ -141,7 +141,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 
-  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String):Unit = withTx { neo =>
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String): Unit = withTx { neo =>
     val relType = DynamicRelationshipType.withName(relation)
     logger.debug(s"setting relationship : $relation")
     fromNode --> relType --> toNode
@@ -177,5 +177,27 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getNodeByProperty(label: String, propertyName: String, propertyVal: Any): Option[Node] = withTx { neo =>
     val nodes = findNodesByLabelAndProperty(label, propertyName, propertyVal)(neo)
     nodes.headOption
+  }
+
+  def deleteRelationship(parentNodeId: Long, childNodeId: Long, relationshipName: String): Boolean = {
+    withTx { neo =>
+      val mayBeParentNode = findNodeById(parentNodeId)
+      mayBeParentNode match {
+        case Some(parentNode) =>
+          if (parentNode.hasRelationship(relationshipName)) {
+            val relationships = parentNode.getRelationships(relationshipName, Direction.OUTGOING)
+            val relationshipToDelete = relationships.find(relationship => relationship.getEndNode.getId == childNodeId)
+            relationshipToDelete match {
+              case Some(relationship) =>
+                relationship.delete()
+                true
+              case None => false
+            }
+          } else {
+            false
+          }
+        case None => false
+      }
+    }
   }
 }
