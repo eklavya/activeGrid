@@ -1548,6 +1548,98 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to get Site Delta.")
         }
       }
+    } ~ path(LongNumber / "instances" / Segment / "users") { (siteId, id) =>
+      put {
+        entity(as[InstanceUser]) { user =>
+          val addInstanceUser = Future {
+            val mayBeInstance = getInstance(siteId, id)
+            mayBeInstance.foreach { instance =>
+              val listOfExistingUsers = instance.existingUsers
+              val userInList = listOfExistingUsers.find(instanceUser => instanceUser.userName.equals(user.userName))
+              userInList match {
+                case Some(oldUser) =>
+                  val newUser = oldUser.copy(publicKeys = user.publicKeys ::: oldUser.publicKeys)
+                  newUser.toNeo4jGraph(newUser)
+                case None =>
+                  val newListOfExistingUsers = user :: listOfExistingUsers
+                  val newInstance = instance.copy(existingUsers = newListOfExistingUsers)
+                  newInstance.toNeo4jGraph(newInstance)
+              }
+            }
+            "InstanceUser added/updated successfully"
+          }
+          onComplete(addInstanceUser) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to add InstanceUser. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to add Instance User.")
+          }
+        }
+      }
+    } ~ path(LongNumber / "instances" / Segment / "users") { (siteId, id) =>
+      get {
+        val instanceUsers = Future {
+          val mayBeInstance = getInstance(siteId, id)
+          mayBeInstance.map { instance =>
+            instance.existingUsers
+          }
+        }
+        onComplete(instanceUsers) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to get InstanceUsers List. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to add Instance Users List.")
+        }
+      }
+    } ~ path(LongNumber / "instances" / Segment / "users") { (siteId, id) =>
+      put {
+        entity(as[Map[String, String]]) { userDetail =>
+          val associateUser = Future {
+            val mayBeInstance = getInstance(siteId, id)
+            if (userDetail.contains("userName")) {
+              val sshAccessInfo = mayBeInstance.flatMap(instance => instance.sshAccessInfo)
+              sshAccessInfo.foreach { ssh =>
+                val newSSHAccessInfo = ssh.copy(userName = userDetail("userName"))
+                newSSHAccessInfo.toNeo4jGraph(newSSHAccessInfo)
+              }
+            }
+            "User associated to Instance successfully"
+          }
+          onComplete(associateUser) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to associate User to Instance. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to associate User To Instance.")
+          }
+        }
+      }
+    } ~ path(LongNumber / "instances" / Segment) { (siteId, name) =>
+      put {
+        entity(as[List[String]]) { instanceIds =>
+          val associateUsers = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite.foreach { site =>
+              val instances = site.instances
+              instanceIds.foreach { id =>
+                val mayBeInstance = instances.find(instance => instance.instanceId.contains(id))
+                val sshAccessInfo = mayBeInstance.flatMap(instance => instance.sshAccessInfo)
+                sshAccessInfo.foreach { ssh =>
+                  val newSSHAccessInfo = ssh.copy(userName = name)
+                  newSSHAccessInfo.toNeo4jGraph(newSSHAccessInfo)
+                }
+              }
+            }
+            "Users associated to Instance successfully"
+          }
+          onComplete(associateUsers) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to associate Users to Instance. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to associate Users To Instance.")
+          }
+
+        }
+      }
     }
   }
   // scalastyle:off method.length
@@ -1738,12 +1830,8 @@ object Main extends App {
       val existingInstance = existingInstancesMap.get(instance.instanceId)
       existingInstance match {
         case Some(e) =>
-          Instance(e.id, e.instanceId, e.name, instance.state, e.instanceType, e.platform, e.architecture, instance.publicDnsName,
-            e.launchTime, e.memoryInfo, e.rootDiskInfo, e.tags, e.sshAccessInfo, e.liveConnections, e.estimatedConnections, e.processes,
-            e.image, e.existingUsers, e.account, e.availabilityZone, instance.privateDnsName, instance.privateIpAddress,
-            instance.publicIpAddress, e.elasticIP, e.monitoring, e.rootDeviceType, e.blockDeviceMappings, e.securityGroups,
-            instance.reservedInstance, e.region)
-
+          e.copy(state = instance.state, publicDnsName = instance.publicDnsName, privateDnsName = instance.privateDnsName,
+            privateIpAddress = instance.privateIpAddress, publicIpAddress = instance.publicIpAddress, reservedInstance = instance.reservedInstance )
         case None => instance
       }
     }.toList
@@ -1779,8 +1867,7 @@ object Main extends App {
       val existingSg = existingSgsMap.get(sg.name)
       existingSg match {
         case Some(s) =>
-          ScalingGroup(s.id, sg.name, sg.launchConfigurationName, sg.status, s.availabilityZones, sg.instanceIds,
-            s.loadBalancerNames, s.tags, s.desiredCapacity, s.maxCapacity, s.minCapacity)
+          s.copy(launchConfigurationName = sg.launchConfigurationName, status = sg.status, instanceIds = sg.instanceIds)
         case None => sg
       }
     }
@@ -1881,6 +1968,14 @@ object Main extends App {
       cachedSite.remove(siteId)
     }
     mayBeSite.isDefined
+  }
+
+  def getInstance(siteId: Long, id: String): Option[Instance] = {
+    val mayBeSite = Site1.fromNeo4jGraph(siteId)
+    mayBeSite.flatMap { site =>
+      val instances = site.instances
+      instances.find(instance => instance.instanceId.contains(id))
+    }
   }
 
 }
