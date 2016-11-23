@@ -64,8 +64,7 @@ object ImageInfo {
     try {
       val node = Neo4jRepository.findNodeById(nodeId)
       val map = Neo4jRepository.getProperties(node.get, "imageId", "state", "ownerId", "publicValue",
-        "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description",
-        "rootDeviceType", "rootDeviceName", "version")
+        "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
       val imageInfo = ImageInfo(Some(node.get.getId),
         ActiveGridUtils.getValueFromMapAs[String](map, "imageId"),
         ActiveGridUtils.getValueFromMapAs[String](map, "state"),
