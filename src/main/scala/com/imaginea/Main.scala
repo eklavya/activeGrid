@@ -1550,7 +1550,7 @@ object Main extends App {
       }
     }
   }
-  // scalastyle:off method.length
+  // scalastyle:off method.length cyclomatic.complexity
   def siteServices : Route = pathPrefix("site") {
     get {
       parameters('viewLevel.as[String]) {
@@ -1580,10 +1580,11 @@ object Main extends App {
       }
       onComplete(maybeDelete) {
         case Success(isDeleted) =>
-          if(isDeleted)
-          complete(StatusCodes.OK, "Site deleted successfully")
-          else
+          if(isDeleted){
+            complete(StatusCodes.OK, "Site deleted successfully")}
+          else {
             complete(StatusCodes.OK,"Error in site deletion")
+          }
         case Failure(ex) => logger.info("Failed to delete entity", ex)
           complete(StatusCodes.BadRequest, "Deletion failed")
       }
@@ -1596,10 +1597,11 @@ object Main extends App {
         }
         onComplete(mayBeDelete) {
           case Success(isDeleted) =>
-            if(isDeleted)
-              complete(StatusCodes.OK, "Instance deleted successfully")
-            else
+            if(isDeleted){
+              complete(StatusCodes.OK, "Instance deleted successfully") }
+            else {
               complete(StatusCodes.OK,"Error in Instance deletion")
+            }
           case Failure(ex) => logger.error("Failed to delete the insatnce", ex)
             complete(StatusCodes.BadRequest, "Failed to delete instance")
         }
@@ -1614,10 +1616,11 @@ object Main extends App {
           }
           onComplete(maybeDelete){
             case Success(isDeleted) =>
-              if(isDeleted)
-                complete(StatusCodes.OK, "Policy deleted successfully")
-              else
+              if(isDeleted){
+                complete(StatusCodes.OK, "Policy deleted successfully") }
+              else {
                 complete(StatusCodes.OK,"Error in policy deletion")
+              }
             case Failure(ex) => logger.info(s"Error while deleting policy $policyId",ex)
               complete(StatusCodes.BadRequest,"Error while deleting policy")
           }
