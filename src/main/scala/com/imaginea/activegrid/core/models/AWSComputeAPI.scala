@@ -324,8 +324,8 @@ object AWSComputeAPI {
     val ownerId = Option(snapshot.getOwnerId)
     val ownerAlias = Option(snapshot.getOwnerAlias)
     val description = Option(snapshot.getDescription)
-    val volumeSize = Option(snapshot.getVolumeSize.toInt)
-    val tags = createKeyValueInfo(snapshot.getTags.toList)
+    val volumeSize = Option(snapshot.getVolumeSize).map(volumeSize => volumeSize.toInt)
+    val tags = createKeyValueInfo(snapshot.getTags.toList) // it can't be null by default returning empty list
     SnapshotInfo(None, snapshotId, volumeId, state, startTime,
       progress, ownerId, ownerAlias, description, volumeSize, tags)
   }
