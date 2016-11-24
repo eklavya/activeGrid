@@ -1895,7 +1895,7 @@ object Main extends App {
   }
 
   def saveApplication(site : Site1 , application : Application): Unit = {
-    val applications = List.empty[Application]
+    val applications = List.empty[Application] //TODO has to change Site1 case class
     val mayBeApp = applications.find(app => application.name.exists(name => app.name.contains(name)))
     val appToSave = mayBeApp match {
       case Some(app) =>
@@ -2048,7 +2048,5 @@ object Main extends App {
       }
     }
   }
-
-
 
 }
