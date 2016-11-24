@@ -25,26 +25,6 @@ object AccountInfo {
     AccountInfo(Some(id), None, InstanceProvider.toInstanceProvider("AWS"), None, None, None, None, List.empty[String], None)
   }
 
-  implicit class AccountInfoImpl(accountInfo: AccountInfo) extends Neo4jRep[AccountInfo] {
-    logger.debug(s"Executing $getClass :: toNeo4jGraph")
-
-    override def toNeo4jGraph(entity: AccountInfo): Node = {
-      val map = Map("providerType" -> entity.providerType.toString,
-        "ownerAlias" -> entity.ownerAlias,
-        "accessKey" -> entity.accessKey,
-        "secretKey" -> entity.secretKey,
-        "regionName" -> entity.regionName,
-        "regions" -> entity.regions,
-        "networkCIDR" -> entity.networkCIDR)
-      Neo4jRepository.saveEntity[AccountInfo](accountInfoLabel, entity.id, map)
-
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[AccountInfo] = {
-      AccountInfo.fromNeo4jGraph(nodeId)
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[AccountInfo] = {
     logger.debug(s"Executing $getClass :: fromNeo4jGraph")
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
@@ -61,13 +41,33 @@ object AccountInfo {
             ActiveGridUtils.getValueFromMapAs[String](map, "accessKey"),
             ActiveGridUtils.getValueFromMapAs[String](map, "secretKey"),
             ActiveGridUtils.getValueFromMapAs[String](map, "regionName"),
-            map("regions").asInstanceOf[List[String]],
+            map("regions").asInstanceOf[Array[String]].toList,
             ActiveGridUtils.getValueFromMapAs[String](map, "networkCIDR")
           ))
         } else {
           None
         }
       case None => None
+    }
+  }
+
+  implicit class AccountInfoImpl(accountInfo: AccountInfo) extends Neo4jRep[AccountInfo] {
+    logger.debug(s"Executing $getClass :: toNeo4jGraph")
+
+    override def toNeo4jGraph(entity: AccountInfo): Node = {
+      val map = Map("providerType" -> entity.providerType.toString,
+        "ownerAlias" -> entity.ownerAlias,
+        "accessKey" -> entity.accessKey,
+        "secretKey" -> entity.secretKey,
+        "regionName" -> entity.regionName,
+        "regions" -> entity.regions.toArray,
+        "networkCIDR" -> entity.networkCIDR)
+      Neo4jRepository.saveEntity[AccountInfo](accountInfoLabel, entity.id, map)
+
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[AccountInfo] = {
+      AccountInfo.fromNeo4jGraph(nodeId)
     }
   }
 }

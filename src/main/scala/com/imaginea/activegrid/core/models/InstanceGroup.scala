@@ -19,6 +19,22 @@ object InstanceGroup {
   val instanceGroupLabel = "InstanceGroup"
   val instanceGroup_Instance_Relation = "HAS_INSTANCE"
 
+  def fromNeo4jGraph(nodeId: Long): Option[InstanceGroup] = {
+    Neo4jRepository.findNodeById(nodeId) match {
+      case Some(node) =>
+        val instances = node.getRelationships.foldLeft(List.empty[Instance]) {
+          (list, relationship) =>
+            Instance.fromNeo4jGraph(relationship.getEndNode.getId).get :: list
+        }
+
+        Some(InstanceGroup(Some(node.getId),
+          Neo4jRepository.getProperty[String](node, "groupType"),
+          Neo4jRepository.getProperty[String](node, "name"),
+          instances))
+      case None => None
+    }
+  }
+
   implicit class InstanceGroupImpl(instanceGroup: InstanceGroup) extends Neo4jRep[InstanceGroup] {
     override def toNeo4jGraph(entity: InstanceGroup): Node = {
       logger.debug(s"Executing $getClass :: toNeo4jGraph ")
@@ -35,22 +51,6 @@ object InstanceGroup {
 
     override def fromNeo4jGraph(nodeId: Long): Option[InstanceGroup] = {
       InstanceGroup.fromNeo4jGraph(nodeId)
-    }
-  }
-
-  def fromNeo4jGraph(nodeId: Long): Option[InstanceGroup] = {
-    Neo4jRepository.findNodeById(nodeId) match {
-      case Some(node) =>
-        val instances = node.getRelationships.foldLeft(List.empty[Instance]) {
-          (list, relationship) =>
-            Instance.fromNeo4jGraph(relationship.getEndNode.getId).get :: list
-        }
-
-        Some(InstanceGroup(Some(node.getId),
-          Neo4jRepository.getProperty[String](node, "groupType"),
-          Neo4jRepository.getProperty[String](node, "name"),
-          instances))
-      case None => None
     }
   }
 }

@@ -74,7 +74,7 @@ object AWSComputeAPI {
           Option(awsInstance.getPrivateDnsName),
           Option(awsInstance.getPrivateIpAddress),
           Option(awsInstance.getPublicIpAddress),
-          Option(addresses(awsInstance.getInstanceId).getPublicIp),
+          addresses.get(awsInstance.getInstanceId).map(address => address.getPublicIp),
           Option(awsInstance.getMonitoring.getState),
           Option(awsInstance.getRootDeviceType),
           createBlockDeviceMapping(awsInstance.getBlockDeviceMappings.toList, volumesMap, snapshotsMap),
@@ -88,24 +88,6 @@ object AWSComputeAPI {
     instances
   }
 
-  private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
-    new AWSCredentials() {
-      def getAWSAccessKeyId: String = {
-        builder.accessKey
-      }
-
-      def getAWSSecretKey: String = {
-        builder.secretKey
-      }
-    }
-  }
-
-  def awsInstanceHelper(credentials: AWSCredentials, region: Region): AmazonEC2 = {
-    val amazonEC2: AmazonEC2 = new AmazonEC2Client(credentials)
-    amazonEC2.setRegion(region)
-    amazonEC2
-  }
-
   def getAWSInstances(amazonEC2: AmazonEC2): List[model.Instance] = {
     amazonEC2.describeInstances.getReservations.toList.flatMap {
       reservation => reservation.getInstances
@@ -117,10 +99,6 @@ object AWSComputeAPI {
     describeImagesRequest.setImageIds(imageIds)
     val imagesResult = amazonEC2.describeImages(describeImagesRequest)
     imagesResult.getImages.foldLeft(Map[String, Image]())((imageMap, image) => imageMap + ((image.getImageId, image)))
-  }
-
-  def getImageInfoMap(imagesMap: Map[String, Image]): Map[String, ImageInfo] = {
-    imagesMap.foldLeft(Map[String, ImageInfo]())((imageInfoMap, image) => imageInfoMap + ((image._1, ImageInfo.fromNeo4jGraph(image._1.toLong).get)))
   }
 
   def getImageInfo(imageId: String, imagesMap: Map[String, Image]): ImageInfo = {
@@ -154,7 +132,7 @@ object AWSComputeAPI {
   def createSSHAccessInfo(keyName: String): Option[SSHAccessInfo] = {
     val node = Neo4jRepository.getNodeByProperty("KeyPairInfo", "keyName", keyName)
     val keyPairInfo = node.flatMap { node => KeyPairInfo.fromNeo4jGraph(node.getId) }
-    keyPairInfo.flatMap(info => Some(SSHAccessInfo(None, info, "", 0)))
+    keyPairInfo.map(info => SSHAccessInfo(None, info, "", 0))
   }
 
   def getSecurityGroupInfo(totalSecurityGroups: Map[String, SecurityGroup], instanceGroupIdentifiers: List[GroupIdentifier]): List[SecurityGroupInfo] = {
@@ -164,9 +142,17 @@ object AWSComputeAPI {
           val sg = securityGroup._2
           val ipPermissions = sg.getIpPermissions.toList.map {
             ipPermission =>
+              val fromPort = Option(ipPermission.getFromPort) match {
+                case Some(port) => port.toInt
+                case None => -1 // -1 means it will expose system level port
+              }
+              val toPort = Option(ipPermission.getToPort) match {
+                case Some(port) => port.toInt
+                case None => -1
+              }
               IpPermissionInfo(None,
-                ipPermission.getFromPort,
-                ipPermission.getToPort,
+                fromPort,
+                toPort,
                 IpProtocol.toProtocol(ipPermission.getIpProtocol),
                 ipPermission.getUserIdGroupPairs.map {
                   pair => pair.getGroupId
@@ -186,85 +172,18 @@ object AWSComputeAPI {
     }.toList
   }
 
-  def getComputeAPI(accountInfo: AccountInfo): AmazonEC2 = {
-    val region = RegionUtils.getRegion(accountInfo.regionName.get)
-    val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
-    val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
-    awsInstanceHelper(aWSCredentials1, region)
-  }
-
-  def getReservedInstances(amazonEC2: AmazonEC2): List[ReservedInstanceDetails] = {
-    amazonEC2.describeReservedInstances.getReservedInstances.foldLeft(List[ReservedInstanceDetails]()) {
-      (list, reservedInstance) =>
-        ReservedInstanceDetails(
-          None,
-          Option(reservedInstance.getInstanceType),
-          Option(reservedInstance.getReservedInstancesId),
-          Option(reservedInstance.getAvailabilityZone),
-          Option(reservedInstance.getInstanceTenancy),
-          Option(reservedInstance.getOfferingType),
-          Option(reservedInstance.getProductDescription),
-          Option(reservedInstance.getInstanceCount)
-        ) :: list
-    }
-  }
-
-  def getAutoScalingGroups(accountInfo: AccountInfo): List[ScalingGroup] = {
-    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName.get)
-    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
-    val aWSCredentials = getAWSCredentials(aWSContextBuilder)
-    val amazonASG: AmazonAutoScalingClient = new AmazonAutoScalingClient(aWSCredentials)
-    amazonASG.setRegion(aWSRegion)
-    val asGroups = amazonASG.describeAutoScalingGroups().getAutoScalingGroups.toList
-    createScalingGroups(asGroups)
-  }
-
-  def createScalingGroups(asGroups: List[AutoScalingGroup]): List[ScalingGroup] = {
-    asGroups.map { asg =>
-      val name = asg.getAutoScalingGroupName
-      val status = asg.getStatus
-      val launchConfigurationName = asg.getLaunchConfigurationName
-      val availabilityZones = asg.getAvailabilityZones.toList
-      val loadBalancerNames = asg.getLoadBalancerNames.toList
-      val desiredCapacity = asg.getDesiredCapacity
-      val maxCapacity = asg.getMaxSize
-      val minCapacity = asg.getMinSize
-      val instanceIds = asg.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
-      val tags = asg.getTags.map { t => KeyValueInfo(None, t.getKey, t.getValue) }.toList
-      ScalingGroup(None, name, launchConfigurationName, status, availabilityZones, instanceIds
-        , loadBalancerNames, tags, desiredCapacity, maxCapacity, minCapacity)
-    }
-  }
-
-  def getLoadBalancers(accountInfo: AccountInfo): List[LoadBalancer] = {
-    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName.get)
-    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
-    val aWSCredentials = getAWSCredentials(aWSContextBuilder)
-    val amazonELB = new AmazonElasticLoadBalancingClient(aWSCredentials)
-    amazonELB.setRegion(aWSRegion)
-    val lbDescriptions = amazonELB.describeLoadBalancers().getLoadBalancerDescriptions.toList
-    createLoadBalancer(lbDescriptions)
-  }
-
-  def createLoadBalancer(lbDescriptions: List[LoadBalancerDescription]): List[LoadBalancer] = {
-    lbDescriptions.map { lbDesc =>
-      val name = lbDesc.getLoadBalancerName
-      val vpcId = lbDesc.getVPCId
-      val availabilityZones = lbDesc.getAvailabilityZones.toList
-      val instanceIds = lbDesc.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
-      LoadBalancer(None, name, vpcId, None, instanceIds, availabilityZones)
-    }
-  }
-
   def createBlockDeviceMapping(blockDeviceMapping: List[InstanceBlockDeviceMapping]
                                , volumesMap: Map[String, Volume]
                                , snapshotsMap: Map[String
-                               , List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
+    , List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
 
     blockDeviceMapping.map { instanceBlockDeviceMapping =>
       val volumeId = instanceBlockDeviceMapping.getEbs.getVolumeId
       val volume: Volume = volumesMap(volumeId)
-      val snapshots: List[Snapshot] = snapshotsMap(volumeId)
+      val snapshots: List[Snapshot] = snapshotsMap.get(volumeId) match {
+        case Some(snapShot) => snapshotsMap(volumeId)
+        case None => List.empty[Snapshot]
+      }
       val volumeInfo = createVolumeInfo(volume, snapshots)
       createInstanceBlockDeviceMappingInfo(instanceBlockDeviceMapping, volumeInfo, 0)
     }
@@ -287,17 +206,16 @@ object AWSComputeAPI {
     val availabilityZone = volume.getAvailabilityZone
     val state = volume.getState
     val createTime = volume.getCreateTime.toString
-    import scala.collection.JavaConversions._
     val tags: List[KeyValueInfo] = createKeyValueInfo(volume.getTags.toList)
     val volumeType = volume.getVolumeType
     val snapshotCount = snapshots.size
 
     if (snapshots.nonEmpty) {
       val currentSnapshot = snapshots.reduceLeft { (current, next) =>
-        if (next.getStartTime.compareTo(current.getStartTime) > 0 && next.getProgress.equals("100%")){
+        if (next.getStartTime.compareTo(current.getStartTime) > 0 && next.getProgress.equals("100%")) {
           next
         }
-        else{
+        else {
           current
         }
       }
@@ -307,7 +225,7 @@ object AWSComputeAPI {
         , Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount)
         , Some(currentSnapshotInfo))
     }
-    else{
+    else {
       VolumeInfo(None, Some(volumeId), Some(size), Some(snapshotId), Some(availabilityZone)
         , Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount), None)
     }
@@ -364,6 +282,98 @@ object AWSComputeAPI {
       describedVolumes.getVolumes.foldLeft(Map.empty[String, Volume])((map, volume) => map + ((volume.getVolumeId, volume)))
     } else {
       Map.empty[String, Volume]
+    }
+  }
+
+  def getImageInfoMap(imagesMap: Map[String, Image]): Map[String, ImageInfo] = {
+    imagesMap.foldLeft(Map[String, ImageInfo]())((imageInfoMap, image) => imageInfoMap + ((image._1, ImageInfo.fromNeo4jGraph(image._1.toLong).get)))
+  }
+
+  def getComputeAPI(accountInfo: AccountInfo): AmazonEC2 = {
+    val region = RegionUtils.getRegion(accountInfo.regionName.get)
+    val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
+    val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
+    awsInstanceHelper(aWSCredentials1, region)
+  }
+
+  private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
+    new AWSCredentials() {
+      def getAWSAccessKeyId: String = {
+        builder.accessKey
+      }
+
+      def getAWSSecretKey: String = {
+        builder.secretKey
+      }
+    }
+  }
+
+  def awsInstanceHelper(credentials: AWSCredentials, region: Region): AmazonEC2 = {
+    val amazonEC2: AmazonEC2 = new AmazonEC2Client(credentials)
+    amazonEC2.setRegion(region)
+    amazonEC2
+  }
+
+  def getReservedInstances(amazonEC2: AmazonEC2): List[ReservedInstanceDetails] = {
+    amazonEC2.describeReservedInstances.getReservedInstances.foldLeft(List[ReservedInstanceDetails]()) {
+      (list, reservedInstance) =>
+        ReservedInstanceDetails(
+          None,
+          Option(reservedInstance.getInstanceType),
+          Option(reservedInstance.getReservedInstancesId),
+          Option(reservedInstance.getAvailabilityZone),
+          Option(reservedInstance.getInstanceTenancy),
+          Option(reservedInstance.getOfferingType),
+          Option(reservedInstance.getProductDescription),
+          Option(reservedInstance.getInstanceCount)
+        ) :: list
+    }
+  }
+
+  def getAutoScalingGroups(accountInfo: AccountInfo): List[ScalingGroup] = {
+    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName.get)
+    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
+    val aWSCredentials = getAWSCredentials(aWSContextBuilder)
+    val amazonASG: AmazonAutoScalingClient = new AmazonAutoScalingClient(aWSCredentials)
+    amazonASG.setRegion(aWSRegion)
+    val asGroups = amazonASG.describeAutoScalingGroups().getAutoScalingGroups.toList
+    createScalingGroups(asGroups)
+  }
+
+  def createScalingGroups(asGroups: List[AutoScalingGroup]): List[ScalingGroup] = {
+    asGroups.map { asg =>
+      val name = asg.getAutoScalingGroupName
+      val status = Option(asg.getStatus)
+      val launchConfigurationName = asg.getLaunchConfigurationName
+      val availabilityZones = asg.getAvailabilityZones.toList
+      val loadBalancerNames = asg.getLoadBalancerNames.toList
+      val desiredCapacity = asg.getDesiredCapacity
+      val maxCapacity = asg.getMaxSize
+      val minCapacity = asg.getMinSize
+      val instanceIds = asg.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
+      val tags = asg.getTags.map { t => KeyValueInfo(None, t.getKey, t.getValue) }.toList
+      ScalingGroup(None, name, launchConfigurationName, status, availabilityZones, instanceIds
+        , loadBalancerNames, tags, desiredCapacity, maxCapacity, minCapacity)
+    }
+  }
+
+  def getLoadBalancers(accountInfo: AccountInfo): List[LoadBalancer] = {
+    val aWSRegion = RegionUtils.getRegion(accountInfo.regionName.get)
+    val aWSContextBuilder: AWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
+    val aWSCredentials = getAWSCredentials(aWSContextBuilder)
+    val amazonELB = new AmazonElasticLoadBalancingClient(aWSCredentials)
+    amazonELB.setRegion(aWSRegion)
+    val lbDescriptions = amazonELB.describeLoadBalancers().getLoadBalancerDescriptions.toList
+    createLoadBalancer(lbDescriptions)
+  }
+
+  def createLoadBalancer(lbDescriptions: List[LoadBalancerDescription]): List[LoadBalancer] = {
+    lbDescriptions.map { lbDesc =>
+      val name = lbDesc.getLoadBalancerName
+      val vpcId = Option(lbDesc.getVPCId)
+      val availabilityZones = lbDesc.getAvailabilityZones.toList
+      val instanceIds = lbDesc.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
+      LoadBalancer(None, name, vpcId, None, instanceIds, availabilityZones)
     }
   }
 }

@@ -23,45 +23,6 @@ object APMServerDetails {
   val apmServer_site_relation = "HAS"
   val apmServer_header_relation = "HAS_HEADERS"
 
-  implicit class APMServerDetailImpl(aPMServerDetails: APMServerDetails) extends Neo4jRep[APMServerDetails] {
-
-    override def toNeo4jGraph(entity: APMServerDetails): Node = {
-      logger.debug(s"Executing $getClass ::toNeo4jGraph ")
-      neo4JRepository.withTx {
-        neo =>
-          val node = neo4JRepository.createNode(apmServerDetailsLabel)(neo)
-          if (!aPMServerDetails.name.isEmpty) node.setProperty("name", aPMServerDetails.name)
-          node.setProperty("serverUrl", aPMServerDetails.serverUrl)
-          node.setProperty("provider", aPMServerDetails.provider.toString)
-          val headersNode = neo4JRepository.createNode(headersLabel)(neo)
-          aPMServerDetails.headers.foreach { case (key, value) => headersNode.setProperty(key, value) }
-          createRelationShip(node, headersNode, apmServer_header_relation)
-
-          aPMServerDetails.monitoredSite.foreach {
-            site =>
-              val siteNode = site.toNeo4jGraph(site)
-              createRelationShip(node, siteNode, apmServer_site_relation)
-          }
-          node
-      }
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[APMServerDetails] = {
-      logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
-      APMServerDetails.fromNeo4jGraph(nodeId)
-    }
-
-    def createRelationShip(parentNode: Node, childNode: Node, relationship: String): Unit = {
-      logger.debug(s"Executing $getClass :: createRelationShip")
-      neo4JRepository.withTx {
-        neo =>
-          parentNode.createRelationshipTo(childNode, new RelationshipType {
-            override def name(): String = relationship
-          })
-      }
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[APMServerDetails] = {
     logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
     neo4JRepository.withTx {
@@ -112,6 +73,45 @@ object APMServerDetails {
       neo =>
         val nodes = neo4JRepository.getAllNodesWithLabel(apmServerDetailsLabel)(neo)
         nodes.toList
+    }
+  }
+
+  implicit class APMServerDetailImpl(aPMServerDetails: APMServerDetails) extends Neo4jRep[APMServerDetails] {
+
+    override def toNeo4jGraph(entity: APMServerDetails): Node = {
+      logger.debug(s"Executing $getClass ::toNeo4jGraph ")
+      neo4JRepository.withTx {
+        neo =>
+          val node = neo4JRepository.createNode(apmServerDetailsLabel)(neo)
+          if (!aPMServerDetails.name.isEmpty) node.setProperty("name", aPMServerDetails.name)
+          node.setProperty("serverUrl", aPMServerDetails.serverUrl)
+          node.setProperty("provider", aPMServerDetails.provider.toString)
+          val headersNode = neo4JRepository.createNode(headersLabel)(neo)
+          aPMServerDetails.headers.foreach { case (key, value) => headersNode.setProperty(key, value) }
+          createRelationShip(node, headersNode, apmServer_header_relation)
+
+          aPMServerDetails.monitoredSite.foreach {
+            site =>
+              val siteNode = site.toNeo4jGraph(site)
+              createRelationShip(node, siteNode, apmServer_site_relation)
+          }
+          node
+      }
+    }
+
+    def createRelationShip(parentNode: Node, childNode: Node, relationship: String): Unit = {
+      logger.debug(s"Executing $getClass :: createRelationShip")
+      neo4JRepository.withTx {
+        neo =>
+          parentNode.createRelationshipTo(childNode, new RelationshipType {
+            override def name(): String = relationship
+          })
+      }
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[APMServerDetails] = {
+      logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
+      APMServerDetails.fromNeo4jGraph(nodeId)
     }
   }
 }

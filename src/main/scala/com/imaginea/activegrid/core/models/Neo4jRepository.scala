@@ -82,7 +82,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     Some(true)
   }
 
-
   def deleteEntity(nodeId: Long): Unit = withTx { implicit neo =>
     val mayBeNode = findNodeById(nodeId)
     mayBeNode match {
@@ -113,6 +112,32 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     }
   }
 
+  def getRelationships(node: Node, direction: Direction): List[Relationship] = withTx { implicit neo =>
+    logger.debug(s"fetching realtions of $node in the direction $direction")
+    node.getRelationships(direction).toList
+  }
+
+  def deleteRelation(instanceId: String, parentEntity: BaseEntity, relationName: String): ExecutionStatus = withTx {
+    implicit neo =>
+      parentEntity.id match {
+        case Some(id) => val parent = getNodeById(id)
+          //Fetching relations that maps instance to site
+          val relationList = parent.getRelationships(Direction.OUTGOING).toList.filter(relation => relation.getType.name.equals(relationName))
+
+          //Deleting insatnce node and relation.
+          relationList.foreach {
+            relation => val instanceNode = relation.getEndNode
+              if (instanceNode.getId == instanceId) {
+                instanceNode.delete()
+                relation.delete()
+              }
+          }
+          ExecutionStatus(true, s"Instace ${instanceId} from ${parentEntity.id} removed successfully")
+        // If parent id invalid
+        case _ => ExecutionStatus(false, s"Parent node ${parentEntity.id} not available")
+      }
+  }
+
   def findNodeByLabelAndId(label: String, id: Long): Option[Node] = withTx { implicit neo =>
     val mayBeNode = findNodeById(id)
 
@@ -120,11 +145,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       case Some(node) => if (node.hasLabel(label)) mayBeNode else None
       case None => None
     }
-  }
-
-  def getRelationships(node: Node, direction: Direction): List[Relationship] = withTx { implicit neo =>
-    logger.debug(s"fetching realtions of $node in the direction $direction")
-    node.getRelationships(direction).toList
   }
 
   def createRelation(label: String, fromNode: Node, toNode: Node): Relationship = withTx { neo =>
@@ -141,7 +161,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     fromNode.getRelationships(relType, Direction.OUTGOING).map(rel => rel.getEndNode).toList
   }
 
-  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String):Unit = withTx { neo =>
+  def setGraphRelationship(fromNode: Node, toNode: Node, relation: String): Unit = withTx { neo =>
     val relType = DynamicRelationshipType.withName(relation)
     logger.debug(s"setting relationship : $relation")
     fromNode --> relType --> toNode

@@ -28,32 +28,6 @@ object SnapshotInfo {
     SnapshotInfo(Some(id), None, None, None, None, None, None, None, None, Some(1), List.empty[KeyValueInfo])
   }
 
-  implicit class SnapshotInfoImpl(snapshotInfo: SnapshotInfo) extends Neo4jRep[SnapshotInfo] {
-    override def toNeo4jGraph(entity: SnapshotInfo): Node = {
-      logger.debug(s"Executing $getClass :: toNeo4jGraph")
-      val map = Map("snapshotId" -> entity.snapshotId,
-        "volumeId" -> entity.volumeId,
-        "state" -> entity.state,
-        "startTime" -> entity.startTime,
-        "progress" -> entity.progress,
-        "ownerId" -> entity.ownerId,
-        "ownerAlias" -> entity.ownerAlias,
-        "description" -> entity.description,
-        "volumeSize" -> entity.volumeSize)
-      val node = Neo4jRepository.saveEntity[SnapshotInfo](snapshotInfoLabel, entity.id, map)
-      entity.tags.foreach {
-        tag =>
-          val tagNode = tag.toNeo4jGraph(tag)
-          Neo4jRepository.createRelation(snapshotInfoAndKeyValueRelation, node, tagNode)
-      }
-      node
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[SnapshotInfo] = {
-      SnapshotInfo.fromNeo4jGraph(nodeId)
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[SnapshotInfo] = {
     logger.debug(s"Executing $getClass :: fromNeo4jGraph")
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
@@ -82,6 +56,32 @@ object SnapshotInfo {
         } else {
           None
         }
+    }
+  }
+
+  implicit class SnapshotInfoImpl(snapshotInfo: SnapshotInfo) extends Neo4jRep[SnapshotInfo] {
+    override def toNeo4jGraph(entity: SnapshotInfo): Node = {
+      logger.debug(s"Executing $getClass :: toNeo4jGraph")
+      val map = Map("snapshotId" -> entity.snapshotId,
+        "volumeId" -> entity.volumeId,
+        "state" -> entity.state,
+        "startTime" -> entity.startTime,
+        "progress" -> entity.progress,
+        "ownerId" -> entity.ownerId,
+        "ownerAlias" -> entity.ownerAlias,
+        "description" -> entity.description,
+        "volumeSize" -> entity.volumeSize)
+      val node = Neo4jRepository.saveEntity[SnapshotInfo](snapshotInfoLabel, entity.id, map)
+      entity.tags.foreach {
+        tag =>
+          val tagNode = tag.toNeo4jGraph(tag)
+          Neo4jRepository.createRelation(snapshotInfoAndKeyValueRelation, node, tagNode)
+      }
+      node
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[SnapshotInfo] = {
+      SnapshotInfo.fromNeo4jGraph(nodeId)
     }
   }
 }
