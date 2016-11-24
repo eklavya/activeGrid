@@ -27,6 +27,15 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   val cachedSite = mutable.Map.empty[Long, Site1]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
+    override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
+
+    override def read(json: JsValue): KeyPairStatus = json match {
+      case JsString(str) => KeyPairStatus.toKeyPairStatus(str)
+      case _ => throw DeserializationException("Enum string expected")
+    }
+  }
+
   implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
   implicit val pageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
   implicit val userFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
@@ -46,12 +55,183 @@ object Main extends App {
   implicit val pageInstFormat = jsonFormat4(Page[InstanceFlavor])
   implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
   implicit val keyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
+  implicit object ipProtocolFormat extends RootJsonFormat[IpProtocol] {
+
+    override def write(obj: IpProtocol): JsValue = {
+      JsString(obj.value.toString)
+    }
+
+    override def read(json: JsValue): IpProtocol = {
+      json match {
+        case JsString(str) => IpProtocol.toProtocol(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
   implicit val ipPermissionInfoFormat = jsonFormat(IpPermissionInfo.apply, "id", "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
+
+  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
+
+    override def write(obj: InstanceProvider): JsValue = {
+      JsString(obj.instanceProvider.toString)
+    }
+
+    override def read(json: JsValue): InstanceProvider = {
+      json match {
+        case JsString(str) => InstanceProvider.toInstanceProvider(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
   implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
   implicit val snapshotInfoFormat = jsonFormat11(SnapshotInfo.apply)
   implicit val volumeInfoFormat = jsonFormat11(VolumeInfo.apply)
   implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
   implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
+  implicit object instanceFormat extends RootJsonFormat[Instance] {
+    override def write(i: Instance): JsValue = {
+      val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture",
+        "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections",
+        "estimatedConnections", "processes", "image", "existingUsers", "account", "availabilityZone", "privateDnsName",
+        "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings",
+        "securityGroups", "reservedInstance", "region")
+      // scalastyle:off magic.number
+      val fields = new collection.mutable.ListBuffer[(String, JsValue)]
+      fields ++= longToJsField(fieldNames.head, i.id)
+      fields ++= stringToJsField(fieldNames(1), i.instanceId)
+      fields ++= List((fieldNames(2), JsString(i.name)))
+      fields ++= stringToJsField(fieldNames(3), i.state)
+      fields ++= stringToJsField(fieldNames(4), i.instanceType)
+      fields ++= stringToJsField(fieldNames(5), i.platform)
+      fields ++= stringToJsField(fieldNames(6), i.architecture)
+      fields ++= stringToJsField(fieldNames(7), i.publicDnsName)
+      fields ++= longToJsField(fieldNames(8), i.launchTime)
+      fields ++= objectToJsValue[StorageInfo](fieldNames(9), i.memoryInfo, storageInfoFormat)
+      fields ++= objectToJsValue[StorageInfo](fieldNames(10), i.rootDiskInfo, storageInfoFormat)
+      fields ++= listToJsValue[KeyValueInfo](fieldNames(11), i.tags, keyValueInfoFormat)
+      fields ++= objectToJsValue[SSHAccessInfo](fieldNames(12), i.sshAccessInfo, sshAccessInfoFormat)
+      fields ++= listToJsValue[InstanceConnection](fieldNames(13), i.liveConnections, instanceConnectionFormat)
+      fields ++= listToJsValue[InstanceConnection](fieldNames(14), i.estimatedConnections, instanceConnectionFormat)
+      fields ++= setToJsValue[ProcessInfo](fieldNames(15), i.processes, processInfoFormat)
+      fields ++= objectToJsValue[ImageInfo](fieldNames(16), i.image, imageFormat)
+      fields ++= listToJsValue[InstanceUser](fieldNames(17), i.existingUsers, instanceUserFormat)
+      fields ++= objectToJsValue[AccountInfo](fieldNames(18), i.account, accountInfoFormat)
+      fields ++= stringToJsField(fieldNames(19), i.availabilityZone)
+      fields ++= stringToJsField(fieldNames(20), i.privateDnsName)
+      fields ++= stringToJsField(fieldNames(21), i.privateIpAddress)
+      fields ++= stringToJsField(fieldNames(22), i.publicIpAddress)
+      fields ++= stringToJsField(fieldNames(23), i.elasticIP)
+      fields ++= stringToJsField(fieldNames(24), i.monitoring)
+      fields ++= stringToJsField(fieldNames(25), i.rootDeviceType)
+      fields ++= listToJsValue[InstanceBlockDeviceMappingInfo](fieldNames(26), i.blockDeviceMappings, instanceBlockingFormat)
+      fields ++= listToJsValue[SecurityGroupInfo](fieldNames(27), i.securityGroups, securityGroupsFormat)
+      fields ++= List((fieldNames(28), JsBoolean(i.reservedInstance)))
+      fields ++= stringToJsField(fieldNames(29), i.region)
+      // scalastyle:on magic.number
+      JsObject(fields: _*)
+    }
+
+    def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      fieldValue match {
+        case Some(x) => (fieldName, JsString(x)) :: rest
+        case None => rest
+      }
+    }
+
+    def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      fieldValue match {
+        case Some(x) => (fieldName, JsNumber(x)) :: rest
+        case None => rest
+      }
+    }
+
+    def objectToJsValue[T](fieldName: String, obj: Option[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      obj match {
+        case Some(x) => (fieldName, jsonFormat.write(x.asInstanceOf[T])) :: rest
+        case None => rest
+      }
+    }
+
+    def listToJsValue[T](fieldName: String, objList: List[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
+      }
+    }
+
+    def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
+      }.toList
+    }
+
+    override def read(json: JsValue): Instance = {
+      json match {
+        case JsObject(map) =>
+          logger.info(s"Js Map $map")
+          Instance(
+            getProperty[Long](map, "id"),
+            getProperty[String](map, "instanceId"),
+            getProperty[String](map, "name").get,
+            getProperty[String](map, "state"),
+            getProperty[String](map, "instanceType"),
+            getProperty[String](map, "platform"),
+            getProperty[String](map, "architecture"),
+            getProperty[String](map, "publicDnsName"),
+            getProperty[Long](map, "launchTime"),
+            getProperty[String](map, "memoryInfo").map(memoryInfo => storageInfoFormat.read(memoryInfo.asInstanceOf[JsValue])),
+            getProperty[String](map, "rootDiskInfo").map(rootDiskInfo => storageInfoFormat.read(rootDiskInfo.asInstanceOf[JsValue])),
+            getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
+            getProperty[String](map, "sshAccessInfo").map(sshAccessInfo => sshAccessInfoFormat.read(sshAccessInfo.asInstanceOf[JsValue])),
+            getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
+            getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
+            getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
+            getProperty[String](map, "imageInfo").map(imageInfo => imageFormat.read(imageInfo.asInstanceOf[JsValue])),
+            getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
+            getProperty[String](map, "account").map(accountInfo => accountInfoFormat.read(accountInfo.asInstanceOf[JsValue])),
+            getProperty[String](map, "availabilityZone"),
+            getProperty[String](map, "privateDnsName"),
+            getProperty[String](map, "privateIpAddress"),
+            getProperty[String](map, "publicIpAddress"),
+            getProperty[String](map, "elasticIp"),
+            getProperty[String](map, "monitoring"),
+            getProperty[String](map, "rootDeviceType"),
+            getObjectsFromJson[InstanceBlockDeviceMappingInfo](map, "blockDeviceMappings", instanceBlockingFormat),
+            getObjectsFromJson[SecurityGroupInfo](map, "securityGroups", securityGroupsFormat),
+            getProperty[Boolean](map, "reservedInstance").get,
+            getProperty[String](map, "region")
+          )
+        case _ => logger.debug("Not a JsObject")
+          Instance("Test")
+      }
+    }
+
+    def getProperty[T: Manifest](propertyMap: Map[String, JsValue], property: String): Option[T] = {
+      if (propertyMap.contains(property)) {
+        propertyMap(property) match {
+          case JsString(str) => Some(str.asInstanceOf[T])
+          case JsNumber(str) => Some(str.asInstanceOf[T])
+          case JsFalse => Some(false.asInstanceOf[T])
+          case JsTrue => Some(true.asInstanceOf[T])
+          case _ => None
+        }
+      } else {
+        None
+      }
+    }
+
+    def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
+      if (propertyMap.contains(property)) {
+        val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
+        listOfObjs.elements.foldLeft(List[T]()) {
+          (list, jsString) =>
+            formateObject.read(jsString) :: list
+        }
+      } else {
+        List.empty[T]
+      }
+    }
+  }
+
+
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
@@ -62,13 +242,53 @@ object Main extends App {
   implicit val siteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
   implicit val pageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
   implicit val instanceGroupFormat = jsonFormat(InstanceGroup.apply, "id", "groupType", "name", "instances")
+
+  implicit object FilterTypeFormat extends RootJsonFormat[FilterType] {
+
+    override def write(obj: FilterType): JsValue = {
+      JsString(obj.filterType.toString)
+    }
+
+    override def read(json: JsValue): FilterType = {
+      json match {
+        case JsString(str) => FilterType.toFilteType(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
   implicit val filterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
   implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
   implicit val pageLoadBalancerFormat = jsonFormat4(Page[LoadBalancer])
-  implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
+  implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id","name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
+  implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
+    override def write(obj: APMProvider): JsValue = {
+      logger.info(s"Writing APMProvider json : ${obj.provider.toString}")
+      JsString(obj.provider.toString)
+    }
+
+    override def read(json: JsValue): APMProvider = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => APMProvider.toProvider(str)
+        case _ => throw DeserializationException("Unable to deserialize the Provider data")
+      }
+    }
+  }
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
+    override def write(obj: SiteDeltaStatus): JsValue = {
+      JsString(obj.deltaStatus.toString)
+    }
+
+    override def read(json: JsValue): SiteDeltaStatus = {
+      json match {
+        case JsString(str) => SiteDeltaStatus.toDeltaStatus(str)
+        case _ => throw DeserializationException("Unable to deserialize SiteDeltaStatus")
+      }
+    }
+  }
   implicit val siteDeltaFormat = jsonFormat(SiteDelta.apply, "siteId", "deltaStatus", "addedInstances", "deletedInstances")
   val appsettingRoutes: Route = pathPrefix("config") {
     path("ApplicationSettings") {
@@ -1633,57 +1853,10 @@ object Main extends App {
       }
     }
 
-  implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
-    override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
-
-    override def read(json: JsValue): KeyPairStatus = json match {
-      case JsString(str) => KeyPairStatus.toKeyPairStatus(str)
-      case _ => throw DeserializationException("Enum string expected")
-    }
-  }
 
 
-  implicit object FilterTypeFormat extends RootJsonFormat[FilterType] {
 
-    override def write(obj: FilterType): JsValue = {
-      JsString(obj.filterType.toString)
-    }
 
-    override def read(json: JsValue): FilterType = {
-      json match {
-        case JsString(str) => FilterType.toFilteType(str)
-        case _ => throw DeserializationException("Unable to deserialize Filter Type")
-      }
-    }
-  }
-
-  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
-
-    override def write(obj: InstanceProvider): JsValue = {
-      JsString(obj.instanceProvider.toString)
-    }
-
-    override def read(json: JsValue): InstanceProvider = {
-      json match {
-        case JsString(str) => InstanceProvider.toInstanceProvider(str)
-        case _ => throw DeserializationException("Unable to deserialize Filter Type")
-      }
-    }
-  }
-
-  implicit object ipProtocolFormat extends RootJsonFormat[IpProtocol] {
-
-    override def write(obj: IpProtocol): JsValue = {
-      JsString(obj.value.toString)
-    }
-
-    override def read(json: JsValue): IpProtocol = {
-      json match {
-        case JsString(str) => IpProtocol.toProtocol(str)
-        case _ => throw DeserializationException("Unable to deserialize Filter Type")
-      }
-    }
-  }
 
   implicit object GroupTypeFormat extends RootJsonFormat[GroupType] {
     override def write(obj: GroupType): JsValue = {
@@ -1698,162 +1871,7 @@ object Main extends App {
     }
   }
 
-  implicit object instanceFormat extends RootJsonFormat[Instance] {
-    override def write(i: Instance): JsValue = {
-      val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture",
-        "publicDnsName", "launchTime", "memoryInfo", "rootDiskInfo", "tags", "sshAccessInfo", "liveConnections",
-        "estimatedConnections", "processes", "image", "existingUsers", "account", "availabilityZone", "privateDnsName",
-        "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings",
-        "securityGroups", "reservedInstance", "region")
-      // scalastyle:off magic.number
-      val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields ++= longToJsField(fieldNames.head, i.id)
-      fields ++= stringToJsField(fieldNames(1), i.instanceId)
-      fields ++= List((fieldNames(2), JsString(i.name)))
-      fields ++= stringToJsField(fieldNames(3), i.state)
-      fields ++= stringToJsField(fieldNames(4), i.instanceType)
-      fields ++= stringToJsField(fieldNames(5), i.platform)
-      fields ++= stringToJsField(fieldNames(6), i.architecture)
-      fields ++= stringToJsField(fieldNames(7), i.publicDnsName)
-      fields ++= longToJsField(fieldNames(8), i.launchTime)
-      fields ++= objectToJsValue[StorageInfo](fieldNames(9), i.memoryInfo, storageInfoFormat)
-      fields ++= objectToJsValue[StorageInfo](fieldNames(10), i.rootDiskInfo, storageInfoFormat)
-      fields ++= listToJsValue[KeyValueInfo](fieldNames(11), i.tags, keyValueInfoFormat)
-      fields ++= objectToJsValue[SSHAccessInfo](fieldNames(12), i.sshAccessInfo, sshAccessInfoFormat)
-      fields ++= listToJsValue[InstanceConnection](fieldNames(13), i.liveConnections, instanceConnectionFormat)
-      fields ++= listToJsValue[InstanceConnection](fieldNames(14), i.estimatedConnections, instanceConnectionFormat)
-      fields ++= setToJsValue[ProcessInfo](fieldNames(15), i.processes, processInfoFormat)
-      fields ++= objectToJsValue[ImageInfo](fieldNames(16), i.image, imageFormat)
-      fields ++= listToJsValue[InstanceUser](fieldNames(17), i.existingUsers, instanceUserFormat)
-      fields ++= objectToJsValue[AccountInfo](fieldNames(18), i.account, accountInfoFormat)
-      fields ++= stringToJsField(fieldNames(19), i.availabilityZone)
-      fields ++= stringToJsField(fieldNames(20), i.privateDnsName)
-      fields ++= stringToJsField(fieldNames(21), i.privateIpAddress)
-      fields ++= stringToJsField(fieldNames(22), i.publicIpAddress)
-      fields ++= stringToJsField(fieldNames(23), i.elasticIP)
-      fields ++= stringToJsField(fieldNames(24), i.monitoring)
-      fields ++= stringToJsField(fieldNames(25), i.rootDeviceType)
-      fields ++= listToJsValue[InstanceBlockDeviceMappingInfo](fieldNames(26), i.blockDeviceMappings, instanceBlockingFormat)
-      fields ++= listToJsValue[SecurityGroupInfo](fieldNames(27), i.securityGroups, securityGroupsFormat)
-      fields ++= List((fieldNames(28), JsBoolean(i.reservedInstance)))
-      fields ++= stringToJsField(fieldNames(29), i.region)
-      // scalastyle:on magic.number
-      JsObject(fields: _*)
-    }
 
-    def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      fieldValue match {
-        case Some(x) => (fieldName, JsString(x)) :: rest
-        case None => rest
-      }
-    }
-
-    def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      fieldValue match {
-        case Some(x) => (fieldName, JsNumber(x)) :: rest
-        case None => rest
-      }
-    }
-
-    def objectToJsValue[T](fieldName: String, obj: Option[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      obj match {
-        case Some(x) => (fieldName, jsonFormat.write(x.asInstanceOf[T])) :: rest
-        case None => rest
-      }
-    }
-
-    def listToJsValue[T](fieldName: String, objList: List[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      objList.map { obj => (fieldName, jsonFormat.write(obj))
-      }
-    }
-
-    def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      objList.map { obj => (fieldName, jsonFormat.write(obj))
-      }.toList
-    }
-
-    override def read(json: JsValue): Instance = {
-      json match {
-        case JsObject(map) =>
-          logger.info(s"Js Map $map")
-          Instance(
-            getProperty[Long](map, "id"),
-            getProperty[String](map, "instanceId"),
-            getProperty[String](map, "name").get,
-            getProperty[String](map, "state"),
-            getProperty[String](map, "instanceType"),
-            getProperty[String](map, "platform"),
-            getProperty[String](map, "architecture"),
-            getProperty[String](map, "publicDnsName"),
-            getProperty[Long](map, "launchTime"),
-            getProperty[String](map, "memoryInfo").map(memoryInfo => storageInfoFormat.read(memoryInfo.asInstanceOf[JsValue])),
-            getProperty[String](map, "rootDiskInfo").map(rootDiskInfo => storageInfoFormat.read(rootDiskInfo.asInstanceOf[JsValue])),
-            getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
-            getProperty[String](map, "sshAccessInfo").map(sshAccessInfo => sshAccessInfoFormat.read(sshAccessInfo.asInstanceOf[JsValue])),
-            getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
-            getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
-            getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
-            getProperty[String](map, "imageInfo").map(imageInfo => imageFormat.read(imageInfo.asInstanceOf[JsValue])),
-            getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
-            getProperty[String](map, "account").map(accountInfo => accountInfoFormat.read(accountInfo.asInstanceOf[JsValue])),
-            getProperty[String](map, "availabilityZone"),
-            getProperty[String](map, "privateDnsName"),
-            getProperty[String](map, "privateIpAddress"),
-            getProperty[String](map, "publicIpAddress"),
-            getProperty[String](map, "elasticIp"),
-            getProperty[String](map, "monitoring"),
-            getProperty[String](map, "rootDeviceType"),
-            getObjectsFromJson[InstanceBlockDeviceMappingInfo](map, "blockDeviceMappings", instanceBlockingFormat),
-            getObjectsFromJson[SecurityGroupInfo](map, "securityGroups", securityGroupsFormat),
-            getProperty[Boolean](map, "reservedInstance").get,
-            getProperty[String](map, "region")
-          )
-        case _ => logger.debug("Not a JsObject")
-          Instance("Test")
-      }
-    }
-
-    def getProperty[T: Manifest](propertyMap: Map[String, JsValue], property: String): Option[T] = {
-      if (propertyMap.contains(property)) {
-        propertyMap(property) match {
-          case JsString(str) => Some(str.asInstanceOf[T])
-          case JsNumber(str) => Some(str.asInstanceOf[T])
-          case JsFalse => Some(false.asInstanceOf[T])
-          case JsTrue => Some(true.asInstanceOf[T])
-          case _ => None
-        }
-      } else {
-        None
-      }
-    }
-
-    def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
-      if (propertyMap.contains(property)) {
-        val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
-        listOfObjs.elements.foldLeft(List[T]()) {
-          (list, jsString) =>
-            formateObject.read(jsString) :: list
-        }
-      } else {
-        List.empty[T]
-      }
-    }
-  }
-
-  implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
-    override def write(obj: APMProvider): JsValue = {
-      logger.info(s"Writing APMProvider json : ${obj.provider.toString}")
-      JsString(obj.provider.toString)
-    }
-
-    override def read(json: JsValue): APMProvider = {
-      logger.info(s"Reading json value : ${json.toString}")
-      json match {
-        case JsString(str) => APMProvider.toProvider(str)
-        case _ => throw DeserializationException("Unable to deserialize the Provider data")
-      }
-    }
-  }
 
   implicit object ConditionFormat extends RootJsonFormat[Condition] {
     override def write(obj: Condition): JsValue = {
@@ -1870,17 +1888,6 @@ object Main extends App {
     }
   }
 
-  implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
-    override def write(obj: SiteDeltaStatus): JsValue = {
-      JsString(obj.deltaStatus.toString)
-    }
 
-    override def read(json: JsValue): SiteDeltaStatus = {
-      json match {
-        case JsString(str) => SiteDeltaStatus.toDeltaStatus(str)
-        case _ => throw DeserializationException("Unable to deserialize SiteDeltaStatus")
-      }
-    }
-  }
 
 }
