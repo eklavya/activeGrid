@@ -275,10 +275,12 @@ object Main extends App {
       }
     }
   }
+
+
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
   implicit val applicationFormat = jsonFormat9(Application.apply)
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
       JsString(obj.deltaStatus.toString)
@@ -554,7 +556,7 @@ object Main extends App {
         mayBeSite match {
           case Some(site) =>
             val keyPairs = site.instances.flatMap { instance =>
-              instance.sshAccessInfo.flatMap(x => Some(x.keyPair))
+              instance.sshAccessInfo.map(x => x.keyPair)
             }
             Page[KeyPairInfo](keyPairs)
           case None =>
@@ -2013,11 +2015,6 @@ object Main extends App {
         }
       }
     }
-
-
-
-
-
 
   implicit object GroupTypeFormat extends RootJsonFormat[GroupType] {
     override def write(obj: GroupType): JsValue = {
