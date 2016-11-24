@@ -5,8 +5,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
- * Created by ranjithrajd on 25/10/16.
- */
+  * Created by ranjithrajd on 25/10/16.
+  */
 
 case class SiteACL(override val id: Option[Long]
                    , name: String
@@ -23,43 +23,6 @@ object SiteACL {
   val hasSite = "HAS_site"
   val hasInstances = "HAS_instances"
   val hasGroups = "HAS_groups"
-
-  implicit class RichSiteACL(siteACL: SiteACL) extends Neo4jRep[SiteACL] {
-
-    override def toNeo4jGraph(siteACL: SiteACL): Node = {
-
-      logger.debug(s"SiteACL Node saved into db - ${siteACL}")
-      val map = Map("name" -> siteACL.name)
-
-      val siteACLNode = Neo4jRepository.saveEntity[SiteACL](label, siteACL.id, map)
-
-      //Building relationship to site with SiteACL
-      logger.debug(s"SiteACL has relation with Site ${siteACL.site}")
-      for (site <- siteACL.site) {
-        val childNode = site.toNeo4jGraph(site)
-        Neo4jRepository.createRelation(hasSite, siteACLNode, childNode)
-      }
-
-      //Iterating the Instances and linking to the SiteACL
-      logger.debug(s"SiteACL has relation with Instance ${siteACL.instances}")
-      for (instance <- siteACL.instances) {
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.createRelation(hasInstances, siteACLNode, instanceNode)
-      }
-
-      logger.debug(s"SiteACL has relation with UserGroups ${siteACL.groups}")
-      for (group <- siteACL.groups) {
-        val groupNode = group.toNeo4jGraph(group)
-        Neo4jRepository.createRelation(hasGroups, siteACLNode, groupNode)
-      }
-
-      siteACLNode
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
-      SiteACL.fromNeo4jGraph(nodeId)
-    }
-  }
 
   def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
 
@@ -103,6 +66,43 @@ object SiteACL {
       logger.debug(s"SiteACL - ${siteACL}")
       siteACL
     })
+  }
+
+  implicit class RichSiteACL(siteACL: SiteACL) extends Neo4jRep[SiteACL] {
+
+    override def toNeo4jGraph(siteACL: SiteACL): Node = {
+
+      logger.debug(s"SiteACL Node saved into db - ${siteACL}")
+      val map = Map("name" -> siteACL.name)
+
+      val siteACLNode = Neo4jRepository.saveEntity[SiteACL](label, siteACL.id, map)
+
+      //Building relationship to site with SiteACL
+      logger.debug(s"SiteACL has relation with Site ${siteACL.site}")
+      for (site <- siteACL.site) {
+        val childNode = site.toNeo4jGraph(site)
+        Neo4jRepository.createRelation(hasSite, siteACLNode, childNode)
+      }
+
+      //Iterating the Instances and linking to the SiteACL
+      logger.debug(s"SiteACL has relation with Instance ${siteACL.instances}")
+      for (instance <- siteACL.instances) {
+        val instanceNode = instance.toNeo4jGraph(instance)
+        Neo4jRepository.createRelation(hasInstances, siteACLNode, instanceNode)
+      }
+
+      logger.debug(s"SiteACL has relation with UserGroups ${siteACL.groups}")
+      for (group <- siteACL.groups) {
+        val groupNode = group.toNeo4jGraph(group)
+        Neo4jRepository.createRelation(hasGroups, siteACLNode, groupNode)
+      }
+
+      siteACLNode
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[SiteACL] = {
+      SiteACL.fromNeo4jGraph(nodeId)
+    }
   }
 
 }

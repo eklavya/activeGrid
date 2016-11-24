@@ -5,8 +5,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
- * Created by nagulmeeras on 31/10/16.
- */
+  * Created by nagulmeeras on 31/10/16.
+  */
 case class ReservedInstanceDetails(override val id: Option[Long],
                                    instanceType: Option[String],
                                    reservedInstancesId: Option[String],
@@ -19,25 +19,6 @@ case class ReservedInstanceDetails(override val id: Option[Long],
 object ReservedInstanceDetails {
   val reservedInstanceDetailsLabel = "ReservedInstanceDetails"
   val logger = LoggerFactory.getLogger(getClass)
-
-  implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails)
-    extends Neo4jRep[ReservedInstanceDetails] {
-
-    override def toNeo4jGraph(entity: ReservedInstanceDetails): Node = {
-      val map = Map("instanceType" -> entity.instanceType,
-        "reservedInstancesId" -> entity.reservedInstancesId,
-        "availabilityZone" -> entity.availabilityZone,
-        "tenancy" -> entity.tenancy,
-        "offeringType" -> entity.offeringType,
-        "productDescription" -> entity.productDescription,
-        "count" -> entity.count)
-      Neo4jRepository.saveEntity[ReservedInstanceDetails](reservedInstanceDetailsLabel, entity.id, map)
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[ReservedInstanceDetails] = {
-      ReservedInstanceDetails.fromNeo4jGraph(nodeId)
-    }
-  }
 
   def fromNeo4jGraph(nodeId: Long): Option[ReservedInstanceDetails] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
@@ -59,6 +40,25 @@ object ReservedInstanceDetails {
           None
         }
       case None => None
+    }
+  }
+
+  implicit class ReservedInstanceDetailsImpl(reservedInstanceDetails: ReservedInstanceDetails)
+    extends Neo4jRep[ReservedInstanceDetails] {
+
+    override def toNeo4jGraph(entity: ReservedInstanceDetails): Node = {
+      val map = Map("instanceType" -> entity.instanceType,
+        "reservedInstancesId" -> entity.reservedInstancesId,
+        "availabilityZone" -> entity.availabilityZone,
+        "tenancy" -> entity.tenancy,
+        "offeringType" -> entity.offeringType,
+        "productDescription" -> entity.productDescription,
+        "count" -> entity.count)
+      Neo4jRepository.saveEntity[ReservedInstanceDetails](reservedInstanceDetailsLabel, entity.id, map)
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[ReservedInstanceDetails] = {
+      ReservedInstanceDetails.fromNeo4jGraph(nodeId)
     }
   }
 }

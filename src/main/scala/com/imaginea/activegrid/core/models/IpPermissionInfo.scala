@@ -17,21 +17,6 @@ object IpPermissionInfo {
   val ipPermissionLabel = "IpPermissionInfo"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class IpPermissionInfoImpl(ipPermissionInfo: IpPermissionInfo) extends Neo4jRep[IpPermissionInfo] {
-    override def toNeo4jGraph(entity: IpPermissionInfo): Node = {
-      val map = Map("fromPort" -> entity.fromPort,
-        "toPort" -> entity.toPort,
-        "ipProtocol" -> entity.ipProtocol,
-        "groupIds" -> entity.groupIds,
-        "ipRanges" -> entity.ipRanges)
-      Neo4jRepository.saveEntity[IpPermissionInfo](ipPermissionLabel, entity.id, map)
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
-      IpPermissionInfo.fromNeo4jGraph(nodeId)
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
     maybeNode match {
@@ -48,6 +33,21 @@ object IpPermissionInfo {
           None
         }
       case None => None
+    }
+  }
+
+  implicit class IpPermissionInfoImpl(ipPermissionInfo: IpPermissionInfo) extends Neo4jRep[IpPermissionInfo] {
+    override def toNeo4jGraph(entity: IpPermissionInfo): Node = {
+      val map = Map("fromPort" -> entity.fromPort,
+        "toPort" -> entity.toPort,
+        "ipProtocol" -> entity.ipProtocol,
+        "groupIds" -> entity.groupIds,
+        "ipRanges" -> entity.ipRanges)
+      Neo4jRepository.saveEntity[IpPermissionInfo](ipPermissionLabel, entity.id, map)
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
+      IpPermissionInfo.fromNeo4jGraph(nodeId)
     }
   }
 }

@@ -2,7 +2,7 @@ package com.imaginea.activegrid.core.utils
 
 import com.amazonaws.regions.RegionUtils
 import com.imaginea.activegrid.core.models.InstanceProvider
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
