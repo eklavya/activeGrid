@@ -14,7 +14,8 @@ case class Site1(override val id: Option[Long],
                  filters: List[SiteFilter],
                  loadBalancers: List[LoadBalancer],
                  scalingGroups: List[ScalingGroup],
-                 groupsList: List[InstanceGroup]) extends BaseEntity
+                 groupsList: List[InstanceGroup],
+                 applications: List[Application]) extends BaseEntity
 
 object Site1 {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -24,7 +25,7 @@ object Site1 {
   val site_IG_Relation = "HAS_InstanceGroup"
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
-
+  val siteApplications = "HAS_Applications"
 
   def delete(siteId: Long): Boolean = {
     val maybeNode = Neo4jRepository.findNodeById(siteId)
@@ -78,7 +79,12 @@ object Site1 {
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups))
+        val childNodeIdsApplications:List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteApplications)
+        val applications: List[Application] = childNodeIdsApplications.flatMap{
+          applicationId => Application.fromNeo4jGraph(applicationId)
+        }
+
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups,applications))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -120,6 +126,12 @@ object Site1 {
         val instanceGroupNode = ig.toNeo4jGraph(ig)
         Neo4jRepository.setGraphRelationship(node, instanceGroupNode, site_IG_Relation)
       }
+
+      entity.applications.foreach { application =>
+        val applicationsNode = application.toNeo4jGraph(application)
+        Neo4jRepository.setGraphRelationship(node, applicationsNode, siteApplications)
+      }
+
       node
     }
 

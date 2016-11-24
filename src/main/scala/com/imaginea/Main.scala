@@ -27,6 +27,7 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   val cachedSite = mutable.Map.empty[Long, Site1]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
     override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
 
@@ -55,6 +56,7 @@ object Main extends App {
   implicit val pageInstFormat = jsonFormat4(Page[InstanceFlavor])
   implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
   implicit val keyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
+
   implicit object ipProtocolFormat extends RootJsonFormat[IpProtocol] {
 
     override def write(obj: IpProtocol): JsValue = {
@@ -84,11 +86,13 @@ object Main extends App {
       }
     }
   }
+
   implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
   implicit val snapshotInfoFormat = jsonFormat11(SnapshotInfo.apply)
   implicit val volumeInfoFormat = jsonFormat11(VolumeInfo.apply)
   implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
   implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
+
   implicit object instanceFormat extends RootJsonFormat[Instance] {
     override def write(i: Instance): JsValue = {
       val fieldNames = List("id", "instanceId", "name", "state", "instanceType", "platform", "architecture",
@@ -256,11 +260,13 @@ object Main extends App {
       }
     }
   }
+
   implicit val filterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
   implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
   implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
   implicit val pageLoadBalancerFormat = jsonFormat4(Page[LoadBalancer])
-  implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id","name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
+  implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
+
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
       logger.info(s"Writing APMProvider json : ${obj.provider.toString}")
@@ -275,8 +281,12 @@ object Main extends App {
       }
     }
   }
+
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
+  implicit val applicationFormat = jsonFormat9(Application.apply)
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList", "applications")
+
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
       JsString(obj.deltaStatus.toString)
@@ -289,6 +299,7 @@ object Main extends App {
       }
     }
   }
+
   implicit val siteDeltaFormat = jsonFormat(SiteDelta.apply, "siteId", "deltaStatus", "addedInstances", "deletedInstances")
   val appsettingRoutes: Route = pathPrefix("config") {
     path("ApplicationSettings") {
@@ -584,7 +595,7 @@ object Main extends App {
 
               }
               Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.reservedInstanceDetails,
-                site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+                site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, List.empty[Application]))
             case None =>
               logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
               None
@@ -1381,7 +1392,7 @@ object Main extends App {
                     case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
                   }
                 }
-                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, List.empty[Application]))
               case None =>
                 logger.warn(s"Failed in fromNeo4jGraph of Site for siteId : $siteId")
                 None
@@ -1465,7 +1476,7 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val newListOfInstances = instance :: listOfInstances
-                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList)
+                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, List.empty[Application])
                 siteToSave.toNeo4jGraph(siteToSave)
                 "Instance added successfully to Site"
               case None =>
@@ -1559,6 +1570,42 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to get Site Delta.")
         }
       }
+    } ~  path(LongNumber / "applications"){
+      siteId => put{
+        entity(as[Application]){
+          application =>
+            val response = Future{
+              val mayBeSite = Site1.fromNeo4jGraph(siteId)
+              mayBeSite match {
+                case Some(site) => saveApplication(site ,application)
+                  "Inserted Application successfully!"
+                case None => throw new NotFoundException(s"Site Entity not found with ID : $siteId")
+              }
+            }
+            onComplete(response){
+              case Success(responseMessage) => complete(StatusCodes.OK,responseMessage)
+              case Failure(exception) =>
+                logger.error(s"Unabel to save the Application ${exception.getMessage}" , exception)
+                complete(StatusCodes.BadRequest , "Unable to save the application")
+            }
+        }
+      }
+    }
+  }
+
+
+
+  def saveApplication(site : Site1 , application : Application): Unit = {
+    //    val applications = List.empty[Application]
+    val applications = site.applications
+    val mayBeApp = applications.find(app => application.name.exists(name => app.name.contains(name)))
+    val appToSave = mayBeApp match {
+      case Some(app) =>
+        val app1 = app.copy(instances = application.instances)
+        app1.toNeo4jGraph(app1)
+      case None =>
+        val siteApplication = application.toNeo4jGraph(application)
+        Neo4jRepository.createRelation("HAS_Applications",siteApplication,siteApplication)
     }
   }
 
@@ -1637,7 +1684,7 @@ object Main extends App {
         val lbsToSave = getLoadBalancersToSave(site.loadBalancers)
         val sgsToSave = getScalingGroupsToSave(site.scalingGroups)
         val rInstancesToSave = getReservedInstancesToSave(site.reservedInstanceDetails)
-        val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList)
+        val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList, List.empty[Application])
         siteToSave.toNeo4jGraph(siteToSave)
         cachedSite.put(siteId, siteToSave)
         Some(siteToSave)
@@ -1645,6 +1692,7 @@ object Main extends App {
         None
     }
   }
+
   logger.info(s"Server online at http://${AGU.HOST}:${AGU.PORT}")
 
   def getInstancesToSave(filteredInstances: Set[Instance]): List[Instance] = {
@@ -1758,7 +1806,7 @@ object Main extends App {
         val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
         (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
     }
-    val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
+    val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List(), List.empty[Application])
     site1.toNeo4jGraph(site1)
     site1
   }
@@ -1854,10 +1902,6 @@ object Main extends App {
     }
 
 
-
-
-
-
   implicit object GroupTypeFormat extends RootJsonFormat[GroupType] {
     override def write(obj: GroupType): JsValue = {
       JsString(obj.groupType.toString)
@@ -1870,7 +1914,6 @@ object Main extends App {
       }
     }
   }
-
 
 
   implicit object ConditionFormat extends RootJsonFormat[Condition] {
@@ -1887,7 +1930,6 @@ object Main extends App {
       }
     }
   }
-
 
 
 }
