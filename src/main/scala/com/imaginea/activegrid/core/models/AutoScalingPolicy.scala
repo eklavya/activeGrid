@@ -45,7 +45,7 @@ object AutoScalingPolicy {
         }
 
         //AutoScalingPolicy(Some(id),primeConditions,secondConditins,application,lastAppliedAt)
-        AutoScalingPolicy(Some(id), application, primeConditions, secondConditions, lastAppliedAt.)
+        AutoScalingPolicy(Some(id), application, primeConditions, secondConditions, lastAppliedAt)
 
     }
   }
