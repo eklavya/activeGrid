@@ -12,7 +12,7 @@ import com.imaginea.activegrid.core.models._
 /**
   * Created by babjik on 13/10/16.
   */
-object ActiveGridUtils extends App{
+object ActiveGridUtils{
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val config = ConfigFactory.load
   val HOST = config.getString("http.host")
@@ -32,7 +32,7 @@ object ActiveGridUtils extends App{
   }
 
   def relationLbl(clsName:String) : String = {
-    "HAS_"+clsName
+    "HAS_" + clsName
   }
 
 

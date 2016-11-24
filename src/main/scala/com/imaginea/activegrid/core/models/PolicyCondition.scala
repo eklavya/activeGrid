@@ -21,6 +21,7 @@ case class PolicyCondition(override val id: Option[Long],
                           ) extends BaseEntity
 object PolicyCondition {
   val logger = Logger(LoggerFactory.getLogger(PolicyCondition.getClass))
+
   val lable = PolicyCondition.getClass.getSimpleName
   val relationLable = ActiveGridUtils.relationLbl(lable)
 
@@ -60,7 +61,7 @@ object PolicyCondition {
     override def toNeo4jGraph(entity: PolicyCondition): Node = {
          Neo.withTx{
            neo => {
-             val pcNode = Neo.createNode(PolicyCondition.lable)
+             val pcNode = Neo.createNode(PolicyCondition.lable)(neo)
 
              //Setting properties
 
