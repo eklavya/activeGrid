@@ -15,31 +15,9 @@ case class SiteFilter(override val id: Option[Long],
 object SiteFilter {
   val repository = Neo4jRepository
   val siteFilterLabel = "SiteFilter"
-  val siteFilterAndAccountInfoRelation = "HAS_ACCOUNT_INFO"
-  val siteFilterAndFiltersRelation = "HAS_FILTERS"
+  val siteFilter_AccountInfo_Rel = "HAS_ACCOUNT_INFO"
+  val siteFilter_Filters_Rel = "HAS_FILTERS"
   val logger = LoggerFactory.getLogger(getClass)
-
-  implicit class SiteFilterImpl(siteFilter: SiteFilter) extends Neo4jRep[SiteFilter] {
-    override def toNeo4jGraph(entity: SiteFilter): Node = {
-      logger.debug(s"Executing $getClass :: toNeo4jGraph")
-      repository.withTx {
-        neo =>
-          val node = repository.createNode(siteFilterLabel)(neo)
-          val accountInfoNode = entity.accountInfo.toNeo4jGraph(entity.accountInfo)
-          repository.createRelation(siteFilterAndAccountInfoRelation, node, accountInfoNode)
-          entity.filters.foreach {
-            filter =>
-              val filterNode = filter.toNeo4jGraph(filter)
-              repository.createRelation(siteFilterAndFiltersRelation, node, filterNode)
-          }
-          node
-      }
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
-      SiteFilter.fromNeo4jGraph(nodeId)
-    }
-  }
 
   def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
     logger.debug(s"Executing $getClass :: fromNeo4jGraph")
@@ -53,11 +31,10 @@ object SiteFilter {
               (result, relationship) =>
                 val childNode = relationship.getEndNode
                 relationship.getType.name match {
-                  case `siteFilterAndAccountInfoRelation` => val accountInfo = AccountInfo.fromNeo4jGraph(childNode.getId)
+                  case `siteFilter_AccountInfo_Rel` => val accountInfo = AccountInfo.fromNeo4jGraph(childNode.getId)
                     if (accountInfo.nonEmpty) (accountInfo.get, result._2) else result
-                  case `siteFilterAndFiltersRelation` => val filter = Filter.fromNeo4jGraph(childNode.getId)
+                  case `siteFilter_Filters_Rel` => val filter = Filter.fromNeo4jGraph(childNode.getId)
                     if (filter.nonEmpty) (result._1, filter.get :: result._2) else result
-                  case _=> result
                 }
             }
             Some(SiteFilter(Some(node.getId), accountAndFilter._1.asInstanceOf[AccountInfo], accountAndFilter._2))
@@ -69,6 +46,28 @@ object SiteFilter {
             logger.warn(nfe.getMessage, nfe)
             None
         }
+    }
+  }
+
+  implicit class SiteFilterImpl(siteFilter: SiteFilter) extends Neo4jRep[SiteFilter] {
+    override def toNeo4jGraph(entity: SiteFilter): Node = {
+      logger.debug(s"Executing $getClass :: toNeo4jGraph")
+      repository.withTx {
+        neo =>
+          val node = repository.createNode(siteFilterLabel)(neo)
+          val accountInfoNode = entity.accountInfo.toNeo4jGraph(entity.accountInfo)
+          repository.createRelation(siteFilter_AccountInfo_Rel, node, accountInfoNode)
+          entity.filters.foreach {
+            filter =>
+              val filterNode = filter.toNeo4jGraph(filter)
+              repository.createRelation(siteFilter_Filters_Rel, node, filterNode)
+          }
+          node
+      }
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[SiteFilter] = {
+      SiteFilter.fromNeo4jGraph(nodeId)
     }
   }
 }

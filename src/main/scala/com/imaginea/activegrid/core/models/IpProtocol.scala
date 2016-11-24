@@ -9,6 +9,16 @@ sealed trait IpProtocol {
 
 case object IpProtocol {
 
+  def toProtocol(value: String): IpProtocol = {
+    value match {
+      case "tcp" => TCP
+      case "udp" => UDP
+      case "icmp" => ICMP
+      case "all" => ALL
+      case _ => UNRECOGNIZED
+    }
+  }
+
   case object TCP extends IpProtocol {
     override def value: String = "tcp"
   }
@@ -27,15 +37,5 @@ case object IpProtocol {
 
   case object UNRECOGNIZED extends IpProtocol {
     override def value: String = "unrecognized"
-  }
-
-  def toProtocol(value: String): IpProtocol = {
-    value match {
-      case "tcp" => TCP
-      case "udp" => UDP
-      case "icmp" => ICMP
-      case "all" => ALL
-      case _ => UNRECOGNIZED
-    }
   }
 }

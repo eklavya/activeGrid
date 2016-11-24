@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.models
 
-import org.neo4j.graphdb.{Node, NotFoundException}
+import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 /**
@@ -17,6 +17,24 @@ object IpPermissionInfo {
   val ipPermissionLabel = "IpPermissionInfo"
   val logger = LoggerFactory.getLogger(getClass)
 
+  def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
+    val maybeNode = Neo4jRepository.findNodeById(nodeId)
+    maybeNode.flatMap {
+      node =>
+        if (Neo4jRepository.hasLabel(node, ipPermissionLabel)) {
+          val map = Neo4jRepository.getProperties(node, "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
+          Some(IpPermissionInfo(Some(nodeId),
+            map("fromPort").asInstanceOf[Int],
+            map("toPort").asInstanceOf[Int],
+            IpProtocol.toProtocol(map("ipProtocol").asInstanceOf[String]),
+            map("groupIds").asInstanceOf[Array[String]].toSet,
+            map("ipRanges").asInstanceOf[Array[String]].toList))
+        } else {
+          None
+        }
+    }
+  }
+
   implicit class IpPermissionInfoImpl(ipPermissionInfo: IpPermissionInfo) extends Neo4jRep[IpPermissionInfo] {
     override def toNeo4jGraph(entity: IpPermissionInfo): Node = {
       val map = Map("fromPort" -> entity.fromPort,
@@ -32,22 +50,4 @@ object IpPermissionInfo {
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
-    val maybeNode = Neo4jRepository.findNodeById(nodeId)
-    maybeNode.flatMap {
-      node =>
-        if (Neo4jRepository.hasLabel(node, ipPermissionLabel)) {
-          val map = Neo4jRepository.getProperties(node, "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
-          Some(IpPermissionInfo(Some(nodeId),
-            map("fromPort").asInstanceOf[Int],
-            map("toPort").asInstanceOf[Int],
-            IpProtocol.toProtocol(map("ipProtocol").asInstanceOf[String]),
-            map("groupIds").asInstanceOf[Array[String]].toSet,
-            map("ipRanges").asInstanceOf[Array[String]].toList))
-        } else {
-          logger.warn(s"IpPermission Node with id $nodeId is not found")
-          None
-        }
-    }
-  }
 }

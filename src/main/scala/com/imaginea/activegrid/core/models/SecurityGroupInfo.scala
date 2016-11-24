@@ -1,9 +1,7 @@
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
-import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
-import org.slf4j.LoggerFactory
 
 /**
   * Created by nagulmeeras on 27/10/16.
@@ -17,14 +15,42 @@ case class SecurityGroupInfo(override val id: Option[Long],
                              tags: List[KeyValueInfo]) extends BaseEntity
 
 object SecurityGroupInfo {
+  val repository = Neo4jRepository
+  val securityGroupInfoLabel = "SecurityGroupInfo"
+  val securityGroupAndIpPermissionRelation = "HAS_IP_PERMISSION"
+  val securityGroupAndKeyValueRelation = "HAS_KEY_VALUE"
+
   def appply(id: Option[Long]): SecurityGroupInfo = {
     SecurityGroupInfo(id, None, None, None, None, List.empty[IpPermissionInfo], List.empty[KeyValueInfo])
   }
 
-  val securityGroupInfoLabel = "SecurityGroupInfo"
-  val securityGroupAndIpPermissionRelation = "HAS_IP_PERMISSION"
-  val securityGroupAndKeyValueRelation = "HAS_KEY_VALUE"
-  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  def fromNeo4jGraph(nodeId: Long): Option[SecurityGroupInfo] = {
+    val maybeNode = Neo4jRepository.findNodeById(nodeId)
+    maybeNode.flatMap {
+      node =>
+        if (Neo4jRepository.hasLabel(node, securityGroupInfoLabel)) {
+          val map = Neo4jRepository.getProperties(node, "groupName", "groupId", "ownerId", "description")
+          val keyValuesNodeIds = Neo4jRepository.getChildNodeIds(nodeId, securityGroupAndKeyValueRelation)
+          val keyValueInfos: List[KeyValueInfo] = keyValuesNodeIds.flatMap { childId =>
+            KeyValueInfo.fromNeo4jGraph(childId)
+          }
+
+          val ipPermissionNodeIds = Neo4jRepository.getChildNodeIds(nodeId, securityGroupAndIpPermissionRelation)
+          val ipPermissions: List[IpPermissionInfo] = ipPermissionNodeIds.flatMap { childId =>
+            IpPermissionInfo.fromNeo4jGraph(childId)
+          }
+          Some(SecurityGroupInfo(Some(nodeId),
+            ActiveGridUtils.getValueFromMapAs[String](map, "groupName"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "groupId"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "ownerId"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "description"),
+            ipPermissions,
+            keyValueInfos))
+        } else {
+          None
+        }
+    }
+  }
 
   implicit class SecurityGroupInfoImpl(securityGroupInfo: SecurityGroupInfo) extends Neo4jRep[SecurityGroupInfo] {
     override def toNeo4jGraph(entity: SecurityGroupInfo): Node = {
@@ -53,32 +79,4 @@ object SecurityGroupInfo {
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): Option[SecurityGroupInfo] = {
-    val maybeNode = Neo4jRepository.findNodeById(nodeId)
-    maybeNode.flatMap {
-      node =>
-        if (Neo4jRepository.hasLabel(node, securityGroupInfoLabel)) {
-          val map = Neo4jRepository.getProperties(node, "groupName", "groupId", "ownerId", "description")
-          val keyValuesNodeIds = Neo4jRepository.getChildNodeIds(nodeId, securityGroupAndKeyValueRelation)
-          val keyValueInfos: List[KeyValueInfo] = keyValuesNodeIds.flatMap { childId =>
-            KeyValueInfo.fromNeo4jGraph(childId)
-          }
-
-          val ipPermissionNodeIds = Neo4jRepository.getChildNodeIds(nodeId, securityGroupAndIpPermissionRelation)
-          val ipPermissions: List[IpPermissionInfo] = ipPermissionNodeIds.flatMap { childId =>
-            IpPermissionInfo.fromNeo4jGraph(childId)
-          }
-          Some(SecurityGroupInfo(Some(nodeId),
-            ActiveGridUtils.getValueFromMapAs[String](map, "groupName"),
-            ActiveGridUtils.getValueFromMapAs[String](map, "groupId"),
-            ActiveGridUtils.getValueFromMapAs[String](map, "ownerId"),
-            ActiveGridUtils.getValueFromMapAs[String](map, "description"),
-            ipPermissions,
-            keyValueInfos))
-        } else {
-          logger.warn(s"SecurityGroupInfo node with id $nodeId is not found")
-          None
-        }
-    }
-  }
 }

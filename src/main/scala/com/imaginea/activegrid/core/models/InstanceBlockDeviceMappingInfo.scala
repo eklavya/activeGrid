@@ -21,25 +21,6 @@ object InstanceBlockDeviceMappingInfo {
   val ibd_VolumeInfo_Relation = "HAS_VOLUME_INFO"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo)
-    extends Neo4jRep[InstanceBlockDeviceMappingInfo] {
-    override def toNeo4jGraph(entity: InstanceBlockDeviceMappingInfo): Node = {
-      val map = Map("deviceName" -> entity.deviceName,
-        "status" -> entity.status,
-        "attachTime" -> entity.attachTime,
-        "deleteOnTermination" -> entity.deleteOnTermination,
-        "usage" -> entity.usage)
-      val node = Neo4jRepository.saveEntity[InstanceBlockDeviceMappingInfo](instanceBlockDeviceMappingInfoLabel, entity.id, map)
-      val childNode = entity.volume.toNeo4jGraph(entity.volume)
-      Neo4jRepository.createRelation(ibd_VolumeInfo_Relation, node, childNode)
-      node
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[InstanceBlockDeviceMappingInfo] = {
-      InstanceBlockDeviceMappingInfo.fromNeo4jGraph(nodeId)
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[InstanceBlockDeviceMappingInfo] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -65,6 +46,25 @@ object InstanceBlockDeviceMappingInfo {
           None
         }
       case None => None
+    }
+  }
+
+  implicit class InstanceBlockDeviceMappingInfoImpl(instanceBlockDeviceMappingInfo: InstanceBlockDeviceMappingInfo)
+    extends Neo4jRep[InstanceBlockDeviceMappingInfo] {
+    override def toNeo4jGraph(entity: InstanceBlockDeviceMappingInfo): Node = {
+      val map = Map("deviceName" -> entity.deviceName,
+        "status" -> entity.status,
+        "attachTime" -> entity.attachTime,
+        "deleteOnTermination" -> entity.deleteOnTermination,
+        "usage" -> entity.usage)
+      val node = Neo4jRepository.saveEntity[InstanceBlockDeviceMappingInfo](instanceBlockDeviceMappingInfoLabel, entity.id, map)
+      val childNode = entity.volume.toNeo4jGraph(entity.volume)
+      Neo4jRepository.createRelation(ibd_VolumeInfo_Relation, node, childNode)
+      node
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[InstanceBlockDeviceMappingInfo] = {
+      InstanceBlockDeviceMappingInfo.fromNeo4jGraph(nodeId)
     }
   }
 }

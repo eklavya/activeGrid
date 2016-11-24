@@ -14,17 +14,6 @@ object Filter {
   val filterLabelName = "Filter"
   val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class FilterImpl(filter: Filter) extends Neo4jRep[Filter] {
-    override def toNeo4jGraph(entity: Filter): Node = {
-      val map = Map("filterType" -> entity.filterType.toString, "values" -> entity.values.toArray)
-      Neo4jRepository.saveEntity[Filter](filterLabelName, entity.id, map)
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[Filter] = {
-      Filter.fromNeo4jGraph(nodeId)
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[Filter] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -38,6 +27,17 @@ object Filter {
           None
         }
       case None => None
+    }
+  }
+
+  implicit class FilterImpl(filter: Filter) extends Neo4jRep[Filter] {
+    override def toNeo4jGraph(entity: Filter): Node = {
+      val map = Map("filterType" -> entity.filterType.toString, "values" -> entity.values.toArray)
+      Neo4jRepository.saveEntity[Filter](filterLabelName, entity.id, map)
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[Filter] = {
+      Filter.fromNeo4jGraph(nodeId)
     }
   }
 }
