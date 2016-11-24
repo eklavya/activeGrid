@@ -25,6 +25,36 @@ case class ImageInfo(override val id: Option[Long],
 
 object ImageInfo {
 
+  def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
+
+    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+    try {
+      val node = Neo4jRepository.findNodeById(nodeId)
+      val map = Neo4jRepository.getProperties(node.get, "imageId", "state", "ownerId", "publicValue",
+        "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+      val imageInfo = ImageInfo(Some(node.get.getId),
+        ActiveGridUtils.getValueFromMapAs[String](map, "imageId"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "state"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "ownerId"),
+        map("publicValue").asInstanceOf[Boolean],
+        ActiveGridUtils.getValueFromMapAs[String](map, "architecture"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "imageType"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "platform"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "imageOwnerAlias"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "name"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "description"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "rootDeviceType"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "rootDeviceName"),
+        ActiveGridUtils.getValueFromMapAs[String](map, "version"))
+      Some(imageInfo)
+    } catch {
+      case ex: Exception =>
+        logger.warn(ex.getMessage, ex)
+        None
+
+    }
+  }
+
   implicit class ImageInfoImpl(imageInfo: ImageInfo) extends Neo4jRep[ImageInfo] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "ImageInfo"
@@ -56,35 +86,5 @@ object ImageInfo {
     }
 
 
-  }
-
-  def fromNeo4jGraph(nodeId: Long): Option[ImageInfo] = {
-
-    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    try {
-      val node = Neo4jRepository.findNodeById(nodeId)
-      val map = Neo4jRepository.getProperties(node.get, "imageId", "state", "ownerId", "publicValue",
-        "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
-      val imageInfo = ImageInfo(Some(node.get.getId),
-        ActiveGridUtils.getValueFromMapAs[String](map, "imageId"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "state"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "ownerId"),
-        map("publicValue").asInstanceOf[Boolean],
-        ActiveGridUtils.getValueFromMapAs[String](map, "architecture"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "imageType"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "platform"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "imageOwnerAlias"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "name"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "description"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "rootDeviceType"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "rootDeviceName"),
-        ActiveGridUtils.getValueFromMapAs[String](map, "version"))
-      Some(imageInfo)
-    } catch {
-      case ex: Exception =>
-        logger.warn(ex.getMessage, ex)
-        None
-
-    }
   }
 }

@@ -18,25 +18,6 @@ object Site {
     Site(Some(id), List.empty[Instance], None, None)
   }
 
-  implicit class SiteImpl(site: Site) extends Neo4jRep[Site] {
-
-    override def toNeo4jGraph(entity: Site): Node = {
-      val label = "Site"
-      val mapPrimitives = Map("siteName" -> entity.siteName, "groupBy" -> entity.groupBy)
-      val node = Neo4jRepository.saveEntity[Site](label, entity.id, mapPrimitives)
-      val relationship = "HAS_Instance"
-      entity.instances.foreach { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship)
-      }
-      node
-    }
-
-    override def fromNeo4jGraph(id: Long): Option[Site] = {
-      Site.fromNeo4jGraph(id)
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[Site] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -53,6 +34,25 @@ object Site {
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
+    }
+  }
+
+  implicit class SiteImpl(site: Site) extends Neo4jRep[Site] {
+
+    override def toNeo4jGraph(entity: Site): Node = {
+      val label = "Site"
+      val mapPrimitives = Map("siteName" -> entity.siteName, "groupBy" -> entity.groupBy)
+      val node = Neo4jRepository.saveEntity[Site](label, entity.id, mapPrimitives)
+      val relationship = "HAS_Instance"
+      entity.instances.foreach { instance =>
+        val instanceNode = instance.toNeo4jGraph(instance)
+        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship)
+      }
+      node
+    }
+
+    override def fromNeo4jGraph(id: Long): Option[Site] = {
+      Site.fromNeo4jGraph(id)
     }
   }
 }
