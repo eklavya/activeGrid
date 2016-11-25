@@ -27,6 +27,12 @@ object Site1 {
   val site_SF_Relation = "HAS_SiteFilter"
   val siteApplications = "HAS_Applications"
 
+  def apply(id: Long): Site1 = {
+    Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup],List.empty[Application])
+  }
+
+
   def delete(siteId: Long): Boolean = {
     val maybeNode = Neo4jRepository.findNodeById(siteId)
     maybeNode.map {

@@ -563,7 +563,7 @@ object Main extends App {
         mayBeSite match {
           case Some(site) =>
             val keyPairs = site.instances.flatMap { instance =>
-              instance.sshAccessInfo.flatMap(x => Some(x.keyPair))
+              instance.sshAccessInfo.map(x => x.keyPair)
             }
             Page[KeyPairInfo](keyPairs)
           case None =>
