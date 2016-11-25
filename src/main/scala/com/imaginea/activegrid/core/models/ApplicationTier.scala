@@ -1,62 +1,77 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.models.{ApplicationTier => AppTier, Neo4jRepository => Neo}
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
+import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 /**
-  * Created by nagulmeeras on 21/11/16.
+  * Created by sivag on 23/11/16.
   */
 case class ApplicationTier(override val id: Option[Long],
-                           name: Option[String],
-                           description: Option[String],
+                           name: String,
+                           description: String,
                            instances: List[Instance],
                            apmServer: Option[APMServerDetails]) extends BaseEntity
 
 object ApplicationTier {
-  val labelName = "ApplicationTier"
-  val appTierAndInstance = "HAS_INSTANCE"
-  val appTierAndAPMServer = "HAS_APMSERVER"
 
-  implicit class ApplicationTierImpl(applicationTier: ApplicationTier) extends Neo4jRep[ApplicationTier] {
-    override def toNeo4jGraph(entity: ApplicationTier): Node = {
-      val map = Map("name" -> entity.name,
-        "description" -> entity.description)
-      val node = Neo4jRepository.saveEntity[ApplicationTier](labelName, entity.id, map)
-      entity.instances.map { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.createRelation(appTierAndInstance, node, instanceNode)
+  val lable = ApplicationTier.getClass.getSimpleName
+  val relationLable = ActiveGridUtils.relationLbl(lable)
+
+  def fromNeo4jGraph(nodeId: Long): Option[AppTier] = {
+    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+      val node = Neo.findNodeById(nodeId)
+      node.map {
+        appTier =>
+          //Reading properties
+          val map = Neo.getProperties(appTier, "name","description")
+
+          //Fetching instances
+          val instances = Neo.getChildNodeIds(appTier.getId,Instance.relationLable).flatMap{
+            id => Instance.fromNeo4jGraph(id)
+          }
+
+          // Fetching APM Server
+          val apmSrvr = Neo.getChildNodeId(appTier.getId,APMServerDetails.relationLable).flatMap{
+            id => APMServerDetails.fromNeo4jGraph(id)
+          }
+          ApplicationTier(Some(nodeId), map("name").toString, map("description").toString, instances, apmSrvr)
       }
-      entity.apmServer.map { apmServer =>
-        val apmServerNode = apmServer.toNeo4jGraph(apmServer)
-        Neo4jRepository.createRelation(appTierAndAPMServer, node, apmServerNode)
-      }
-      node
     }
 
-    override def fromNeo4jGraph(id: Long): Option[ApplicationTier] = {
-      ApplicationTier.fromNeo4jGraph(id)
+  implicit class ApplicationTierImpl(applicationTier: AppTier) extends Neo4jRep[AppTier] {
+
+    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+
+    override def toNeo4jGraph(appTier: AppTier): Node = {
+
+      logger.debug(s"In toGraph for Software: $appTier")
+
+      val map = Map("name" -> appTier.name, "description" -> appTier.description)
+      val appTierNode = Neo.saveEntity[AppTier](AppTier.lable, appTier.id, map)
+
+      // Creating instances.
+      appTier.instances.map{
+        instance =>
+          val instnNode = instance.toNeo4jGraph(instance)
+          Neo.createRelation(Instance.relationLable,appTierNode,instnNode)
+      }
+
+      // Creating APMServer
+      appTier.apmServer.map{
+        srvr =>
+          val srvrNod = srvr.toNeo4jGraph(srvr)
+          Neo.createRelation(APMServerDetails.relationLable,appTierNode,srvrNod)
+      }
+      appTierNode
     }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[AppTier] = {
+      AppTier.fromNeo4jGraph(nodeId)
+    }
+
   }
 
-  def fromNeo4jGraph(id: Long): Option[ApplicationTier] = {
-    Neo4jRepository.findNodeById(id).flatMap {
-      node =>
-        if (Neo4jRepository.hasLabel(node, labelName)) {
-          val map = Neo4jRepository.getProperties(node, "name", "description")
-          val instanceNodeIds = Neo4jRepository.getChildNodeIds(id, appTierAndInstance)
-          val instances = instanceNodeIds.flatMap(nodeId => Instance.fromNeo4jGraph(nodeId))
-          val apmServerNodeIds = Neo4jRepository.getChildNodeIds(id, appTierAndAPMServer)
-          val apmServers = apmServerNodeIds.flatMap(nodeId => APMServerDetails.fromNeo4jGraph(nodeId))
-          Some(ApplicationTier(
-            Some(id),
-            ActiveGridUtils.getValueFromMapAs[String](map, "name"),
-            ActiveGridUtils.getValueFromMapAs[String](map, "description"),
-            instances,
-            apmServers.headOption
-          ))
-        } else {
-          None
-        }
-    }
-  }
 }
