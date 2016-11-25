@@ -67,4 +67,5 @@ object InstanceBlockDeviceMappingInfo {
       InstanceBlockDeviceMappingInfo.fromNeo4jGraph(nodeId)
     }
   }
+
 }

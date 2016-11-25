@@ -61,4 +61,5 @@ object ReservedInstanceDetails {
       ReservedInstanceDetails.fromNeo4jGraph(nodeId)
     }
   }
+
 }
