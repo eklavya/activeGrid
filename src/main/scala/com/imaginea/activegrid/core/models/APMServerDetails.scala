@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
@@ -22,6 +23,9 @@ object APMServerDetails {
   val headersLabel = "Headers"
   val apmServer_site_relation = "HAS"
   val apmServer_header_relation = "HAS_HEADERS"
+
+  val lable = APMServerDetails.getClass.getName
+  val relationLable = ActiveGridUtils.relationLbl(lable)
 
   def fromNeo4jGraph(nodeId: Long): Option[APMServerDetails] = {
     logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
