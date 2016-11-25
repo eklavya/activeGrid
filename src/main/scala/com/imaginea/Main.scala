@@ -280,11 +280,12 @@ object Main extends App {
       }
     }
   }
-  implicit val siteDetailsFormat = jsonFormat(SiteDetails.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+
+  //implicit val siteDetailsFormat = jsonFormat(SiteDetails.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
   implicit val applicationFormat = jsonFormat9(Application.apply)
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
 
   implicit val metricTypeFormat = MetricTypeFormat
   implicit val unitTypeJson = UnitTypeJson
@@ -2034,7 +2035,7 @@ object Main extends App {
       (siteId, policyId) => {
         get {
           val mayBePolicy = Future {
-            SiteManagerImpl.getAutoScalingPolicy(siteId,policyId)
+            SiteManagerImpl.getAutoScalingPolicy(siteId, policyId)
           }
           onComplete(mayBePolicy) {
             case Success(somePolicy) =>

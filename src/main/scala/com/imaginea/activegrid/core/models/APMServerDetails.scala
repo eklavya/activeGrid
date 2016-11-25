@@ -12,7 +12,7 @@ import scala.collection.JavaConversions._
 case class APMServerDetails(override val id: Option[Long],
                             name: String,
                             serverUrl: String,
-                            monitoredSite: Option[SiteDetails],
+                            monitoredSite: Option[Site1],
                             provider: APMProvider,
                             headers: Option[Map[String, String]]) extends BaseEntity
 
@@ -35,11 +35,11 @@ object APMServerDetails {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
 
-            val siteAndHeaders = node.getRelationships.foldLeft((SiteDetails.apply(1), Map.empty[String, String])) {
+            val siteAndHeaders = node.getRelationships.foldLeft((Site1.apply(1), Map.empty[String, String])) {
               (result, relationship) =>
                 val childNode = relationship.getEndNode
                 relationship.getType.name match {
-                  case `apmServer_site_relation` => val site = SiteDetails.fromNeo4jGraph(childNode.getId)
+                  case `apmServer_site_relation` => val site = Site1.fromNeo4jGraph(childNode.getId)
                     if (site.nonEmpty) (site.get, result._2) else result
                   case `apmServer_header_relation` =>
                     val propertyMap = childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
@@ -52,7 +52,7 @@ object APMServerDetails {
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              Option(siteAndHeaders._1.asInstanceOf[SiteDetails]),
+              Option(siteAndHeaders._1.asInstanceOf[Site1]),
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
               Option(siteAndHeaders._2)
             ))

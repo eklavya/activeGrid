@@ -60,7 +60,7 @@ object AutoScalingPolicy {
       val policyNode = Neo.saveEntity[AutoScalingPolicy](AutoScalingPolicy.lable, entity.id, properties)
 
       //Mapping applications
-      val appNode = entity.application.foreach{
+      val appNode = entity.application.foreach {
         app =>
           val appNode = app.toNeo4jGraph(app)
           Neo.createRelation(Application.relationLable, policyNode, appNode)

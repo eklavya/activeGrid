@@ -1,4 +1,5 @@
 package com.imaginea.activegrid.core.models
+
 import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
 
 
@@ -30,11 +31,11 @@ object SiteManagerImpl {
     }
     mayBePolicy.isDefined
   }
-  def getAutoScalingPolicy(siteId:Long,policyId:String) : Option[AutoScalingPolicy] =
-  {
-      Neo.findNodeByLabelAndId(AutoScalingPolicy.lable,policyId.toLong).flatMap{
-        policyNode => AutoScalingPolicy.fromNeo4jGraph(policyNode.getId)
-      }
+
+  def getAutoScalingPolicy(siteId: Long, policyId: String): Option[AutoScalingPolicy] = {
+    Neo.findNodeByLabelAndId(AutoScalingPolicy.lable, policyId.toLong).flatMap {
+      policyNode => AutoScalingPolicy.fromNeo4jGraph(policyNode.getId)
+    }
   }
 
 }

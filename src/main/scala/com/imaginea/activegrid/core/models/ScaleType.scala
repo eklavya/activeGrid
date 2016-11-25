@@ -27,6 +27,7 @@ case object ScaleType {
     }
   }
 }
+
 object ScaleTypeJson extends RootJsonFormat[ScaleType] {
 
   override def write(obj: ScaleType): JsValue = {

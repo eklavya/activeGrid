@@ -33,6 +33,7 @@ case object ConditionType {
     }
   }
 }
+
 object ConditionTypeJson extends RootJsonFormat[ConditionType] {
 
   override def write(obj: ConditionType): JsValue = {
