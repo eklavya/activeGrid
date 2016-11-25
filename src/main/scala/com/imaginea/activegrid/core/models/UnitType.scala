@@ -1,5 +1,7 @@
 package com.imaginea.activegrid.core.models
 
+import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
+
 /**
   * Created by sivag on 22/11/16.
   */
@@ -59,6 +61,19 @@ case object UnitType {
       case "MILLI_SECONDS" => MILLISECONDS
       case "MICRO_SECONDS" => MICROSECONDS
       case "COUNT" => COUNT
+    }
+  }
+}
+object UnitTypeJson extends RootJsonFormat[UnitType] {
+
+  override def write(obj: UnitType): JsValue = {
+    JsString(obj.unitType.toString)
+  }
+
+  override def read(json: JsValue): UnitType = {
+    json match {
+      case JsString(str) => UnitType.toUnitType(str)
+      case _ => throw DeserializationException("Unable to deserialize Filter Type")
     }
   }
 }

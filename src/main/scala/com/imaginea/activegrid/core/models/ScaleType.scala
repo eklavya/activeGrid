@@ -1,5 +1,7 @@
 package com.imaginea.activegrid.core.models
 
+import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
+
 /**
   * Created by sampathr on 28/10/16.
   */
@@ -22,6 +24,19 @@ case object ScaleType {
     scaleType match {
       case "SCALE_UP" => SCALEUP
       case "SCALE_DOWN" => SCALEDOWN
+    }
+  }
+}
+object ScaleTypeJson extends RootJsonFormat[ScaleType] {
+
+  override def write(obj: ScaleType): JsValue = {
+    JsString(obj.scaleType.toString)
+  }
+
+  override def read(json: JsValue): ScaleType = {
+    json match {
+      case JsString(str) => ScaleType.toScaleType(str)
+      case _ => throw DeserializationException("Unable to deserialize Filter Type")
     }
   }
 }
