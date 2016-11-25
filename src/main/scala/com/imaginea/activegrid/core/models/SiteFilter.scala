@@ -22,15 +22,12 @@ object SiteFilter {
     maybeNode.flatMap {
       node =>
         if (Neo4jRepository.hasLabel(node, siteFilterLabel)) {
-          val accountInfoNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteFilterAndAccountRelation)
-          val accountInfos: List[AccountInfo] = accountInfoNodeIds.flatMap { childId =>
-            AccountInfo.fromNeo4jGraph(childId)
-          }
+          val accountInfo = Neo4jRepository.getChildNodeId(nodeId, siteFilterAndAccountRelation).flatMap(id => AccountInfo.fromNeo4jGraph(id)).head
           val filterNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteFilterAndFiltersRelation)
           val filters: List[Filter] = filterNodeIds.flatMap { childId =>
             Filter.fromNeo4jGraph(childId)
           }
-          Some(SiteFilter(Some(node.getId), accountInfos.head, filters))
+          Some(SiteFilter(Some(node.getId), accountInfo, filters))
         } else {
           None
         }

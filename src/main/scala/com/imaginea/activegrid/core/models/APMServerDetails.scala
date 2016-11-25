@@ -38,17 +38,19 @@ object APMServerDetails {
             val (site, headers) = node.getRelationships.foldLeft((Site1.apply(1), Map.empty[String, String])) {
               (result, relationship) =>
                 val childNode = relationship.getEndNode
+                val (site , headers) = result
                 relationship.getType.name match {
                   case `apmServerAndSite` => val mayBeSite = Site1.fromNeo4jGraph(childNode.getId)
                     mayBeSite match {
-                      case Some(siteObj) => (siteObj, result._2)
+                      case Some(siteObj) => (siteObj, headers)
                       case None => result
                     }
                   case `apmServerAndHeaders` =>
                     val propertyMap = childNode.getAllProperties.foldLeft(Map[String, String]()) { (map, property) =>
-                      map + ((property._1, property._2.asInstanceOf[String]))
+                      val (key , value) = property
+                      map + ((key, value.asInstanceOf[String]))
                     }
-                    (result._1, propertyMap)
+                    (site, propertyMap)
                   case _ => result
                 }
             }

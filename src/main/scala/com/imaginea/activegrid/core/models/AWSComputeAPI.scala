@@ -30,8 +30,9 @@ object AWSComputeAPI {
     val addresses = amazonEC2.describeAddresses.getAddresses
       .foldLeft(Map[String, Address]())((map, address) => map + ((address.getInstanceId, address)))
     val (imageIds , volumeIds) = awsInstancesResult.foldLeft((List[String](), List[String]()))((list, awsInstance) => {
+      val (imageIds , volumeIds) = list
       val volumeids = awsInstance.getBlockDeviceMappings.map(mapping => mapping.getEbs.getVolumeId)
-      (awsInstance.getImageId :: list._1, volumeids.toList ::: list._2)
+      (awsInstance.getImageId :: imageIds, volumeids.toList ::: volumeIds)
     })
     val defaultSize = 200
     val imagesMap = getImageInformation(amazonEC2, imageIds)
@@ -64,11 +65,11 @@ object AWSComputeAPI {
           Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).rootPartitionSize)),
           awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList,
           keyName.flatMap(name => createSSHAccessInfo(name)),
-          List.empty,
-          List.empty,
-          Set.empty,
+          List.empty[InstanceConnection],
+          List.empty[InstanceConnection],
+          Set.empty[ProcessInfo],
           Some(imageInfo),
-          List.empty,
+          List.empty[InstanceUser],
           Option(accountInfo),
           Option(awsInstance.getPlacement).map(pacement => pacement.getAvailabilityZone),
           Option(awsInstance.getPrivateDnsName),
