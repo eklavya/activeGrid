@@ -3,8 +3,6 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
 /**
   * Created by nagulmeeras on 27/10/16.
   */
@@ -26,17 +24,14 @@ object InstanceBlockDeviceMappingInfo {
     mayBeNode match {
       case Some(node) =>
         if (Neo4jRepository.hasLabel(node, instanceBlockDeviceMappingInfoLabel)) {
-          val volumeInfoNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, ibdAndVolumeInfoRelation)
-          val volumeInfos: List[VolumeInfo] = volumeInfoNodeIds.flatMap { childId =>
-            VolumeInfo.fromNeo4jGraph(childId)
-          }
+          val volumeInfo = Neo4jRepository.getChildNodeId(nodeId, ibdAndVolumeInfoRelation).flatMap(id => VolumeInfo.fromNeo4jGraph(id)).head
           val map = Neo4jRepository.getProperties(node, "deviceName", "status",
             "attachTime", "deleteOnTermination", "usage")
 
           Some(InstanceBlockDeviceMappingInfo(
             Some(nodeId),
             map("deviceName").asInstanceOf[String],
-            volumeInfos.head,
+            volumeInfo,
             map("status").asInstanceOf[String],
             map("attachTime").asInstanceOf[String],
             map("deleteOnTermination").asInstanceOf[Boolean],
@@ -66,4 +61,5 @@ object InstanceBlockDeviceMappingInfo {
       InstanceBlockDeviceMappingInfo.fromNeo4jGraph(nodeId)
     }
   }
+
 }

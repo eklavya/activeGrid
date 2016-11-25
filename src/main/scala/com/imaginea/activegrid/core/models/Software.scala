@@ -20,6 +20,9 @@ Software(override val id: Option[Long],
 
 object Software {
 
+  val lable = Software.getClass.getSimpleName
+  val relationLable = ActiveGridUtils.relationLbl(lable)
+
   def fromNeo4jGraph(nodeId: Long): Option[Software] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     try {

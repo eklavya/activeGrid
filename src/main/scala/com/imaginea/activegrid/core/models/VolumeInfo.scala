@@ -41,10 +41,8 @@ object VolumeInfo {
             KeyValueInfo.fromNeo4jGraph(childId)
           }
 
-          val childNodeIds_snapshots = Neo4jRepository.getChildNodeIds(nodeId, volumeInfo_SnapshotInfo_Relation)
-          val snapshotInfo: List[SnapshotInfo] = childNodeIds_snapshots.flatMap { childId =>
-            SnapshotInfo.fromNeo4jGraph(childId)
-          }
+          val snapshotInfo = Neo4jRepository.getChildNodeId(nodeId, volumeInfo_SnapshotInfo_Relation).flatMap(id => SnapshotInfo.fromNeo4jGraph(id))
+
           Some(VolumeInfo(Some(nodeId),
             ActiveGridUtils.getValueFromMapAs[String](map, "volumeId"),
             ActiveGridUtils.getValueFromMapAs[Int](map, "size"),
@@ -55,7 +53,7 @@ object VolumeInfo {
             keyValueInfos,
             ActiveGridUtils.getValueFromMapAs[String](map, "volumeType"),
             ActiveGridUtils.getValueFromMapAs[Int](map, "snapshotCount"),
-            snapshotInfo.headOption))
+            snapshotInfo))
 
         } else {
           None
@@ -93,4 +91,5 @@ object VolumeInfo {
       VolumeInfo.fromNeo4jGraph(nodeId)
     }
   }
+
 }

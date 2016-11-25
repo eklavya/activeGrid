@@ -18,11 +18,17 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def neo4jStoreDir: String = AGU.DBPATH
 
   def hasLabel(node: Node, label: String): Boolean = {
-    node.hasLabel(label)
+    withTx {
+      neo =>
+        node.hasLabel(label)
+    }
   }
 
   def getProperty[T: Manifest](node: Node, name: String): Option[T] = {
-    if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+    withTx {
+      neo =>
+        if (node.hasProperty(name)) Some(node.getProperty(name).asInstanceOf[T]) else None
+    }
   }
 
   def getSingleNodeByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any): Option[Node] = withTx { implicit neo =>
@@ -197,5 +203,27 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def getNodeByProperty(label: String, propertyName: String, propertyVal: Any): Option[Node] = withTx { neo =>
     val nodes = findNodesByLabelAndProperty(label, propertyName, propertyVal)(neo)
     nodes.headOption
+  }
+
+  def deleteRelationship(parentNodeId: Long, childNodeId: Long, relationshipName: String): Boolean = {
+    withTx { neo =>
+      val mayBeParentNode = findNodeById(parentNodeId)
+      mayBeParentNode match {
+        case Some(parentNode) =>
+          if (parentNode.hasRelationship(relationshipName)) {
+            val relationships = parentNode.getRelationships(relationshipName, Direction.OUTGOING)
+            val relationshipToDelete = relationships.find(relationship => relationship.getEndNode.getId == childNodeId)
+            relationshipToDelete match {
+              case Some(relationship) =>
+                relationship.delete()
+                true
+              case None => false
+            }
+          } else {
+            false
+          }
+        case None => false
+      }
+    }
   }
 }

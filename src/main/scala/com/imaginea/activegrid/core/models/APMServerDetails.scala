@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
@@ -11,7 +12,7 @@ import scala.collection.JavaConversions._
 case class APMServerDetails(override val id: Option[Long],
                             name: String,
                             serverUrl: String,
-                            monitoredSite: Option[Site],
+                            monitoredSite: Option[Site1],
                             provider: APMProvider,
                             headers: Map[String, String]) extends BaseEntity
 
@@ -20,8 +21,11 @@ object APMServerDetails {
   val logger = LoggerFactory.getLogger(getClass)
   val apmServerDetailsLabel = "APMServerDetails"
   val headersLabel = "Headers"
-  val apmServer_site_relation = "HAS"
-  val apmServer_header_relation = "HAS_HEADERS"
+  val apmServerAndSite = "HAS_Site"
+  val apmServerAndHeaders = "HAS_HEADERS"
+
+  val lable = APMServerDetails.getClass.getName
+  val relationLable = ActiveGridUtils.relationLbl(lable)
 
   def fromNeo4jGraph(nodeId: Long): Option[APMServerDetails] = {
     logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
@@ -31,29 +35,30 @@ object APMServerDetails {
           val node: Node = neo4JRepository.getNodeById(nodeId)(neo)
           if (neo4JRepository.hasLabel(node, apmServerDetailsLabel)) {
 
-            val siteAndHeaders = node.getRelationships.foldLeft((Site.apply(1), Map.empty[String, String])) {
+            val (site, headers) = node.getRelationships.foldLeft((Site1.apply(1), Map.empty[String, String])) {
               (result, relationship) =>
                 val childNode = relationship.getEndNode
                 relationship.getType.name match {
-                  case `apmServer_site_relation` => val mayBeSite = Site.fromNeo4jGraph(childNode.getId)
+                  case `apmServerAndSite` => val mayBeSite = Site1.fromNeo4jGraph(childNode.getId)
                     mayBeSite match {
-                      case Some(site) => (site, result._2)
+                      case Some(siteObj) => (siteObj, result._2)
                       case None => result
                     }
-                  case `apmServer_header_relation` =>
-                    val propertyMap = childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
-                      map + ((property._1, property._2.asInstanceOf[String])))
+                  case `apmServerAndHeaders` =>
+                    val propertyMap = childNode.getAllProperties.foldLeft(Map[String, String]()) { (map, property) =>
+                      map + ((property._1, property._2.asInstanceOf[String]))
+                    }
                     (result._1, propertyMap)
-                  case _=> result
+                  case _ => result
                 }
             }
             Some(new APMServerDetails(
               Some(node.getId),
               neo4JRepository.getProperty[String](node, "name").get,
               neo4JRepository.getProperty[String](node, "serverUrl").get,
-              Option(siteAndHeaders._1.asInstanceOf[Site]),
+              Option(site.asInstanceOf[Site1]),
               APMProvider.toProvider(neo4JRepository.getProperty[String](node, "provider").get),
-              siteAndHeaders._2
+              headers
             ))
           } else {
             logger.warn(s"Node is not found with ID:$nodeId and Label : $apmServerDetailsLabel")
@@ -88,12 +93,12 @@ object APMServerDetails {
           node.setProperty("provider", aPMServerDetails.provider.toString)
           val headersNode = neo4JRepository.createNode(headersLabel)(neo)
           aPMServerDetails.headers.foreach { case (key, value) => headersNode.setProperty(key, value) }
-          createRelationShip(node, headersNode, apmServer_header_relation)
+          createRelationShip(node, headersNode, apmServerAndHeaders)
 
           aPMServerDetails.monitoredSite.foreach {
             site =>
               val siteNode = site.toNeo4jGraph(site)
-              createRelationShip(node, siteNode, apmServer_site_relation)
+              createRelationShip(node, siteNode, apmServerAndSite)
           }
           node
       }
@@ -114,4 +119,5 @@ object APMServerDetails {
       APMServerDetails.fromNeo4jGraph(nodeId)
     }
   }
+
 }

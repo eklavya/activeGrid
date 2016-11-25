@@ -4,8 +4,6 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
 /**
   * Created by nagulmeeras on 01/11/16.
   */
@@ -17,21 +15,24 @@ case class InstanceGroup(override val id: Option[Long],
 object InstanceGroup {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val instanceGroupLabel = "InstanceGroup"
-  val instanceGroup_Instance_Relation = "HAS_INSTANCE"
+  val instanceGroupAndInstanceRelation = "HAS_INSTANCE"
 
   def fromNeo4jGraph(nodeId: Long): Option[InstanceGroup] = {
-    Neo4jRepository.findNodeById(nodeId) match {
-      case Some(node) =>
-        val instances = node.getRelationships.foldLeft(List.empty[Instance]) {
-          (list, relationship) =>
-            Instance.fromNeo4jGraph(relationship.getEndNode.getId).get :: list
-        }
+    Neo4jRepository.findNodeById(nodeId).flatMap {
+      node =>
+        if (Neo4jRepository.hasLabel(node, instanceGroupLabel)) {
+          val childNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceGroupAndInstanceRelation)
+          val instances: List[Instance] = childNodeIds.flatMap { childId =>
+            Instance.fromNeo4jGraph(childId)
+          }
 
-        Some(InstanceGroup(Some(node.getId),
-          Neo4jRepository.getProperty[String](node, "groupType"),
-          Neo4jRepository.getProperty[String](node, "name"),
-          instances))
-      case None => None
+          Some(InstanceGroup(Some(node.getId),
+            Neo4jRepository.getProperty[String](node, "groupType"),
+            Neo4jRepository.getProperty[String](node, "name"),
+            instances))
+        } else {
+          None
+        }
     }
   }
 
@@ -44,7 +45,7 @@ object InstanceGroup {
       entity.instances.foreach {
         instance =>
           val childNode = instance.toNeo4jGraph(instance)
-          Neo4jRepository.createRelation(instanceGroup_Instance_Relation, node, childNode)
+          Neo4jRepository.createRelation(instanceGroupAndInstanceRelation, node, childNode)
       }
       node
     }
@@ -53,4 +54,5 @@ object InstanceGroup {
       InstanceGroup.fromNeo4jGraph(nodeId)
     }
   }
+
 }
