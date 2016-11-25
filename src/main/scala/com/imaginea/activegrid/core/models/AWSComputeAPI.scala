@@ -29,8 +29,8 @@ object AWSComputeAPI {
       .foldLeft(Map[String, SecurityGroup]())((map, sg) => map + ((sg.getGroupId, sg)))
     val addresses = amazonEC2.describeAddresses.getAddresses
       .foldLeft(Map[String, Address]())((map, address) => map + ((address.getInstanceId, address)))
-    val (imageIds , volumeIds) = awsInstancesResult.foldLeft((List[String](), List[String]()))((list, awsInstance) => {
-      val (imageIds , volumeIds) = list
+    val (imageIds, volumeIds) = awsInstancesResult.foldLeft((List[String](), List[String]()))((list, awsInstance) => {
+      val (imageIds, volumeIds) = list
       val volumeids = awsInstance.getBlockDeviceMappings.map(mapping => mapping.getEbs.getVolumeId)
       (awsInstance.getImageId :: imageIds, volumeids.toList ::: volumeIds)
     })
