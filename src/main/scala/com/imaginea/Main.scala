@@ -281,7 +281,6 @@ object Main extends App {
     }
   }
 
-  //implicit val siteDetailsFormat = jsonFormat(SiteDetails.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
   implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
