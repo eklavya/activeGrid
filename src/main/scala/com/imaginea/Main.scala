@@ -1796,7 +1796,7 @@ object Main extends App {
   def populateInstances(site: Site1): Site1 = {
     val siteFilters = site.filters
     logger.info(s"Parsing instance : ${site.instances}")
-    val computedResult = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+    val (instances, reservedInstanceDetails, loadBalancer, scalingGroup) = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
       (result, siteFilter) =>
         val accountInfo = siteFilter.accountInfo
         val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
@@ -1806,7 +1806,7 @@ object Main extends App {
         val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
         (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
     }
-    val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List(), site.groupBy)
+    val site1 = Site1(None, site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(), site.groupBy)
     site1.toNeo4jGraph(site1)
     site1
   }
