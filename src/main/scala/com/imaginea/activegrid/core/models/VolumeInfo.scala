@@ -97,4 +97,5 @@ object VolumeInfo {
       VolumeInfo.fromNeo4jGraph(nodeId)
     }
   }
+
 }

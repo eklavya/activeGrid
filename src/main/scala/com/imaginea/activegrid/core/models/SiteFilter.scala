@@ -70,4 +70,5 @@ object SiteFilter {
       SiteFilter.fromNeo4jGraph(nodeId)
     }
   }
+
 }

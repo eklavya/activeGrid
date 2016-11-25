@@ -93,6 +93,7 @@ object User {
       User.fromNeo4jGraph(nodeId)
     }
   }
+
 }
 
 object UserUtils {
