@@ -29,13 +29,13 @@ object AWSComputeAPI {
       .foldLeft(Map[String, SecurityGroup]())((map, sg) => map + ((sg.getGroupId, sg)))
     val addresses = amazonEC2.describeAddresses.getAddresses
       .foldLeft(Map[String, Address]())((map, address) => map + ((address.getInstanceId, address)))
-    val imageIdsAndVolumeIds = awsInstancesResult.foldLeft((List[String](), List[String]()))((list, awsInstance) => {
+    val (imageIds , volumeIds) = awsInstancesResult.foldLeft((List[String](), List[String]()))((list, awsInstance) => {
       val volumeids = awsInstance.getBlockDeviceMappings.map(mapping => mapping.getEbs.getVolumeId)
       (awsInstance.getImageId :: list._1, volumeids.toList ::: list._2)
     })
     val defaultSize = 200
-    val imagesMap = getImageInformation(amazonEC2, imageIdsAndVolumeIds._1)
-    val subList = imageIdsAndVolumeIds._2.subList(0, if (imageIdsAndVolumeIds._2.size > defaultSize) defaultSize else imageIdsAndVolumeIds._2.size).toList
+    val imagesMap = getImageInformation(amazonEC2, imageIds)
+    val subList = volumeIds.subList(0, if (volumeIds.size > defaultSize) defaultSize else volumeIds.size).toList
     val volumesMap: Map[String, Volume] = getVolumeInfoMap(amazonEC2, subList)
     val snapshotsMap: Map[String, List[Snapshot]] = getSnapshotsMap(amazonEC2, subList)
 
@@ -44,7 +44,7 @@ object AWSComputeAPI {
         val imageInfo = getImageInfo(awsInstance.getImageId, imagesMap)
         val instanceSecurityGroups = awsInstance.getSecurityGroups
         val securityGroupInfos = getSecurityGroupInfo(totalsecurityGroups, instanceSecurityGroups.toList)
-        val keyName = Option(awsInstance.getKeyName.replaceAll("'", ""))
+        val keyName = Option(awsInstance.getKeyName).map(keyName => keyName.replaceAll("'", ""))
         val tags = awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList
         val tag = tags.find(tag => tag.key.equals(Constants.NAME_TAG_KEY))
         val instanceName = tag match {
@@ -54,12 +54,12 @@ object AWSComputeAPI {
         val instance = new Instance(None,
           Some(awsInstance.getInstanceId),
           instanceName,
-          Some(awsInstance.getState.getName),
+          Option(awsInstance.getState).map(state => state.getName),
           Option(awsInstance.getInstanceType),
           Option(awsInstance.getPlatform),
           Option(awsInstance.getArchitecture),
           Option(awsInstance.getPublicDnsName),
-          Option(awsInstance.getLaunchTime.getTime),
+          Option(awsInstance.getLaunchTime).map(time => time.getTime),
           Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).ramSize)),
           Some(StorageInfo(None, 0D, AWSInstanceType.toAWSInstanceType(awsInstance.getInstanceType).rootPartitionSize)),
           awsInstance.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList,
@@ -70,17 +70,17 @@ object AWSComputeAPI {
           Some(imageInfo),
           List.empty,
           Option(accountInfo),
-          Option(awsInstance.getPlacement.getAvailabilityZone),
+          Option(awsInstance.getPlacement).map(pacement => pacement.getAvailabilityZone),
           Option(awsInstance.getPrivateDnsName),
           Option(awsInstance.getPrivateIpAddress),
           Option(awsInstance.getPublicIpAddress),
           addresses.get(awsInstance.getInstanceId).map(address => address.getPublicIp),
-          Option(awsInstance.getMonitoring.getState),
+          Option(awsInstance.getMonitoring).map(monitoring => monitoring.getState),
           Option(awsInstance.getRootDeviceType),
           createBlockDeviceMapping(awsInstance.getBlockDeviceMappings.toList, volumesMap, snapshotsMap),
           securityGroupInfos,
           false,
-          Option(accountInfo.regionName.get)
+          accountInfo.regionName.map(region => region)
         )
         logger.debug(s"Instance OBJ:$instance")
         instance
