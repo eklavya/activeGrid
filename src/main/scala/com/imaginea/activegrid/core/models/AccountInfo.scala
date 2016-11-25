@@ -70,5 +70,6 @@ object AccountInfo {
       AccountInfo.fromNeo4jGraph(nodeId)
     }
   }
+
 }
 

@@ -140,5 +140,6 @@ object AppSettings {
       appSettings
     }
   }
+
 }
 

@@ -81,5 +81,6 @@ object UserGroup {
       UserGroup.fromNeo4jGraph(nodeId)
     }
   }
+
 }
 

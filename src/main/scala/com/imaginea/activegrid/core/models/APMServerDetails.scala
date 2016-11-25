@@ -41,7 +41,7 @@ object APMServerDetails {
                     val propertyMap = childNode.getAllProperties.foldLeft(Map[String, String]())((map, property) =>
                       map + ((property._1, property._2.asInstanceOf[String])))
                     (result._1, propertyMap)
-                  case _=> result
+                  case _ => result
                 }
             }
             Some(new APMServerDetails(
@@ -111,4 +111,5 @@ object APMServerDetails {
       APMServerDetails.fromNeo4jGraph(nodeId)
     }
   }
+
 }

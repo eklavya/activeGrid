@@ -88,4 +88,5 @@ object SnapshotInfo {
       SnapshotInfo.fromNeo4jGraph(nodeId)
     }
   }
+
 }
