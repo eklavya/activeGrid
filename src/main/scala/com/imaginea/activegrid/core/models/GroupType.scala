@@ -18,4 +18,5 @@ case object GroupType {
   case object Role extends GroupType {
     override def groupType: String = "role"
   }
+
 }

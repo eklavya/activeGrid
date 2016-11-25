@@ -55,4 +55,5 @@ object Site {
       Site.fromNeo4jGraph(id)
     }
   }
+
 }
