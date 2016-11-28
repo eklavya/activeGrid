@@ -776,10 +776,7 @@ object Main extends App {
           val aPMServerDetails = getAPMServers
           logger.info(s"All Sever details : $aPMServerDetails")
           val list = aPMServerDetails.filter(server => {
-            server.monitoredSite match {
-              case Some(monitoredSite) => monitoredSite.id == site.id
-              case None => false
-            }
+            server.monitoredSite.exists(monitoredSite => monitoredSite.id == site.id)
           })
           logger.info(s"Filtered Server details : $list")
           list.toList
