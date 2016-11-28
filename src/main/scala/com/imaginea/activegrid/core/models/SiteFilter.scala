@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.models
 
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 /**
@@ -22,7 +22,13 @@ object SiteFilter {
     maybeNode.flatMap {
       node =>
         if (Neo4jRepository.hasLabel(node, siteFilterLabel)) {
-          val accountInfo = Neo4jRepository.getChildNodeId(nodeId, siteFilterAndAccountRelation).flatMap(id => AccountInfo.fromNeo4jGraph(id)).head
+          val mayBeAccountInfo = Neo4jRepository.getChildNodeId(nodeId, siteFilterAndAccountRelation).flatMap(id => AccountInfo.fromNeo4jGraph(id))
+          val accountInfo = mayBeAccountInfo match {
+            case Some(account) => account
+            case None =>
+              logger.warn(s"Account info is not found with relation $siteFilterAndAccountRelation")
+              throw new NotFoundException(s"Account info is not found with relation $siteFilterAndAccountRelation")
+          }
           val filterNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteFilterAndFiltersRelation)
           val filters: List[Filter] = filterNodeIds.flatMap { childId =>
             Filter.fromNeo4jGraph(childId)

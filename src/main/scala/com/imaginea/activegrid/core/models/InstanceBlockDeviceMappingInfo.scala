@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.models
 
-import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.{Node, NotFoundException}
 import org.slf4j.LoggerFactory
 
 /**
@@ -21,10 +21,16 @@ object InstanceBlockDeviceMappingInfo {
 
   def fromNeo4jGraph(nodeId: Long): Option[InstanceBlockDeviceMappingInfo] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
-    mayBeNode match {
-      case Some(node) =>
+    mayBeNode.flatMap {
+      node =>
         if (Neo4jRepository.hasLabel(node, instanceBlockDeviceMappingInfoLabel)) {
-          val volumeInfo = Neo4jRepository.getChildNodeId(nodeId, ibdAndVolumeInfoRelation).flatMap(id => VolumeInfo.fromNeo4jGraph(id)).head
+          val mayBeVolumeInfo = Neo4jRepository.getChildNodeId(nodeId, ibdAndVolumeInfoRelation).flatMap(id => VolumeInfo.fromNeo4jGraph(id))
+          val volumeInfo = mayBeVolumeInfo match {
+            case Some(volume) => volume
+            case None =>
+              logger.warn(s"Volume info is not found with relation $ibdAndVolumeInfoRelation")
+              throw new NotFoundException(s"Volume info is not found with relation $ibdAndVolumeInfoRelation")
+          }
           val map = Neo4jRepository.getProperties(node, "deviceName", "status",
             "attachTime", "deleteOnTermination", "usage")
 
@@ -39,7 +45,6 @@ object InstanceBlockDeviceMappingInfo {
         } else {
           None
         }
-      case None => None
     }
   }
 
