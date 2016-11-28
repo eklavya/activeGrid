@@ -286,8 +286,8 @@ object AWSComputeAPI {
     }
   }
 
-  def getComputeAPI(accountInfo: AccountInfo): AmazonEC2 = {
-    val region = RegionUtils.getRegion(accountInfo.regionName.get)
+  def getComputeAPI(accountInfo: AccountInfo, regionName: String): AmazonEC2 = {
+    val region = RegionUtils.getRegion(regionName)
     val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
     val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
     awsInstanceHelper(aWSCredentials1, region)
@@ -372,5 +372,13 @@ object AWSComputeAPI {
       val instanceIds = lbDesc.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
       LoadBalancer(None, name, vpcId, None, instanceIds, availabilityZones)
     }
+  }
+
+  def getInstanceStatuses(amazonEC2: AmazonEC2, instanceIds: List[String]): Map[String, String] = {
+    val describeInstanceRequest: DescribeInstanceStatusRequest = new DescribeInstanceStatusRequest()
+      .withInstanceIds(instanceIds)
+    val describeInstanceResult = amazonEC2.describeInstanceStatus(describeInstanceRequest)
+    val result = describeInstanceResult.getInstanceStatuses.toList
+    result.map(insStatus => insStatus.getInstanceId -> insStatus.getInstanceState.getName).toMap
   }
 }
