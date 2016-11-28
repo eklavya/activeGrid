@@ -1581,7 +1581,7 @@ object Main extends App {
               ).getOrElse(List.empty[InstanceConnection])
               site
             }
-            ConnectionStrategy.toConnectionStrategy(strategy) match {
+            ConnectionStrategy.toStrategy(strategy) match {
               case ConnectionStrategy.Ssh => strategyConnection(instance => instance.liveConnections)
               case ConnectionStrategy.SecurityGroup => strategyConnection(instance => instance.estimatedConnections)
             }
@@ -1988,7 +1988,7 @@ object Main extends App {
     mayBeSite.isDefined
   }
 
-  private def instancesAction(siteId: Long, ids: String, action: String): Future[Map[String, String]] =
+  private def instancesAction(siteId: Long, ids: String, action: String)=
     Future {
       val idList = ids.split(",").toList
       val siteOpt = Site1.fromNeo4jGraph(siteId)
@@ -2007,15 +2007,16 @@ object Main extends App {
           val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo, region)
           val instanceIds = instances.flatMap(instance => instance.instanceId)
 
-          val response: Map[String, String] = InstanceActionType.toInstanceActionType(action) match {
+          val response: Map[String, String] = InstanceActionType.toType(action) match {
             case InstanceActionType.Start => AWSComputeAPI.startInstance(amazonEC2, instanceIds)
             case InstanceActionType.Stop => AWSComputeAPI.stopInstance(amazonEC2, instanceIds)
             case InstanceActionType.CreateSnapshot => {
-              val snapShots = for {instance <- instances
-                                   instanceBlockingDevice <- instance.blockDeviceMappings
-                                   volumeId <- instanceBlockingDevice.volume.volumeId
-                                   snapShots <- AWSComputeAPI.createSnapshot(amazonEC2, volumeId)
-              } yield {
+              val snapShots =
+                for {instance <- instances
+                     instanceBlockingDevice <- instance.blockDeviceMappings
+                     volumeId <- instanceBlockingDevice.volume.volumeId
+                } yield {
+                  val snapShots = AWSComputeAPI.createSnapshot(amazonEC2, volumeId)
                   val volumeNew = instanceBlockingDevice.volume.copy(
                     currentSnapshot = Some(snapShots),
                     snapshotCount = instanceBlockingDevice.volume.snapshotCount.map(count => count + 1))
@@ -2030,8 +2031,7 @@ object Main extends App {
                      image <- instance.image
                      imageName <- image.name
                      instanceId <- instance.instanceId
-                     imageId <- AWSComputeAPI.createImage(amazonEC2, imageName, instanceId)
-                } yield (Map(instanceId -> imageId))
+                } yield (Map(instanceId -> AWSComputeAPI.createImage(amazonEC2, imageName, instanceId)))
               opt.getOrElse(Map.empty[String, String])
             }
             case _ => throw new Exception("Action not found")

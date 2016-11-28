@@ -19,7 +19,7 @@ object ConnectionStrategy {
     val name = "SECURITY_GROUP"
   }
 
-  implicit def toConnectionStrategy(name: String): ConnectionStrategy = name match {
+  implicit def toStrategy(name: String): ConnectionStrategy = name match {
     case "SSH" => Ssh
     case "SECURITY_GROUP" => SecurityGroup
     case _ => Ssh //None value

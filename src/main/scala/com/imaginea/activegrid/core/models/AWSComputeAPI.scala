@@ -388,20 +388,16 @@ object AWSComputeAPI {
       (instance.getInstanceId,instance.getCurrentState.getName)).toMap
   }
 
-  def createSnapshot(amazonEC2: AmazonEC2,volumeId: String): Option[SnapshotInfo] = {
+  def createSnapshot(amazonEC2: AmazonEC2,volumeId: String): SnapshotInfo = {
     val createSnapShotRequest = new CreateSnapshotRequest(volumeId,"snapshot created by orchestrator")
     val creteSnapShotResponse = amazonEC2.createSnapshot(createSnapShotRequest)
-    if(creteSnapShotResponse != null){
-      Some(createSnapshotInfo(creteSnapShotResponse.getSnapshot))
-    }else None
+    createSnapshotInfo(creteSnapShotResponse.getSnapshot)
   }
 
-  def createImage(amazonEC2: AmazonEC2,instanceId: String,imageName: String): Option[String] = {
+  def createImage(amazonEC2: AmazonEC2,instanceId: String,imageName: String): String = {
     val createImageRequest = new CreateImageRequest(imageName,imageName)
     createImageRequest.setDescription("image created by orchestrator")
     val creteImageResponse = amazonEC2.createImage(createImageRequest)
-    if(creteImageResponse != null){
-      Some(creteImageResponse.getImageId)
-    }else None
+    creteImageResponse.getImageId
   }
 }

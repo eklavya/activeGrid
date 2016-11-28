@@ -31,7 +31,7 @@ object InstanceActionType {
     override def name: String = "NoOpt"
   }
 
-  implicit def toInstanceActionType(name: String): InstanceActionType = name match {
+  implicit def toType(name: String): InstanceActionType = name match {
     case "start" => Start
     case "stop" => Stop
     case "create-snapshot" => CreateSnapshot
