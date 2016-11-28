@@ -20,6 +20,31 @@ Software(override val id: Option[Long],
 
 object Software {
 
+  val lable = Software.getClass.getSimpleName
+  val relationLable = ActiveGridUtils.relationLbl(lable)
+
+  def fromNeo4jGraph(nodeId: Long): Option[Software] = {
+    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+    try {
+      val node = Neo4jRepository.findNodeById(nodeId)
+      val map = Neo4jRepository.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+      val software = Software(Some(nodeId),
+        ActiveGridUtils.getValueFromMapAs[String](map, "version"),
+        map("name").asInstanceOf[String],
+        map("provider").asInstanceOf[String],
+        ActiveGridUtils.getValueFromMapAs[String](map, "downloadURL"),
+        map("port").asInstanceOf[String],
+        map("processNames").asInstanceOf[Array[String]].toList,
+        map("discoverApplications").asInstanceOf[Boolean])
+      Some(software)
+    } catch {
+      case ex: Exception =>
+        logger.warn(ex.getMessage, ex)
+        None
+
+    }
+  }
+
   implicit class SoftwareImpl(software: Software) extends Neo4jRep[Software] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
     val label = "SoftwaresTest2"
@@ -42,28 +67,6 @@ object Software {
       Software.fromNeo4jGraph(nodeId)
     }
 
-  }
-
-  def fromNeo4jGraph(nodeId: Long): Option[Software] = {
-    val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    try {
-      val node = Neo4jRepository.findNodeById(nodeId)
-      val map = Neo4jRepository.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
-      val software = Software(Some(nodeId),
-        ActiveGridUtils.getValueFromMapAs[String](map, "version"),
-        map("name").asInstanceOf[String],
-        map("provider").asInstanceOf[String],
-        ActiveGridUtils.getValueFromMapAs[String](map, "downloadURL"),
-        map("port").asInstanceOf[String],
-        map("processNames").asInstanceOf[Array[String]].toList,
-        map("discoverApplications").asInstanceOf[Boolean])
-      Some(software)
-    } catch {
-      case ex: Exception =>
-        logger.warn(ex.getMessage, ex)
-        None
-
-    }
   }
 
 }

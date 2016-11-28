@@ -17,13 +17,31 @@ object IpPermissionInfo {
   val ipPermissionLabel = "IpPermissionInfo"
   val logger = LoggerFactory.getLogger(getClass)
 
+  def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
+    val maybeNode = Neo4jRepository.findNodeById(nodeId)
+    maybeNode.flatMap {
+      node =>
+        if (Neo4jRepository.hasLabel(node, ipPermissionLabel)) {
+          val map = Neo4jRepository.getProperties(node, "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
+          Some(IpPermissionInfo(Some(nodeId),
+            map("fromPort").asInstanceOf[Int],
+            map("toPort").asInstanceOf[Int],
+            IpProtocol.toProtocol(map("ipProtocol").asInstanceOf[String]),
+            map("groupIds").asInstanceOf[Array[String]].toSet,
+            map("ipRanges").asInstanceOf[Array[String]].toList))
+        } else {
+          None
+        }
+    }
+  }
+
   implicit class IpPermissionInfoImpl(ipPermissionInfo: IpPermissionInfo) extends Neo4jRep[IpPermissionInfo] {
     override def toNeo4jGraph(entity: IpPermissionInfo): Node = {
       val map = Map("fromPort" -> entity.fromPort,
         "toPort" -> entity.toPort,
-        "ipProtocol" -> entity.ipProtocol,
-        "groupIds" -> entity.groupIds,
-        "ipRanges" -> entity.ipRanges)
+        "ipProtocol" -> entity.ipProtocol.value,
+        "groupIds" -> entity.groupIds.toArray,
+        "ipRanges" -> entity.ipRanges.toArray)
       Neo4jRepository.saveEntity[IpPermissionInfo](ipPermissionLabel, entity.id, map)
     }
 
@@ -32,22 +50,4 @@ object IpPermissionInfo {
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): Option[IpPermissionInfo] = {
-    val maybeNode = Neo4jRepository.findNodeById(nodeId)
-    maybeNode match {
-      case Some(node) =>
-        if (Neo4jRepository.hasLabel(node, ipPermissionLabel)) {
-          val map = Neo4jRepository.getProperties(node, "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
-          Some(IpPermissionInfo(Some(nodeId),
-            map("fromPort").asInstanceOf[Int],
-            map("toPort").asInstanceOf[Int],
-            IpProtocol.toProtocol(map("ipProtocol").asInstanceOf[String]),
-            map("groupIds").asInstanceOf[Set[String]],
-            map("ipRanges").asInstanceOf[List[String]]))
-        } else {
-          None
-        }
-      case None => None
-    }
-  }
 }

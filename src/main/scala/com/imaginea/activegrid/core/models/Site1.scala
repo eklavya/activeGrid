@@ -25,18 +25,21 @@ object Site1 {
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
 
+  def apply(id: Long): Site1 = {
+    Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup])
+  }
 
-  def delete(siteId: Long): ExecutionStatus = {
+
+  def delete(siteId: Long): Boolean = {
     val maybeNode = Neo4jRepository.findNodeById(siteId)
-    maybeNode match {
-      case Some(node) => {
+    maybeNode.map {
+      node => {
         logger.info(s"Site is ${siteId} available,It properties are...." + node.toString)
         Neo4jRepository.deleteEntity(node.getId)
-        ExecutionStatus(true,"Site deleted successfully")
       }
-      case None =>
-        ExecutionStatus(false,s"Site ${siteId}not available")
     }
+    maybeNode.isDefined
   }
 
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {

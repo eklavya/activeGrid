@@ -31,37 +31,6 @@ object VolumeInfo {
     VolumeInfo(Some(id), None, None, None, None, None, None, List.empty[KeyValueInfo], None, None, None)
   }
 
-  implicit class VolumeInfoImpl(volumeInfo: VolumeInfo) extends Neo4jRep[VolumeInfo] {
-    override def toNeo4jGraph(entity: VolumeInfo): Node = {
-      logger.debug(s"Executing $getClass :: toNeo4jGraph ")
-      val map = Map("volumeId" -> entity.volumeId,
-        "size" -> entity.size,
-        "snapshotId" -> entity.snapshotId,
-        "availabilityZone" -> entity.availabilityZone,
-        "state" -> entity.state,
-        "createTime" -> entity.createTime,
-        "volumeType" -> entity.volumeType,
-        "snapshotCount" -> entity.snapshotCount
-      )
-      val node = Neo4jRepository.saveEntity[VolumeInfo](volumeInfoLabel, entity.id, map)
-      entity.tags.foreach {
-        tag =>
-          val tagNode = tag.toNeo4jGraph(tag)
-          Neo4jRepository.createRelation(volumeInfo_Tag_Relation, node, tagNode)
-      }
-      if (entity.currentSnapshot.nonEmpty) {
-        val snapshotInfoNode = entity.currentSnapshot.get.toNeo4jGraph(entity.currentSnapshot.get)
-        Neo4jRepository.createRelation(volumeInfo_SnapshotInfo_Relation, node, snapshotInfoNode)
-      }
-
-      node
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[VolumeInfo] = {
-      VolumeInfo.fromNeo4jGraph(nodeId)
-    }
-  }
-
   def fromNeo4jGraph(nodeId: Long): Option[VolumeInfo] = {
     logger.debug(s"Executing $getClass :: fromNeo4jGraph")
     val maybeNode = Neo4jRepository.findNodeById(nodeId)
@@ -97,4 +66,36 @@ object VolumeInfo {
       case None => None
     }
   }
+
+  implicit class VolumeInfoImpl(volumeInfo: VolumeInfo) extends Neo4jRep[VolumeInfo] {
+    override def toNeo4jGraph(entity: VolumeInfo): Node = {
+      logger.debug(s"Executing $getClass :: toNeo4jGraph ")
+      val map = Map("volumeId" -> entity.volumeId,
+        "size" -> entity.size,
+        "snapshotId" -> entity.snapshotId,
+        "availabilityZone" -> entity.availabilityZone,
+        "state" -> entity.state,
+        "createTime" -> entity.createTime,
+        "volumeType" -> entity.volumeType,
+        "snapshotCount" -> entity.snapshotCount
+      )
+      val node = Neo4jRepository.saveEntity[VolumeInfo](volumeInfoLabel, entity.id, map)
+      entity.tags.foreach {
+        tag =>
+          val tagNode = tag.toNeo4jGraph(tag)
+          Neo4jRepository.createRelation(volumeInfo_Tag_Relation, node, tagNode)
+      }
+      if (entity.currentSnapshot.nonEmpty) {
+        val snapshotInfoNode = entity.currentSnapshot.get.toNeo4jGraph(entity.currentSnapshot.get)
+        Neo4jRepository.createRelation(volumeInfo_SnapshotInfo_Relation, node, snapshotInfoNode)
+      }
+
+      node
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[VolumeInfo] = {
+      VolumeInfo.fromNeo4jGraph(nodeId)
+    }
+  }
+
 }

@@ -80,24 +80,6 @@ object AWSComputeAPI {
     instances
   }
 
-  private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
-    new AWSCredentials() {
-      def getAWSAccessKeyId: String = {
-        builder.accessKey
-      }
-
-      def getAWSSecretKey: String = {
-        builder.secretKey
-      }
-    }
-  }
-
-  def awsInstanceHelper(credentials: AWSCredentials, region: Region): AmazonEC2 = {
-    val amazonEC2: AmazonEC2 = new AmazonEC2Client(credentials)
-    amazonEC2.setRegion(region)
-    amazonEC2
-  }
-
   def getAWSInstances(amazonEC2: AmazonEC2): List[model.Instance] = {
     amazonEC2.describeInstances.getReservations.toList.flatMap {
       reservation => reservation.getInstances
@@ -109,10 +91,6 @@ object AWSComputeAPI {
     describeImagesRequest.setImageIds(imageIds)
     val imagesResult = amazonEC2.describeImages(describeImagesRequest)
     imagesResult.getImages.foldLeft(Map[String, Image]())((imageMap, image) => imageMap + ((image.getImageId, image)))
-  }
-
-  def getImageInfoMap(imagesMap: Map[String, Image]): Map[String, ImageInfo] = {
-    imagesMap.foldLeft(Map[String, ImageInfo]())((imageInfoMap, image) => imageInfoMap + ((image._1, ImageInfo.fromNeo4jGraph(image._1.toLong).get)))
   }
 
   def getImageInfo(imageId: String, imagesMap: Map[String, Image]): ImageInfo = {
@@ -186,11 +164,146 @@ object AWSComputeAPI {
     }.toList
   }
 
+  def createBlockDeviceMapping(blockDeviceMapping: List[InstanceBlockDeviceMapping]
+                               , volumesMap: Map[String, Volume]
+                               , snapshotsMap: Map[String
+    , List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
+
+    blockDeviceMapping.map { instanceBlockDeviceMapping =>
+      val volumeId = instanceBlockDeviceMapping.getEbs.getVolumeId
+      val volume: Volume = volumesMap(volumeId)
+      val snapshots: List[Snapshot] = snapshotsMap.get(volumeId) match {
+        case Some(snapShot) => snapshotsMap(volumeId)
+        case None => List.empty[Snapshot]
+      }
+      val volumeInfo = createVolumeInfo(volume, snapshots)
+      createInstanceBlockDeviceMappingInfo(instanceBlockDeviceMapping, volumeInfo, 0)
+    }
+  }
+
+  def createInstanceBlockDeviceMappingInfo(instanceBlockDeviceMapping: InstanceBlockDeviceMapping
+                                           , volumeInfo: VolumeInfo, usageInGB: Int): InstanceBlockDeviceMappingInfo = {
+    val deviceName: String = instanceBlockDeviceMapping.getDeviceName
+    val ebs: EbsInstanceBlockDevice = instanceBlockDeviceMapping.getEbs
+    val status: String = ebs.getStatus
+    val attachTime: String = ebs.getAttachTime.toString
+    val deleteOnTermination: Boolean = ebs.getDeleteOnTermination
+    InstanceBlockDeviceMappingInfo(None, deviceName, volumeInfo, status, attachTime, deleteOnTermination, usageInGB)
+  }
+
+  def createVolumeInfo(volume: Volume, snapshots: List[Snapshot]): VolumeInfo = {
+    val volumeId = volume.getVolumeId
+    val size: Int = volume.getSize
+    val snapshotId = volume.getSnapshotId
+    val availabilityZone = volume.getAvailabilityZone
+    val state = volume.getState
+    val createTime = volume.getCreateTime.toString
+    val tags: List[KeyValueInfo] = createKeyValueInfo(volume.getTags.toList)
+    val volumeType = volume.getVolumeType
+    val snapshotCount = snapshots.size
+
+    if (snapshots.nonEmpty) {
+      val currentSnapshot = snapshots.reduceLeft { (current, next) =>
+        if (next.getStartTime.compareTo(current.getStartTime) > 0 && next.getProgress.equals("100%")) {
+          next
+        }
+        else {
+          current
+        }
+      }
+      val currentSnapshotInfo = createSnapshotInfo(currentSnapshot)
+
+      VolumeInfo(None, Some(volumeId), Some(size), Some(snapshotId), Some(availabilityZone)
+        , Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount)
+        , Some(currentSnapshotInfo))
+    }
+    else {
+      VolumeInfo(None, Some(volumeId), Some(size), Some(snapshotId), Some(availabilityZone)
+        , Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount), None)
+    }
+  }
+
+  def createSnapshotInfo(snapshot: Snapshot): SnapshotInfo = {
+    val snapshotId = Option(snapshot.getSnapshotId)
+    val volumeId = Option(snapshot.getVolumeId)
+    val state = Option(snapshot.getState)
+    val startTime = Option(snapshot.getStartTime).map(startTime => startTime.toString)
+    val progress = Option(snapshot.getProgress)
+    val ownerId = Option(snapshot.getOwnerId)
+    val ownerAlias = Option(snapshot.getOwnerAlias)
+    val description = Option(snapshot.getDescription)
+    val volumeSize = Option(snapshot.getVolumeSize).map(volumeSize => volumeSize.toInt)
+    val tags = createKeyValueInfo(snapshot.getTags.toList) // it can't be null by default returning empty list
+    SnapshotInfo(None, snapshotId, volumeId, state, startTime,
+      progress, ownerId, ownerAlias, description, volumeSize, tags)
+  }
+
+  def createKeyValueInfo(tags: List[com.amazonaws.services.ec2.model.Tag]): List[KeyValueInfo] = {
+    tags.map { tag =>
+      val key = tag.getKey
+      val value = tag.getValue
+      KeyValueInfo(None, key, value)
+    }
+  }
+
+  def getSnapshotsMap(amazonEC2: AmazonEC2, volumeIds: List[String]): Map[String, List[Snapshot]] = {
+    if (volumeIds.nonEmpty) {
+      val describeSnapshotsRequest: DescribeSnapshotsRequest = new DescribeSnapshotsRequest
+      val filter = new com.amazonaws.services.ec2.model.Filter("volume-id", volumeIds)
+      val describeSnapshotsResult: DescribeSnapshotsResult = amazonEC2.describeSnapshots(describeSnapshotsRequest
+        .withFilters(filter))
+      describeSnapshotsResult.getSnapshots.foldLeft(Map[String, List[Snapshot]]()) { (map, snapshot) =>
+        val volumeId = snapshot.getVolumeId
+        val list = map.get(volumeId)
+        if (list.nonEmpty) {
+          map + ((volumeId, snapshot :: list.get))
+        } else {
+          map + ((volumeId, List(snapshot)))
+        }
+      }
+    } else {
+      Map.empty[String, List[Snapshot]]
+    }
+  }
+
+  def getVolumeInfoMap(amazonEC2: AmazonEC2, list: List[String]): Map[String, Volume] = {
+    if (list.nonEmpty) {
+      val describeVolumesRequest = new DescribeVolumesRequest()
+      describeVolumesRequest.setVolumeIds(list)
+      val describedVolumes = amazonEC2.describeVolumes(describeVolumesRequest)
+      describedVolumes.getVolumes.foldLeft(Map.empty[String, Volume])((map, volume) => map + ((volume.getVolumeId, volume)))
+    } else {
+      Map.empty[String, Volume]
+    }
+  }
+
+  def getImageInfoMap(imagesMap: Map[String, Image]): Map[String, ImageInfo] = {
+    imagesMap.foldLeft(Map[String, ImageInfo]())((imageInfoMap, image) => imageInfoMap + ((image._1, ImageInfo.fromNeo4jGraph(image._1.toLong).get)))
+  }
+
   def getComputeAPI(accountInfo: AccountInfo): AmazonEC2 = {
     val region = RegionUtils.getRegion(accountInfo.regionName.get)
     val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, accountInfo.regionName.get)
     val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
     awsInstanceHelper(aWSCredentials1, region)
+  }
+
+  private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
+    new AWSCredentials() {
+      def getAWSAccessKeyId: String = {
+        builder.accessKey
+      }
+
+      def getAWSSecretKey: String = {
+        builder.secretKey
+      }
+    }
+  }
+
+  def awsInstanceHelper(credentials: AWSCredentials, region: Region): AmazonEC2 = {
+    val amazonEC2: AmazonEC2 = new AmazonEC2Client(credentials)
+    amazonEC2.setRegion(region)
+    amazonEC2
   }
 
   def getReservedInstances(amazonEC2: AmazonEC2): List[ReservedInstanceDetails] = {
@@ -253,119 +366,6 @@ object AWSComputeAPI {
       val availabilityZones = lbDesc.getAvailabilityZones.toList
       val instanceIds = lbDesc.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
       LoadBalancer(None, name, vpcId, None, instanceIds, availabilityZones)
-    }
-  }
-
-  def createBlockDeviceMapping(blockDeviceMapping: List[InstanceBlockDeviceMapping]
-                               , volumesMap: Map[String, Volume]
-                               , snapshotsMap: Map[String
-    , List[Snapshot]]): List[InstanceBlockDeviceMappingInfo] = {
-
-    blockDeviceMapping.map { instanceBlockDeviceMapping =>
-      val volumeId = instanceBlockDeviceMapping.getEbs.getVolumeId
-      val volume: Volume = volumesMap(volumeId)
-      val snapshots: List[Snapshot] = snapshotsMap.get(volumeId) match {
-        case Some(snapShot) => snapshotsMap(volumeId)
-        case None => List.empty[Snapshot]
-      }
-      val volumeInfo = createVolumeInfo(volume, snapshots)
-      createInstanceBlockDeviceMappingInfo(instanceBlockDeviceMapping, volumeInfo, 0)
-    }
-  }
-
-  def createInstanceBlockDeviceMappingInfo(instanceBlockDeviceMapping: InstanceBlockDeviceMapping
-                                           , volumeInfo: VolumeInfo, usageInGB: Int): InstanceBlockDeviceMappingInfo = {
-    val deviceName: String = instanceBlockDeviceMapping.getDeviceName
-    val ebs: EbsInstanceBlockDevice = instanceBlockDeviceMapping.getEbs
-    val status: String = ebs.getStatus
-    val attachTime: String = ebs.getAttachTime.toString
-    val deleteOnTermination: Boolean = ebs.getDeleteOnTermination
-    InstanceBlockDeviceMappingInfo(None, deviceName, volumeInfo, status, attachTime, deleteOnTermination, usageInGB)
-  }
-
-  def createVolumeInfo(volume: Volume, snapshots: List[Snapshot]): VolumeInfo = {
-    val volumeId = volume.getVolumeId
-    val size: Int = volume.getSize
-    val snapshotId = volume.getSnapshotId
-    val availabilityZone = volume.getAvailabilityZone
-    val state = volume.getState
-    val createTime = volume.getCreateTime.toString
-    val tags: List[KeyValueInfo] = createKeyValueInfo(volume.getTags.toList)
-    val volumeType = volume.getVolumeType
-    val snapshotCount = snapshots.size
-
-    if (snapshots.nonEmpty) {
-      val currentSnapshot = snapshots.reduceLeft { (current, next) =>
-        if (next.getStartTime.compareTo(current.getStartTime) > 0 && next.getProgress.equals("100%")) {
-          next
-        }
-        else {
-          current
-        }
-      }
-      val currentSnapshotInfo = createSnapshotInfo(currentSnapshot)
-
-      VolumeInfo(None, Some(volumeId), Some(size), Some(snapshotId), Some(availabilityZone)
-        , Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount)
-        , Some(currentSnapshotInfo))
-    }
-    else {
-      VolumeInfo(None, Some(volumeId), Some(size), Some(snapshotId), Some(availabilityZone)
-        , Some(state), Some(createTime), tags, Some(volumeType), Some(snapshotCount), None)
-    }
-  }
-
-  def createSnapshotInfo(snapshot: Snapshot): SnapshotInfo = {
-    val snapshotId = snapshot.getSnapshotId
-    val volumeId = snapshot.getVolumeId
-    val state = snapshot.getState
-    val startTime = snapshot.getStartTime.toString
-    val progress = snapshot.getProgress
-    val ownerId = snapshot.getOwnerId
-    val ownerAlias = snapshot.getOwnerAlias
-    val description = snapshot.getDescription
-    val volumeSize = snapshot.getVolumeSize
-    val tags = createKeyValueInfo(snapshot.getTags.toList)
-    SnapshotInfo(None, Some(snapshotId), Some(volumeId), Some(state), Some(startTime)
-      , Some(progress), Some(ownerId), Some(ownerAlias), Some(description), Some(volumeSize), tags)
-  }
-
-  def createKeyValueInfo(tags: List[com.amazonaws.services.ec2.model.Tag]): List[KeyValueInfo] = {
-    tags.map { tag =>
-      val key = tag.getKey
-      val value = tag.getValue
-      KeyValueInfo(None, key, value)
-    }
-  }
-
-  def getSnapshotsMap(amazonEC2: AmazonEC2, volumeIds: List[String]): Map[String, List[Snapshot]] = {
-    if (volumeIds.nonEmpty) {
-      val describeSnapshotsRequest: DescribeSnapshotsRequest = new DescribeSnapshotsRequest
-      val filter = new com.amazonaws.services.ec2.model.Filter("volume-id", volumeIds)
-      val describeSnapshotsResult: DescribeSnapshotsResult = amazonEC2.describeSnapshots(describeSnapshotsRequest
-        .withFilters(filter))
-      describeSnapshotsResult.getSnapshots.foldLeft(Map[String, List[Snapshot]]()) { (map, snapshot) =>
-        val volumeId = snapshot.getVolumeId
-        val list = map.get(volumeId)
-        if (list.nonEmpty) {
-          map + ((volumeId, snapshot :: list.get))
-        } else {
-          map + ((volumeId, List(snapshot)))
-        }
-      }
-    } else {
-      Map.empty[String, List[Snapshot]]
-    }
-  }
-
-  def getVolumeInfoMap(amazonEC2: AmazonEC2, list: List[String]): Map[String, Volume] = {
-    if (list.nonEmpty) {
-      val describeVolumesRequest = new DescribeVolumesRequest()
-      describeVolumesRequest.setVolumeIds(list)
-      val describedVolumes = amazonEC2.describeVolumes(describeVolumesRequest)
-      describedVolumes.getVolumes.foldLeft(Map.empty[String, Volume])((map, volume) => map + ((volume.getVolumeId, volume)))
-    } else {
-      Map.empty[String, Volume]
     }
   }
 }
