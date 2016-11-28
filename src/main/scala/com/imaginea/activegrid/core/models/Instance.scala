@@ -265,10 +265,10 @@ object Instance {
         Neo4jRepository.setGraphRelationship(node, blockDeviceNode, relationship_blockingDeviceMapping)
       }
 
-      val relationship_securityGroup = "HAS_securityGroup"
+      val relationshipsecurityGroup = "HAS_securityGroup"
       entity.securityGroups.foreach { securityGroup =>
         val securityGroupNode = securityGroup.toNeo4jGraph(securityGroup)
-        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_process)
+        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationshipsecurityGroup)
       }
       node
     }
