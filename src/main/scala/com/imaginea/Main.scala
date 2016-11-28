@@ -287,6 +287,13 @@ object Main extends App {
   implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
   implicit val applicationFormat = jsonFormat9(Application.apply)
 
+  implicit val metricTypeFormat = MetricTypeFormat
+  implicit val unitTypeJson = UnitTypeJson
+  implicit val conditionTypeJson = ConditionTypeJson
+  implicit val scaleTypeJson = ScaleTypeJson
+  implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
+  implicit val autoScalingPolicyJson = jsonFormat5(AutoScalingPolicy.apply)
+
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
       JsString(obj.deltaStatus.toString)
@@ -2058,6 +2065,24 @@ object Main extends App {
               }
             case Failure(ex) => logger.info(s"Error while deleting policy $policyId", ex)
               complete(StatusCodes.BadRequest, "Error while deleting policy")
+          }
+        }
+      }
+    } ~
+    path("site" / LongNumber / "policies" / Segment) {
+      (siteId, policyId) => {
+        get {
+          val mayBePolicy = Future {
+            SiteManagerImpl.getAutoScalingPolicy(siteId, policyId)
+          }
+          onComplete(mayBePolicy) {
+            case Success(somePolicy) =>
+              somePolicy match {
+                case Some(policy) => complete(StatusCodes.OK, policy)
+                case None => complete(StatusCodes.OK, s"Policy $policyId is not available")
+              }
+            case Failure(ex) => logger.info(s"Error while retrieving policy $policyId details", ex)
+              complete(StatusCodes.BadRequest, s"Error while retrieving policy  ${policyId} details")
           }
         }
       }
