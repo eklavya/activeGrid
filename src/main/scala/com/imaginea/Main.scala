@@ -777,15 +777,14 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to get the APM Server Url")
         }
       }
-  } ~ path("apm" / IntNumber) {
+  } ~ path("apm" / LongNumber) {
     siteId => get {
-
       val serverDetails = Future {
         Site.fromNeo4jGraph(siteId).map { site =>
           val aPMServerDetails = getAPMServers
           logger.info(s"All Sever details : $aPMServerDetails")
           val list = aPMServerDetails.filter(server => {
-            if (server.monitoredSite.nonEmpty) server.monitoredSite.get.id == site.id else false
+            server.monitoredSite.exists(monitoredSite => monitoredSite.id == site.id)
           })
           logger.info(s"Filtered Server details : $list")
           list.toList
