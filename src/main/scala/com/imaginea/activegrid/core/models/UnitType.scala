@@ -64,6 +64,7 @@ case object UnitType {
     }
   }
 }
+
 object UnitTypeJson extends RootJsonFormat[UnitType] {
 
   override def write(obj: UnitType): JsValue = {

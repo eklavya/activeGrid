@@ -20,7 +20,7 @@ import scala.collection.JavaConversions._
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
-  def getAutoScalingPolicies(accountInfo: AccountInfo) : List[AutoScalingPolicy] = {
+  def getAutoScalingPolicies(accountInfo: AccountInfo): List[AutoScalingPolicy] = {
     //Need to write logic
     List.empty[AutoScalingPolicy]
   }

@@ -34,6 +34,7 @@ object ActiveGridUtils {
   def relationLbl(clsName: String): String = {
     "HAS_" + clsName
   }
+
   def getProperty[T: Manifest](propertyMap: Map[String, JsValue], property: String): Option[T] = {
     if (propertyMap.contains(property)) {
       propertyMap(property) match {
@@ -47,7 +48,8 @@ object ActiveGridUtils {
       None
     }
   }
-  def getValueAsString(option: Option[String]): String ={
+
+  def getValueAsString(option: Option[String]): String = {
 
     option.getOrElse("")
   }
@@ -63,6 +65,7 @@ object ActiveGridUtils {
       List.empty[T]
     }
   }
+
   def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
     fieldValue match {
       case Some(x) => (fieldName, JsString(x)) :: rest

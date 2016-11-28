@@ -16,7 +16,7 @@ case class Site1(override val id: Option[Long],
                  scalingGroups: List[ScalingGroup],
                  groupsList: List[InstanceGroup],
                  groupBy: String,
-                 scalingPolicies:List[AutoScalingPolicy]) extends BaseEntity
+                 scalingPolicies: List[AutoScalingPolicy]) extends BaseEntity
 
 object Site1 {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -29,7 +29,7 @@ object Site1 {
 
   def apply(id: Long): Site1 = {
     Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
-      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup],"test",List.empty[AutoScalingPolicy])
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], "test", List.empty[AutoScalingPolicy])
   }
 
 
@@ -86,11 +86,11 @@ object Site1 {
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
 
-        val policies = Neo4jRepository.getChildNodeIds(nodeId,AutoScalingPolicy.relationLable).flatMap{
+        val policies = Neo4jRepository.getChildNodeIds(nodeId, AutoScalingPolicy.relationLable).flatMap {
           id => AutoScalingPolicy.fromNeo4jGraph(id)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups,groupBy,policies))
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, groupBy, policies))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None

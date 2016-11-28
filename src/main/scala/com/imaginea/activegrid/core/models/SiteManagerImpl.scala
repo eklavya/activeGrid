@@ -7,7 +7,7 @@ import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
   * Created by sivag on 3/11/16.
   */
 object SiteManagerImpl {
-  def getAutoScalingPolicies(siteId: Long) : List[AutoScalingPolicy] = {
+  def getAutoScalingPolicies(siteId: Long): List[AutoScalingPolicy] = {
     Site1.fromNeo4jGraph(siteId) match {
       case Some(site) => site.scalingPolicies
       case None => List.empty[AutoScalingPolicy]
