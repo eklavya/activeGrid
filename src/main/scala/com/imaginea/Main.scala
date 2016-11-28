@@ -2083,13 +2083,14 @@ object Main extends App {
       (result, siteFilter) =>
         val accountInfo = siteFilter.accountInfo
         val mayBeRegion = accountInfo.regionName
+        val (instancesList, reservedInstanceDetailsList, loadBalancerList, scalingGroupList) = result
         mayBeRegion.map { regionName =>
           val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo, regionName)
           val instances = AWSComputeAPI.getInstances(amazonEC2, accountInfo)
           val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
           val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
           val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
-          (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
+          (instancesList ::: instances, reservedInstanceDetailsList ::: reservedInstanceDetails, loadBalancerList ::: loadBalancers, scalingGroupList ::: scalingGroup)
         }.getOrElse(result)
     }
     val site1 = Site1(None, site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(), site.groupBy)
