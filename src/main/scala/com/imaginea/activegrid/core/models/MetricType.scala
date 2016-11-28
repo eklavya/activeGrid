@@ -1,5 +1,7 @@
 package com.imaginea.activegrid.core.models
 
+import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
+
 /**
   * Created by sivag on 22/11/16.
   */
@@ -48,6 +50,21 @@ case object MetricType {
       case "CALLS_PER_MINUTE" => CALLSPERMINUTE
       case "IO_READS" => IOREADS
       case "IO_WRITES" => IOWRITES
+    }
+  }
+}
+
+
+object MetricTypeFormat extends RootJsonFormat[MetricType] {
+
+  override def write(obj: MetricType): JsValue = {
+    JsString(obj.metricType.toString)
+  }
+
+  override def read(json: JsValue): MetricType = {
+    json match {
+      case JsString(str) => MetricType.toMetricType(str)
+      case _ => throw DeserializationException("Unable to deserialize Filter Type")
     }
   }
 }

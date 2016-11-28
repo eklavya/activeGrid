@@ -281,10 +281,18 @@ object Main extends App {
     }
   }
 
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList", "groupBy")
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
+
   implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
   implicit val applicationFormat = jsonFormat9(Application.apply)
+
+  implicit val metricTypeFormat = MetricTypeFormat
+  implicit val unitTypeJson = UnitTypeJson
+  implicit val conditionTypeJson = ConditionTypeJson
+  implicit val scaleTypeJson = ScaleTypeJson
+  implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
+  implicit val autoScalingPolicyJson = jsonFormat5(AutoScalingPolicy.apply)
 
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
@@ -594,7 +602,7 @@ object Main extends App {
 
               }
               Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.reservedInstanceDetails,
-                site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+                site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, site.groupBy))
             case None =>
               logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
               None
@@ -1390,7 +1398,7 @@ object Main extends App {
                     case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
                   }
                 }
-                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, site.groupBy))
               case None =>
                 logger.warn(s"Failed in fromNeo4jGraph of Site for siteId : $siteId")
                 None
@@ -1474,7 +1482,7 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val newListOfInstances = instance :: listOfInstances
-                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList)
+                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, site.groupBy)
                 siteToSave.toNeo4jGraph(siteToSave)
                 "Instance added successfully to Site"
               case None =>
@@ -1566,6 +1574,44 @@ object Main extends App {
           case Failure(exception) =>
             logger.error(s"Unable to get Site Delta. Failed with : ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to get Site Delta.")
+        }
+      }
+    } ~ path(LongNumber / "groupby") { siteId =>
+      put {
+        entity(as[String]) { groupBy =>
+          val response = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite match {
+              case Some(site) => val siteToSave = site.copy(groupBy = groupBy)
+                siteToSave.toNeo4jGraph(siteToSave)
+                "Added GroupBy successfully!"
+              case None => throw new NotFoundException(s"Site Entity not found with ID : $siteId")
+            }
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to add GroupBy ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to add groupBy")
+          }
+        }
+      }
+    } ~ path(LongNumber / "groupby") { siteId =>
+      get {
+        val siteGroupBy = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          val mayBeGroupBy = mayBeSite match {
+            case Some(site) => site.groupBy
+            case None => throw new NotFoundException(s"Site Entity with ID : $siteId Not Found")
+          }
+          mayBeGroupBy
+        }
+
+        onComplete(siteGroupBy) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to get Site GroupBy. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get Site GroupBy.")
         }
       }
     }
@@ -1779,7 +1825,7 @@ object Main extends App {
         val lbsToSave = getLoadBalancersToSave(site.loadBalancers)
         val sgsToSave = getScalingGroupsToSave(site.scalingGroups)
         val rInstancesToSave = getReservedInstancesToSave(site.reservedInstanceDetails)
-        val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList)
+        val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList, site.groupBy)
         siteToSave.toNeo4jGraph(siteToSave)
         cachedSite.put(siteId, siteToSave)
         Some(siteToSave)
@@ -1918,7 +1964,7 @@ object Main extends App {
   def populateInstances(site: Site1): Site1 = {
     val siteFilters = site.filters
     logger.info(s"Parsing instance : ${site.instances}")
-    val computedResult = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+    val (instances, reservedInstanceDetails, loadBalancer, scalingGroup) = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
       (result, siteFilter) =>
         val accountInfo = siteFilter.accountInfo
         val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
@@ -1928,7 +1974,7 @@ object Main extends App {
         val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
         (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
     }
-    val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
+    val site1 = Site1(None, site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(), site.groupBy)
     site1.toNeo4jGraph(site1)
     site1
   }
@@ -2021,7 +2067,26 @@ object Main extends App {
           }
         }
       }
+    } ~
+    path("site" / LongNumber / "policies" / Segment) {
+      (siteId, policyId) => {
+        get {
+          val mayBePolicy = Future {
+            SiteManagerImpl.getAutoScalingPolicy(siteId, policyId)
+          }
+          onComplete(mayBePolicy) {
+            case Success(somePolicy) =>
+              somePolicy match {
+                case Some(policy) => complete(StatusCodes.OK, policy)
+                case None => complete(StatusCodes.OK, s"Policy $policyId is not available")
+              }
+            case Failure(ex) => logger.info(s"Error while retrieving policy $policyId details", ex)
+              complete(StatusCodes.BadRequest, s"Error while retrieving policy  ${policyId} details")
+          }
+        }
+      }
     }
+
 
   implicit object GroupTypeFormat extends RootJsonFormat[GroupType] {
     override def write(obj: GroupType): JsValue = {
@@ -2035,6 +2100,7 @@ object Main extends App {
       }
     }
   }
+
 
   implicit object ConditionFormat extends RootJsonFormat[Condition] {
     override def write(obj: Condition): JsValue = {
@@ -2050,5 +2116,6 @@ object Main extends App {
       }
     }
   }
+
 
 }
