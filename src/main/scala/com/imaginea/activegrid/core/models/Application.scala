@@ -27,12 +27,12 @@ object Application {
 
     override def toNeo4jGraph(entity: Application): Node = {
 
-        //Saving node and properties
+      //Saving node and properties
       val map = Map("name" -> entity.name, "description" -> entity.description, "version" -> entity.version,
-                  "responseTime" -> entity.responseTime)
+        "responseTime" -> entity.responseTime)
       val node = Neo4jRepository.saveEntity[Application](Application.lable, entity.id, map)
 
-       //Mapping instance to application
+      //Mapping instance to application
       entity.instances.foreach { instance =>
         val instanceNode = instance.toNeo4jGraph(instance)
         Neo4jRepository.createRelation(Instance.relationLable, node, instanceNode)
@@ -42,7 +42,7 @@ object Application {
         val softwareNode = software.toNeo4jGraph(software)
         Neo4jRepository.createRelation(Software.relationLable, node, softwareNode)
       }
-        //Mapping ApplicationTier
+      //Mapping ApplicationTier
       entity.tiers.foreach { appTier =>
         val tierNode = appTier.toNeo4jGraph(appTier)
         Neo4jRepository.createRelation(ApplicationTier.relationLable, node, tierNode)
@@ -63,31 +63,31 @@ object Application {
 
   def fromNeo4jGraph(id: Long): Option[Application] = {
     Neo4jRepository.findNodeById(id).flatMap {
-        node =>
+      node =>
         if (Neo4jRepository.hasLabel(node, Application.lable)) {
-           // Fetching properties
-        val map = Neo4jRepository.getProperties(node, "name", "description", "version", "responseTime")
-        val instanceNodeIds = Neo4jRepository.getChildNodeIds(id, Instance.relationLable)
-        val instances = instanceNodeIds.flatMap(nodeId => Instance.fromNeo4jGraph(nodeId))
-        val softwareNodeids = Neo4jRepository.getChildNodeIds(id, Software.relationLable)
-        val software = softwareNodeids.flatMap(nodeId => Software.fromNeo4jGraph(nodeId))
-        val appTierNodeIds = Neo4jRepository.getChildNodeIds(id, ApplicationTier.relationLable)
-        val appTiers = appTierNodeIds.flatMap(nodeId => ApplicationTier.fromNeo4jGraph(nodeId))
-        val aPMServerDetailsNodeIds = Neo4jRepository.getChildNodeIds(id, APMServerDetails.relationLable)
-        val aPMServerDetails = aPMServerDetailsNodeIds.flatMap(nodeId => APMServerDetails.fromNeo4jGraph(nodeId))
-            // Creating application instance
-         Some(Application(Some(node.getId),
-          ActiveGridUtils.getValueFromMapAs[String](map, "name"),
-          ActiveGridUtils.getValueFromMapAs[String](map, "description"),
-          ActiveGridUtils.getValueFromMapAs[String](map, "version"),
-          instances,
-          software.headOption,
-          appTiers,
-          aPMServerDetails.headOption,
-          ActiveGridUtils.getValueFromMapAs[Double](map, "responseTime")))
-      } else {
-        None
-      }
+          // Fetching properties
+          val map = Neo4jRepository.getProperties(node, "name", "description", "version", "responseTime")
+          val instanceNodeIds = Neo4jRepository.getChildNodeIds(id, Instance.relationLable)
+          val instances = instanceNodeIds.flatMap(nodeId => Instance.fromNeo4jGraph(nodeId))
+          val softwareNodeids = Neo4jRepository.getChildNodeIds(id, Software.relationLable)
+          val software = softwareNodeids.flatMap(nodeId => Software.fromNeo4jGraph(nodeId))
+          val appTierNodeIds = Neo4jRepository.getChildNodeIds(id, ApplicationTier.relationLable)
+          val appTiers = appTierNodeIds.flatMap(nodeId => ApplicationTier.fromNeo4jGraph(nodeId))
+          val aPMServerDetailsNodeIds = Neo4jRepository.getChildNodeIds(id, APMServerDetails.relationLable)
+          val aPMServerDetails = aPMServerDetailsNodeIds.flatMap(nodeId => APMServerDetails.fromNeo4jGraph(nodeId))
+          // Creating application instance
+          Some(Application(Some(node.getId),
+            ActiveGridUtils.getValueFromMapAs[String](map, "name"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "description"),
+            ActiveGridUtils.getValueFromMapAs[String](map, "version"),
+            instances,
+            software.headOption,
+            appTiers,
+            aPMServerDetails.headOption,
+            ActiveGridUtils.getValueFromMapAs[Double](map, "responseTime")))
+        } else {
+          None
+        }
     }
   }
 }
