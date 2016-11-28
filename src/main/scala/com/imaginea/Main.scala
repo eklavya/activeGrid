@@ -314,7 +314,7 @@ object Main extends App {
             AGU.getObjectsFromJson[ScalingGroup](map, "scalingGroups", scalingGroupFormat),
             AGU.getObjectsFromJson[InstanceGroup](map, "instanceGroups", instanceGroupFormat),
             List.empty[Application],
-            "test"
+            AGU.getProperty[String](map, "groupBy").getOrElse("")
           )
         case _ => logger.debug("Not a JsObject")
           Site1(0L)
