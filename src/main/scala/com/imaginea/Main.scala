@@ -454,7 +454,7 @@ object Main extends App {
         }
       }
     } ~ path("site" / "save" / LongNumber) { siteId =>
-      withRequestTimeout(4.minutes) {
+      withRequestTimeout(2.minutes) {
         put {
           val siteResponse = Future {
             val mayBeSite = cachedSite.get(siteId)
