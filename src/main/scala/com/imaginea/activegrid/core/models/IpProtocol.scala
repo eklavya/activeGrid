@@ -38,4 +38,5 @@ case object IpProtocol {
   case object UNRECOGNIZED extends IpProtocol {
     override def value: String = "unrecognized"
   }
+
 }

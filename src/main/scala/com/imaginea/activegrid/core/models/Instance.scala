@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -43,6 +44,9 @@ object Instance {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val LaunchTime = 100
+
+  val lable = Instance.getClass.getName
+  val relationLable = ActiveGridUtils.relationLbl(lable)
 
   def apply(instanceId: Option[String], name: String, state: Option[String], instanceType: Option[String],
             platform: Option[String], architecture: Option[String], publicDnsName: Option[String], launchTime: Option[Long],
@@ -261,10 +265,10 @@ object Instance {
         Neo4jRepository.setGraphRelationship(node, blockDeviceNode, relationship_blockingDeviceMapping)
       }
 
-      val relationship_securityGroup = "HAS_securityGroup"
+      val relationshipsecurityGroup = "HAS_securityGroup"
       entity.securityGroups.foreach { securityGroup =>
         val securityGroupNode = securityGroup.toNeo4jGraph(securityGroup)
-        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationship_process)
+        Neo4jRepository.setGraphRelationship(node, securityGroupNode, relationshipsecurityGroup)
       }
       node
     }

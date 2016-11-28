@@ -224,4 +224,5 @@ case object AWSInstanceType {
 
     override def rootPartitionSize: Double = 1D
   }
+
 }

@@ -204,4 +204,26 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     val nodes = findNodesByLabelAndProperty(label, propertyName, propertyVal)(neo)
     nodes.headOption
   }
+
+  def deleteRelationship(parentNodeId: Long, childNodeId: Long, relationshipName: String): Boolean = {
+    withTx { neo =>
+      val mayBeParentNode = findNodeById(parentNodeId)
+      mayBeParentNode match {
+        case Some(parentNode) =>
+          if (parentNode.hasRelationship(relationshipName)) {
+            val relationships = parentNode.getRelationships(relationshipName, Direction.OUTGOING)
+            val relationshipToDelete = relationships.find(relationship => relationship.getEndNode.getId == childNodeId)
+            relationshipToDelete match {
+              case Some(relationship) =>
+                relationship.delete()
+                true
+              case None => false
+            }
+          } else {
+            false
+          }
+        case None => false
+      }
+    }
+  }
 }

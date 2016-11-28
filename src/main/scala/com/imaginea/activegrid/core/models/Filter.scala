@@ -40,4 +40,5 @@ object Filter {
       Filter.fromNeo4jGraph(nodeId)
     }
   }
+
 }
