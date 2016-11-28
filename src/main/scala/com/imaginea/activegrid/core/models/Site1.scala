@@ -17,7 +17,8 @@ case class Site1(override val id: Option[Long],
                  filters: List[SiteFilter],
                  loadBalancers: List[LoadBalancer],
                  scalingGroups: List[ScalingGroup],
-                 groupsList: List[InstanceGroup]) extends BaseEntity
+                 groupsList: List[InstanceGroup],
+                 groupBy: String) extends BaseEntity
 
 object Site1 {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -28,6 +29,23 @@ object Site1 {
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
 
+  def apply(id: Long): Site1 = {
+    Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], "test")
+  }
+
+
+  def delete(siteId: Long): Boolean = {
+    val maybeNode = Neo4jRepository.findNodeById(siteId)
+    maybeNode.map {
+      node => {
+        logger.info(s"Site is $siteId available,It properties are...." + node.toString)
+        Neo4jRepository.deleteEntity(node.getId)
+      }
+    }
+    maybeNode.isDefined
+  }
+
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -35,6 +53,7 @@ object Site1 {
         val map = Neo4jRepository.getProperties(node, "siteName")
         val siteName = map.get("siteName").toString
         val relationship_inst = "HAS_Instance"
+        val groupBy = map.get("groupBy").toString
         val childNodeIds_inst: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship_inst)
         val instances: List[Instance] = childNodeIds_inst.flatMap { childId =>
           Instance.fromNeo4jGraph(childId)
@@ -69,7 +88,7 @@ object Site1 {
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups))
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, groupBy))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -80,7 +99,7 @@ object Site1 {
 
     override def toNeo4jGraph(entity: Site1): Node = {
       val label = "Site1"
-      val mapPrimitives = Map("siteName" -> entity.siteName)
+      val mapPrimitives = Map("siteName" -> entity.siteName, "groupBy" -> entity.groupBy)
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
       val relationship_inst = "HAS_Instance"
       val executorService = Executors.newFixedThreadPool(Constants.THREAD_POOL_SIZE)

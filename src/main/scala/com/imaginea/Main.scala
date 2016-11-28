@@ -29,7 +29,6 @@ object Main extends App {
   val cachedSite = mutable.Map.empty[Long, Site1]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
     override def write(obj: KeyPairStatus): JsValue = JsString(obj.name.toString)
 
@@ -49,35 +48,15 @@ object Main extends App {
   implicit val imageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
   implicit val pageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
-
-
-  implicit object FilterTypeFormat extends RootJsonFormat[FilterType] {
-
-    override def write(obj: FilterType): JsValue = {
-      JsString(obj.filterType.toString)
-    }
-
-    override def read(json: JsValue): FilterType = {
-      json match {
-        case JsString(str) => FilterType.toFilteType(str)
-        case _ => throw DeserializationException("Unable to deserialize Filter Type")
-      }
-    }
-  }
-
-  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
-
-    override def write(obj: InstanceProvider): JsValue = {
-      JsString(obj.instanceProvider.toString)
-    }
-
-    override def read(json: JsValue): InstanceProvider = {
-      json match {
-        case JsString(str) => InstanceProvider.toInstanceProvider(str)
-        case _ => throw DeserializationException("Unable to deserialize Filter Type")
-      }
-    }
-  }
+  implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
+  implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
+  implicit val instanceConnectionFormat = jsonFormat(InstanceConnection.apply, "id", "sourceNodeId", "targetNodeId", "portRanges")
+  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
+  implicit val instanceUserFormat = jsonFormat(InstanceUser.apply, "id", "userName", "publicKeys")
+  implicit val instanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
+  implicit val pageInstFormat = jsonFormat4(Page[InstanceFlavor])
+  implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
+  implicit val keyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
 
   implicit object ipProtocolFormat extends RootJsonFormat[IpProtocol] {
 
@@ -93,32 +72,27 @@ object Main extends App {
     }
   }
 
-  implicit object GroupTypeFormat extends RootJsonFormat[GroupType] {
-    override def write(obj: GroupType): JsValue = {
-      JsString(obj.groupType.toString)
+  implicit val ipPermissionInfoFormat = jsonFormat(IpPermissionInfo.apply, "id", "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
+
+  implicit object InstanceProviderFormat extends RootJsonFormat[InstanceProvider] {
+
+    override def write(obj: InstanceProvider): JsValue = {
+      JsString(obj.instanceProvider.toString)
     }
 
-    override def read(json: JsValue): GroupType = {
+    override def read(json: JsValue): InstanceProvider = {
       json match {
-        case JsString(str) => GroupType.toGroupType(str)
+        case JsString(str) => InstanceProvider.toInstanceProvider(str)
         case _ => throw DeserializationException("Unable to deserialize Filter Type")
       }
     }
   }
 
-
-  implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
-  implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
-  implicit val instanceConnectionFormat = jsonFormat(InstanceConnection.apply, "id", "sourceNodeId", "targetNodeId", "portRanges")
-  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
-  implicit val instanceUserFormat = jsonFormat(InstanceUser.apply, "id", "userName", "publicKeys")
-  implicit val instanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
-  implicit val pageInstFormat = jsonFormat4(Page[InstanceFlavor])
-  implicit val storageInfoFormat = jsonFormat(StorageInfo.apply, "id", "used", "total")
-  implicit val keyValueInfoFormat = jsonFormat(KeyValueInfo.apply, "id", "key", "value")
-
-  implicit val ipPermissionInfoFormat = jsonFormat(IpPermissionInfo.apply, "id", "fromPort", "toPort", "ipProtocol", "groupIds", "ipRanges")
-  implicit val securityGroupInfoFormat = jsonFormat(SecurityGroupInfo.apply, "id", "groupName", "groupId", "ownerId", "description", "IpPermissions", "tags")
+  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
+  implicit val snapshotInfoFormat = jsonFormat11(SnapshotInfo.apply)
+  implicit val volumeInfoFormat = jsonFormat11(VolumeInfo.apply)
+  implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
+  implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
 
   implicit object instanceFormat extends RootJsonFormat[Instance] {
     override def write(i: Instance): JsValue = {
@@ -163,6 +137,37 @@ object Main extends App {
       JsObject(fields: _*)
     }
 
+    def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      fieldValue match {
+        case Some(x) => (fieldName, JsString(x)) :: rest
+        case None => rest
+      }
+    }
+
+    def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      fieldValue match {
+        case Some(x) => (fieldName, JsNumber(x)) :: rest
+        case None => rest
+      }
+    }
+
+    def objectToJsValue[T](fieldName: String, obj: Option[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      obj match {
+        case Some(x) => (fieldName, jsonFormat.write(x.asInstanceOf[T])) :: rest
+        case None => rest
+      }
+    }
+
+    def listToJsValue[T](fieldName: String, objList: List[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
+      }
+    }
+
+    def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+      objList.map { obj => (fieldName, jsonFormat.write(obj))
+      }.toList
+    }
+
     override def read(json: JsValue): Instance = {
       json match {
         case JsObject(map) =>
@@ -177,37 +182,16 @@ object Main extends App {
             getProperty[String](map, "architecture"),
             getProperty[String](map, "publicDnsName"),
             getProperty[Long](map, "launchTime"),
-            if (getProperty[String](map, "memoryInfo").nonEmpty) {
-              Some(storageInfoFormat.read(getProperty[String](map, "memoryInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
-            if (getProperty[String](map, "rootDiskInfo").nonEmpty) {
-              Some(storageInfoFormat.read(getProperty[String](map, "rootDiskInfo").get.asInstanceOf[JsValue]))
-            }
-            else {
-              None
-            },
+            getProperty[String](map, "memoryInfo").map(memoryInfo => storageInfoFormat.read(memoryInfo.asInstanceOf[JsValue])),
+            getProperty[String](map, "rootDiskInfo").map(rootDiskInfo => storageInfoFormat.read(rootDiskInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[KeyValueInfo](map, "keyValueInfo", keyValueInfoFormat),
-            if (getProperty[String](map, "sshAccessInfo").nonEmpty) {
-              Some(sshAccessInfoFormat.read(getProperty[String](map, "sshAccessInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "sshAccessInfo").map(sshAccessInfo => sshAccessInfoFormat.read(sshAccessInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[InstanceConnection](map, "liveConnections", instanceConnectionFormat),
             getObjectsFromJson[InstanceConnection](map, "estimatedConnections", instanceConnectionFormat),
             getObjectsFromJson[ProcessInfo](map, "processes", processInfoFormat).toSet,
-            if (getProperty[String](map, "imageInfo").nonEmpty) {
-              Some(imageFormat.read(getProperty[String](map, "imageInfo").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "imageInfo").map(imageInfo => imageFormat.read(imageInfo.asInstanceOf[JsValue])),
             getObjectsFromJson[InstanceUser](map, "existingUsers", instanceUserFormat),
-            if (getProperty[String](map, "account").nonEmpty) {
-              Some(accountInfoFormat.read(getProperty[String](map, "acoount").get.asInstanceOf[JsValue]))
-            } else {
-              None
-            },
+            getProperty[String](map, "account").map(accountInfo => accountInfoFormat.read(accountInfo.asInstanceOf[JsValue])),
             getProperty[String](map, "availabilityZone"),
             getProperty[String](map, "privateDnsName"),
             getProperty[String](map, "privateIpAddress"),
@@ -222,13 +206,6 @@ object Main extends App {
           )
         case _ => logger.debug("Not a JsObject")
           Instance("Test")
-      }
-    }
-
-    def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      fieldValue match {
-        case Some(x) => (fieldName, JsString(x)) :: rest
-        case None => rest
       }
     }
 
@@ -257,41 +234,11 @@ object Main extends App {
         List.empty[T]
       }
     }
-
-    def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      fieldValue match {
-        case Some(x) => (fieldName, JsNumber(x)) :: rest
-        case None => rest
-      }
-    }
-
-    def objectToJsValue[T](fieldName: String, obj: Option[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      obj match {
-        case Some(x) => (fieldName, jsonFormat.write(x.asInstanceOf[T])) :: rest
-        case None => rest
-      }
-    }
-
-    def listToJsValue[T](fieldName: String, objList: List[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      objList.map { obj => (fieldName, jsonFormat.write(obj))
-      }
-    }
-
-    def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-      objList.map { obj => (fieldName, jsonFormat.write(obj))
-      }.toList
-    }
   }
 
-  implicit val accountInfoFormat = jsonFormat(AccountInfo.apply, "id", "accountId", "providerType", "ownerAlias", "accessKey", "secretKey", "regionName", "regions", "networkCIDR")
-  implicit val snapshotInfoFormat = jsonFormat11(SnapshotInfo.apply)
-  implicit val volumeInfoFormat = jsonFormat11(VolumeInfo.apply)
-  implicit val instanceBlockingFormat = jsonFormat7(InstanceBlockDeviceMappingInfo.apply)
-  implicit val securityGroupsFormat = jsonFormat7(SecurityGroupInfo.apply)
   implicit val PageInstanceFormat = jsonFormat4(Page[Instance])
   implicit val siteFormat = jsonFormat(Site.apply, "id", "instances", "siteName", "groupBy")
   implicit val appSettings = jsonFormat(ApplicationSettings.apply, "id", "settings", "authSettings")
-
   implicit val resourceACLFormat = jsonFormat(ResourceACL.apply, "id", "resources", "permission", "resourceIds")
   implicit val userGroupFormat = jsonFormat(UserGroup.apply, "id", "name", "users", "accesses")
   implicit val pageUserGroupFormat = jsonFormat(Page[UserGroup], "startIndex", "count", "totalObjects", "objects")
@@ -299,6 +246,26 @@ object Main extends App {
   implicit val siteACLFormat = jsonFormat(SiteACL.apply, "id", "name", "site", "instances", "groups")
   implicit val pageSiteACLFormat = jsonFormat(Page[SiteACL], "startIndex", "count", "totalObjects", "objects")
   implicit val instanceGroupFormat = jsonFormat(InstanceGroup.apply, "id", "groupType", "name", "instances")
+
+  implicit object FilterTypeFormat extends RootJsonFormat[FilterType] {
+
+    override def write(obj: FilterType): JsValue = {
+      JsString(obj.filterType.toString)
+    }
+
+    override def read(json: JsValue): FilterType = {
+      json match {
+        case JsString(str) => FilterType.toFilteType(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
+  implicit val filterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
+  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
+  implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
+  implicit val pageLoadBalancerFormat = jsonFormat4(Page[LoadBalancer])
+  implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
 
   implicit object apmProviderFormat extends RootJsonFormat[APMProvider] {
     override def write(obj: APMProvider): JsValue = {
@@ -315,28 +282,383 @@ object Main extends App {
     }
   }
 
-  implicit object ConditionFormat extends RootJsonFormat[Condition] {
-    override def write(obj: Condition): JsValue = {
-      logger.info(s"Writing Condition json : ${obj.condition.toString}")
-      JsString(obj.condition.toString)
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList", "groupBy")
+  implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
+
+  implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
+  implicit val applicationFormat = jsonFormat9(Application.apply)
+
+  implicit val metricTypeFormat = MetricTypeFormat
+  implicit val unitTypeJson = UnitTypeJson
+  implicit val conditionTypeJson = ConditionTypeJson
+  implicit val scaleTypeJson = ScaleTypeJson
+  implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
+  implicit val autoScalingPolicyJson = jsonFormat5(AutoScalingPolicy.apply)
+
+  implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
+    override def write(obj: SiteDeltaStatus): JsValue = {
+      JsString(obj.deltaStatus.toString)
     }
 
-    override def read(json: JsValue): Condition = {
-      logger.info(s"Reading json value : ${json.toString}")
+    override def read(json: JsValue): SiteDeltaStatus = {
       json match {
-        case JsString(str) => Condition.toCondition(str)
-        case _ => throw DeserializationException("Unable to deserialize the Condition data")
+        case JsString(str) => SiteDeltaStatus.toDeltaStatus(str)
+        case _ => throw DeserializationException("Unable to deserialize SiteDeltaStatus")
       }
     }
   }
 
-  implicit val filterFormat = jsonFormat(Filter.apply, "id", "filterType", "values")
-  implicit val siteFilterFormat = jsonFormat(SiteFilter.apply, "id", "accountInfo", "filters")
-  implicit val loadBalancerFormat = jsonFormat(LoadBalancer.apply, "id", "name", "vpcId", "region", "instanceIds", "availabilityZones")
-  implicit val pageLoadBalancerFormat = jsonFormat4(Page[LoadBalancer])
-  implicit val scalingGroupFormat = jsonFormat(ScalingGroup.apply, "id", "name", "launchConfigurationName", "status", "availabilityZones", "instanceIds", "loadBalancerNames", "tags", "desiredCapacity", "maxCapacity", "minCapacity")
-  implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList")
+  implicit val siteDeltaFormat = jsonFormat(SiteDelta.apply, "siteId", "deltaStatus", "addedInstances", "deletedInstances")
+  val appsettingRoutes: Route = pathPrefix("config") {
+    path("ApplicationSettings") {
+      post {
+        entity(as[ApplicationSettings]) { appSettings =>
+          val maybeAdded = Future {
+            appSettings.toNeo4jGraph(appSettings)
+          }
+          onComplete(maybeAdded) {
+            case Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
+            case Failure(ex) =>
+              logger.error("Error while save settings", ex)
+              complete(StatusCodes.InternalServerError, "These is problem while processing request")
+          }
+
+        }
+      }
+    }
+  } ~ pathPrefix("config") {
+    path("ApplicationSettings") {
+      get {
+        val allSettings = Future {
+          AppSettingsNeo4jWrapper.fromNeo4jGraph(0L)
+        }
+        onComplete(allSettings) {
+          case Success(settings) =>
+            complete(StatusCodes.OK, settings)
+          case Failure(ex) =>
+            logger.error("Failed to get settings", ex)
+            complete("Failed to get settings")
+        }
+      }
+    }
+  } ~ pathPrefix("config") {
+    path("ApplicationSettings") {
+      put {
+        entity(as[Map[String, String]]) { appSettings =>
+          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "GENERAL_SETTINGS")
+          onComplete(maybeUpdated) {
+            case Success(update) => update.status match {
+              case true => complete(StatusCodes.OK, "Updated successfully")
+              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
+            }
+            case Failure(ex) =>
+              ex match {
+                case aie: IllegalArgumentException =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.OK, "Failed to update settings")
+                case _ =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
+          }
+        }
+      }
+    }
+
+  } ~ pathPrefix("config") {
+    path("AuthSettings") {
+      put {
+        entity(as[Map[String, String]]) { appSettings =>
+          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "AUTH_SETTINGS")
+          onComplete(maybeUpdated) {
+            case Success(update) => update.status match {
+              case true => complete(StatusCodes.OK, "Updated successfully")
+              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
+            }
+            case Failure(ex) =>
+              ex match {
+                case aie: IllegalArgumentException =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.OK, "Failed to update settings")
+                case _ =>
+                  logger.error("Update operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
+          }
+        }
+      }
+    }
+
+  } ~ pathPrefix("config") {
+    path("ApplicationSettings") {
+      delete {
+        entity(as[Map[String, String]]) { appSettings =>
+          val maybeDeleted = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "GENERAL_SETTINGS")
+          onComplete(maybeDeleted) {
+            case Success(delete) => delete.status match {
+              case true => complete(StatusCodes.OK, "Deleted successfully")
+              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
+            }
+            case Failure(ex) =>
+              ex match {
+                case aie: IllegalArgumentException =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.OK, "Failed to delete settings")
+                case _ =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
+          }
+        }
+      }
+    }
+  } ~ pathPrefix("config") {
+    path("AuthSettings") {
+      delete {
+        entity(as[Map[String, String]]) { appSettings =>
+          val maybeDelete = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "AUTH_SETTINGS")
+          onComplete(maybeDelete) {
+            case Success(delete) => delete.status match {
+              case true => complete(StatusCodes.OK, "Deleted successfully")
+              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
+            }
+            case Failure(ex) =>
+              ex match {
+                case aie: IllegalArgumentException =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.OK, "Failed to delete settings")
+                case _ =>
+                  logger.error("Delete operation failed", ex)
+                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
+              }
+          }
+        }
+      }
+    }
+
+  }
+  val discoveryRoutes = pathPrefix("discover") {
+    path("site") {
+      put {
+        entity(as[Site1]) { site =>
+          val buildSite = Future {
+            val savedSite = populateInstances(site)
+            savedSite.id.map(siteId => cachedSite.put(siteId, savedSite))
+          }
+          onComplete(buildSite) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to save the Site.")
+          }
+        }
+      }
+    } ~ path("site" / "save" / LongNumber) { siteId =>
+      withRequestTimeout(4.minutes) {
+        put {
+          val siteResponse = Future {
+            val mayBeSite = cachedSite.get(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                site.toNeo4jGraph(site)
+              case None => throw new NotFoundException(s"Site with id : $siteId")
+            }
+          }
+          onComplete(siteResponse) {
+            case Success(response) => complete(StatusCodes.OK, "Site saved successfully!")
+            case Failure(exception) =>
+              logger.error(s"Unable to save the site ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to save the site")
+          }
+        }
+      }
+    } ~ path("site" / LongNumber) {
+      siteId =>
+        get {
+          val siteObj = Future {
+            cachedSite.get(siteId)
+          }
+          onComplete(siteObj) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to get Site Object ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get Site")
+          }
+        }
+    } ~ path("regions") {
+      get {
+        parameter("provider") {
+          provider =>
+            logger.info(s"Coming Provider $provider")
+            val regions = Future {
+              AGU.getRegions(InstanceProvider.toInstanceProvider(provider))
+            }
+            onComplete(regions) {
+              case Success(response) => complete(StatusCodes.OK, response)
+              case Failure(exception) =>
+                logger.error(s"Unable to get regions ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to get Regions")
+            }
+        }
+      }
+    } ~ pathPrefix("site" / LongNumber) {
+      siteId => pathPrefix("group" / LongNumber) {
+        groupId =>
+          logger.info(s"Site ID : $siteId , Group ID : $groupId")
+          val instanceGroup = Future {
+            InstanceGroup.fromNeo4jGraph(groupId)
+          }
+          onComplete(instanceGroup) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to get Instance Group ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get Instance Group")
+          }
+      }
+    } ~ get {
+      pathPrefix("site" / LongNumber) {
+        siteId =>
+          pathPrefix("groups" / Segment) {
+            groupType =>
+              val response = Future {
+                val mayBeSite = Site1.fromNeo4jGraph(siteId)
+                mayBeSite match {
+                  case Some(site) => site.groupsList.filter(group => group.groupType.contains(groupType))
+                  case None => throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+                }
+              }
+              onComplete(response) {
+                case Success(groups) => complete(StatusCodes.OK, groups)
+                case Failure(exception) =>
+                  logger.error(s"Unable to get Instance Groups ${exception.getMessage}", exception)
+                  complete(StatusCodes.BadRequest, "Unable to get Instance Groups")
+              }
+          }
+      }
+    } ~ put {
+      path("site" / LongNumber / "group") {
+        siteId =>
+          entity(as[InstanceGroup]) {
+            instanceGroup =>
+              val response = Future {
+                val mayBeSite = Site1.fromNeo4jGraph(siteId)
+                mayBeSite match {
+                  case Some(site) => val groups = site.groupsList
+                    val mayBeGroup = groups.find(group => instanceGroup.name.equals(group.name))
+                    mayBeGroup match {
+                      case Some(groupToSave) =>
+                        val instanceGroupToSave = groupToSave.copy(instances = groupToSave.instances ::: instanceGroup.instances)
+                        instanceGroupToSave.toNeo4jGraph(instanceGroupToSave)
+                      case None =>
+                        val instanceGroupNode = instanceGroup.toNeo4jGraph(instanceGroup)
+                        val siteNode = Neo4jRepository.findNodeById(siteId)
+                        Neo4jRepository.createRelation("HAS_InstanceGroup", siteNode.get, instanceGroupNode)
+                    }
+                  case None => throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+                }
+              }
+              onComplete(response) {
+                case Success(responseMessage) => complete(StatusCodes.OK, "Done")
+                case Failure(exception) =>
+                  logger.error(s"Unable to save the Instance group ${exception.getMessage}", exception)
+                  complete(StatusCodes.BadRequest, "Unable save the instance group")
+              }
+          }
+      }
+    } ~ get {
+      path("tags" / LongNumber) {
+        siteId =>
+          val tags = Future {
+            val mayBeSite = cachedSite.get(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
+              case None =>
+                logger.warn(s"Site Entity with ID : $siteId is Not Found")
+                throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+            }
+          }
+          onComplete(tags) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to get the Tags with Given Site ID : $siteId  ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get tags")
+          }
+      }
+    }
+  } ~ path("keypairs" / LongNumber) { siteId =>
+    get {
+      val listOfKeyPairs = Future {
+        val mayBeSite = cachedSite.get(siteId)
+        mayBeSite match {
+          case Some(site) =>
+            val keyPairs = site.instances.flatMap { instance =>
+              instance.sshAccessInfo.map(x => x.keyPair)
+            }
+            Page[KeyPairInfo](keyPairs)
+          case None =>
+            logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+            Page[KeyPairInfo](List.empty[KeyPairInfo])
+        }
+      }
+      onComplete(listOfKeyPairs) {
+        case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+        case Failure(ex) =>
+          logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
+          complete(StatusCodes.BadRequest, "Unable to get List of KeyPairs")
+      }
+    }
+  } ~ path("site" / LongNumber) { siteId =>
+    get {
+      parameter("type") { view =>
+        val filteredSite = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site) =>
+              val viewType = ViewType.toViewType(view)
+              val listOfFilteredInstances = site.instances.map { instance =>
+                viewType match {
+                  case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("SUMMARY"))
+                  case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("SUMMARY"))
+                  case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
+                }
+
+              }
+              Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.reservedInstanceDetails,
+                site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, site.groupBy))
+            case None =>
+              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+              None
+          }
+        }
+        onComplete(filteredSite) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(ex) =>
+            logger.error(s"Unable to get Filtered Site; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to get Filtered Site")
+        }
+      }
+    }
+  } ~ path("site" / "filter" / LongNumber) { siteId =>
+    put {
+      entity(as[SiteFilter]) { siteFilter =>
+        val filteredSite = Future {
+          val filters = siteFilter.filters
+          populateFilteredInstances(siteId, filters)
+        }
+        onComplete(filteredSite) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(ex) =>
+            logger.error(s"Unable to populate Filtered Instances; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to populated Filtered Instances")
+        }
+      }
+    }
+  }
+  val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+  val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
+  val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
   def appSettingServiceRoutes = post {
     path("appsettings") {
@@ -426,7 +748,8 @@ object Main extends App {
     }
   }
 
-  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) {
+  def apmServiceRoutes = path(PathMatchers.separateOnSlashes("apm")) // scalastyle:ignore
+  {
     post {
       entity(as[APMServerDetails]) { apmServerDetails =>
         logger.debug(s"Executing $getClass :: saveAPMServerDetails")
@@ -464,7 +787,7 @@ object Main extends App {
       get {
         logger.info(s"getting into request context : $serverId")
         val serverDetailsList = Future {
-          APMServerDetails.fromNeo4jGraph(serverId).flatMap(serverDetails => Some(serverDetails.serverUrl))
+          APMServerDetails.fromNeo4jGraph(serverId).map(serverDetails => serverDetails.serverUrl)
         }
         onComplete(serverDetailsList) {
           case Success(response) =>
@@ -477,18 +800,17 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to get the APM Server Url")
         }
       }
-  } ~ path("apm" / IntNumber) {
+  } ~ path("apm" / LongNumber) {
     siteId => get {
-
       val serverDetails = Future {
-        Site.fromNeo4jGraph(siteId).flatMap { site =>
+        Site.fromNeo4jGraph(siteId).map { site =>
           val aPMServerDetails = getAPMServers
           logger.info(s"All Sever details : $aPMServerDetails")
           val list = aPMServerDetails.filter(server => {
-            if (server.monitoredSite.nonEmpty) server.monitoredSite.get.id == site.id else false
+            server.monitoredSite.exists(monitoredSite => monitoredSite.id == site.id)
           })
           logger.info(s"Filtered Server details : $list")
-          Some(list.toList)
+          list.toList
         }
       }
       onComplete(serverDetails) {
@@ -502,6 +824,23 @@ object Main extends App {
           complete(StatusCodes.BadRequest, s"Unable to get the APM Server Details with Site Id :$siteId")
       }
     }
+  }
+
+  def getAPMServers: mutable.MutableList[APMServerDetails] = {
+    logger.debug(s"Executing $getClass :: getAPMServers")
+    val nodes = APMServerDetails.getAllEntities
+    logger.debug(s"Getting all entities and size is :${nodes.size}")
+    val list = mutable.MutableList.empty[APMServerDetails]
+    nodes.foreach {
+      node =>
+        val aPMServerDetails = APMServerDetails.fromNeo4jGraph(node.getId)
+        aPMServerDetails match {
+          case Some(serverDetails) => list.+=(serverDetails)
+          case _ => logger.warn(s"Node not found with ID: ${node.getId}")
+        }
+    }
+    logger.debug(s"Reurning list of APM Servers $list")
+    list
   }
 
   def userRoute: Route = pathPrefix("users") {
@@ -768,6 +1107,12 @@ object Main extends App {
     }
   }
 
+  def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
+    User.fromNeo4jGraph(userId) match {
+      case Some(user) => user.publicKeys.dropWhile(_.id.get != keyId).headOption
+      case None => None
+    }
+  }
 
   //KeyPair Serivce
   def keyPairRoute: Route = pathPrefix("keypairs") {
@@ -858,8 +1203,32 @@ object Main extends App {
     }
   }
 
+  def getOrCreateKeyPair(keyName: String, keyMaterial: String, keyFilePath: Option[String], status: KeyPairStatus, defaultUser: Option[String], passPhase: Option[String]): KeyPairInfo = {
+    val mayBeKeyPair = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
 
-  def catalogRoutes = pathPrefix("catalog") {
+    mayBeKeyPair match {
+      case Some(keyPairInfo) =>
+        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
+      case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
+    }
+  }
+
+  def saveKeyPair(keyPairInfo: KeyPairInfo): Option[KeyPairInfo] = {
+    val filePath = getKeyFilePath(keyPairInfo.keyName)
+    try {
+      FileUtils.createDirectories(keyFilesDir)
+      FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
+      // TODO: change permissions to 600
+    } catch {
+      case e: Throwable => logger.error(e.getMessage, e)
+    }
+    val node = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
+    KeyPairInfo.fromNeo4jGraph(node.getId)
+  }
+
+  def getKeyFilePath(keyName: String): String = s"$keyFilesDir$keyName.pem"
+
+  def catalogRoutes: Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
         val getImages: Future[Page[ImageInfo]] = Future {
@@ -978,7 +1347,7 @@ object Main extends App {
     }
   }
 
-  def nodeRoutes = pathPrefix("node") {
+  def nodeRoutes: Route = pathPrefix("node") {
     path("list") {
       get {
         val listOfAllInstanceNodes = Future {
@@ -1036,398 +1405,6 @@ object Main extends App {
     }
   }
 
-  val appsettingRoutes = pathPrefix("config") {
-    path("ApplicationSettings") {
-      post {
-        entity(as[ApplicationSettings]) { appSettings =>
-          val maybeAdded = Future {
-            appSettings.toNeo4jGraph(appSettings)
-          }
-          onComplete(maybeAdded) {
-            case Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
-            case Failure(ex) =>
-              logger.error("Error while save settings", ex)
-              complete(StatusCodes.InternalServerError, "These is problem while processing request")
-          }
-
-        }
-      }
-    }
-  } ~ pathPrefix("config") {
-    path("ApplicationSettings") {
-      get {
-        val allSettings = Future {
-          AppSettingsNeo4jWrapper.fromNeo4jGraph(0L)
-        }
-        onComplete(allSettings) {
-          case Success(settings) =>
-            complete(StatusCodes.OK, settings)
-          case Failure(ex) =>
-            logger.error("Failed to get settings", ex)
-            complete("Failed to get settings")
-        }
-      }
-    }
-  } ~ pathPrefix("config") {
-    path("ApplicationSettings") {
-      put {
-        entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "GENERAL_SETTINGS")
-          onComplete(maybeUpdated) {
-            case Success(update) => update.status match {
-              case true => complete(StatusCodes.OK, "Updated successfully")
-              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
-            }
-            case Failure(ex) =>
-              ex match {
-                case aie: IllegalArgumentException =>
-                  logger.error("Update operation failed", ex)
-                  complete(StatusCodes.OK, "Failed to update settings")
-                case _ =>
-                  logger.error("Update operation failed", ex)
-                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
-              }
-          }
-        }
-      }
-    }
-
-  } ~ pathPrefix("config") {
-    path("AuthSettings") {
-      put {
-        entity(as[Map[String, String]]) { appSettings =>
-          val maybeUpdated = AppSettingsNeo4jWrapper.updateSettings(appSettings, "AUTH_SETTINGS")
-          onComplete(maybeUpdated) {
-            case Success(update) => update.status match {
-              case true => complete(StatusCodes.OK, "Updated successfully")
-              case false => complete(StatusCodes.OK, "Updated failed,,Retry!!")
-            }
-            case Failure(ex) =>
-              ex match {
-                case aie: IllegalArgumentException =>
-                  logger.error("Update operation failed", ex)
-                  complete(StatusCodes.OK, "Failed to update settings")
-                case _ =>
-                  logger.error("Update operation failed", ex)
-                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
-              }
-          }
-        }
-      }
-    }
-
-  } ~ pathPrefix("config") {
-    path("ApplicationSettings") {
-      delete {
-        entity(as[Map[String, String]]) { appSettings =>
-          val maybeDeleted = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "GENERAL_SETTINGS")
-          onComplete(maybeDeleted) {
-            case Success(delete) => delete.status match {
-              case true => complete(StatusCodes.OK, "Deleted successfully")
-              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
-            }
-            case Failure(ex) =>
-              ex match {
-                case aie: IllegalArgumentException =>
-                  logger.error("Delete operation failed", ex)
-                  complete(StatusCodes.OK, "Failed to delete settings")
-                case _ =>
-                  logger.error("Delete operation failed", ex)
-                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
-              }
-          }
-        }
-      }
-    }
-  } ~ pathPrefix("config") {
-    path("AuthSettings") {
-      delete {
-        entity(as[Map[String, String]]) { appSettings =>
-          val maybeDelete = AppSettingsNeo4jWrapper.deleteSetting(appSettings, "AUTH_SETTINGS")
-          onComplete(maybeDelete) {
-            case Success(delete) => delete.status match {
-              case true => complete(StatusCodes.OK, "Deleted successfully")
-              case false => complete(StatusCodes.OK, "Deletion failed,,Retry!!")
-            }
-            case Failure(ex) =>
-              ex match {
-                case aie: IllegalArgumentException =>
-                  logger.error("Delete operation failed", ex)
-                  complete(StatusCodes.OK, "Failed to delete settings")
-                case _ =>
-                  logger.error("Delete operation failed", ex)
-                  complete(StatusCodes.InternalServerError, "These is problem while processing request")
-              }
-          }
-        }
-      }
-    }
-
-  }
-
-  val discoveryRoutes = pathPrefix("discover") {
-    path("site") {
-      put {
-        entity(as[Site1]) { site =>
-          val buildSite = Future {
-            val siteFilters = site.filters
-            logger.info(s"Parsing instance : ${site.instances}")
-            val computedResult = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
-              (result, siteFilter) =>
-                val accountInfo = siteFilter.accountInfo
-                val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
-                val instances = AWSComputeAPI.getInstances(amazonEC2, accountInfo)
-                val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
-                val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
-                val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
-                (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
-            }
-            val site1 = Site1(None, site.siteName, computedResult._1, computedResult._2, site.filters, computedResult._3, computedResult._4, List())
-            site1.toNeo4jGraph(site1)
-            logger.info(s"Printing SITE : $site1")
-            site1
-          }
-          onComplete(buildSite) {
-            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case Failure(exception) =>
-              logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to save the Site.")
-          }
-        }
-      }
-    }~ path("site" / "save" / LongNumber) { siteId =>
-      withRequestTimeout(4.minutes){
-        put {
-          val siteResponse = Future {
-            val mayBeSite = cachedSite.get(siteId)
-            mayBeSite match {
-              case Some(site) =>
-                site.toNeo4jGraph(site)
-              case None => throw new NotFoundException(s"Site with id : $siteId")
-            }
-          }
-          onComplete(siteResponse) {
-            case Success(response) => complete(StatusCodes.OK, "Site saved successfully!")
-            case Failure(exception) =>
-              logger.error(s"Unable to save the site ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to save the site")
-          }
-        }
-      }
-    } ~ path("site" / LongNumber) {
-      siteId =>
-        get {
-          val siteObj = Future {
-            logger.info(s"Printing Site : $cachedSite")
-            cachedSite.get(siteId)
-          }
-          onComplete(siteObj) {
-            case Success(response) => complete(StatusCodes.OK, response)
-            case Failure(exception) =>
-              logger.error(s"Unable to get Site Object ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to get Site")
-          }
-        }
-    } ~ path("regions") {
-      get {
-        parameter("provider") {
-          provider =>
-            logger.info(s"Coming Provider $provider")
-            val regions = Future {
-              AGU.getRegions(InstanceProvider.toInstanceProvider(provider))
-            }
-            onComplete(regions) {
-              case Success(response) => complete(StatusCodes.OK, response)
-              case Failure(exception) =>
-                logger.error(s"Unable to get regions ${exception.getMessage}", exception)
-                complete(StatusCodes.BadRequest, "Unable to get Regions")
-            }
-        }
-      }
-    } ~ pathPrefix("site" / LongNumber) {
-      siteId => pathPrefix("group" / LongNumber) {
-        groupId =>
-          logger.info(s"Site ID : $siteId , Group ID : $groupId")
-          val instanceGroup = Future {
-            InstanceGroup.fromNeo4jGraph(groupId)
-          }
-          onComplete(instanceGroup) {
-            case Success(response) => complete(StatusCodes.OK, response)
-            case Failure(exception) =>
-              logger.error(s"Unable to get Instance Group ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to get Instance Group")
-          }
-      }
-    } ~ get {
-      pathPrefix("site" / LongNumber) {
-        siteId =>
-          pathPrefix("groups" / Segment) {
-            groupType =>
-              val response = Future {
-                val site = Site1.fromNeo4jGraph(siteId)
-                if (site.nonEmpty) {
-                  site.get.groupsList.filter(group => group.groupType.get.equals(groupType))
-                } else {
-                  throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
-                }
-              }
-              onComplete(response) {
-                case Success(groups) => complete(StatusCodes.OK, groups)
-                case Failure(exception) =>
-                  logger.error(s"Unable to get Instance Groups ${exception.getMessage}", exception)
-                  complete(StatusCodes.BadRequest, "Unable to get Instance Groups")
-              }
-              logger.info(s"Site Id : $siteId , Group Type : $groupType")
-              complete("Done")
-          }
-      }
-    } ~ put {
-      path("site" / LongNumber / "group") {
-        siteId =>
-          entity(as[InstanceGroup]) {
-            instanceGroup =>
-              val response = Future {
-                val site = Site1.fromNeo4jGraph(siteId)
-                if (site.nonEmpty) {
-                  val groups = site.get.groupsList
-                  val groupToSave = groups.find(group => instanceGroup.name.equals(group.name))
-                  if (groupToSave.nonEmpty) {
-                    groupToSave.get.instances ++ instanceGroup.instances
-                    groupToSave.get.toNeo4jGraph(groupToSave.get)
-                  } else {
-                    instanceGroup.toNeo4jGraph(instanceGroup)
-                  }
-                } else {
-                  throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
-                }
-              }
-              logger.info(s"Site Id : $siteId ")
-              onComplete(response) {
-                case Success(responseMessage) => complete(StatusCodes.OK, "Done")
-                case Failure(exception) =>
-                  logger.error(s"Unable to save the Instance group ${exception.getMessage}", exception)
-                  complete(StatusCodes.BadRequest, "Unable save the instance group")
-              }
-          }
-      }
-    } ~ get {
-      path("tags" / LongNumber) {
-        siteId =>
-          val tags = Future {
-            val mayBeSite = cachedSite.get(siteId)
-            mayBeSite match {
-              case Some(site) =>
-                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
-              case None =>
-                throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
-            }
-          }
-          onComplete(tags) {
-            case Success(response) => complete(StatusCodes.OK, response)
-            case Failure(exception) =>
-              logger.error(s"Unable to get the Tags with Given Site ID : $siteId  ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to get tags")
-          }
-      }
-    }
-  } ~ path("keypairs" / LongNumber) { siteId =>
-    get {
-      val listOfKeyPairs = Future {
-        val mayBeSite = cachedSite.get(siteId)
-        mayBeSite match {
-          case Some(site) =>
-            val keyPairs = site.instances.flatMap { instance =>
-              instance.sshAccessInfo.flatMap(x => Some(x.keyPair))
-            }
-            Page[KeyPairInfo](keyPairs)
-          case None =>
-            logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
-            Page[KeyPairInfo](List.empty[KeyPairInfo])
-        }
-      }
-      onComplete(listOfKeyPairs) {
-        case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-        case Failure(ex) =>
-          logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
-          complete(StatusCodes.BadRequest, "Unable to get List of KeyPairs")
-      }
-    }
-  } ~ path("site" / LongNumber) { siteId =>
-    get {
-      parameter("type") { view =>
-        val filteredSite = Future {
-          val mayBeSite = Site1.fromNeo4jGraph(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val viewType = ViewType.toViewType(view)
-              val listOfFilteredInstances = site.instances.map { instance =>
-                viewType match {
-                  case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("SUMMARY"))
-                  case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("SUMMARY"))
-                  case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
-                }
-
-              }
-              Some(Site1(site.id, site.siteName, listOfFilteredInstances, site.reservedInstanceDetails,
-                site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
-            case None =>
-              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
-              None
-          }
-        }
-        onComplete(filteredSite) {
-          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-          case Failure(ex) =>
-            logger.error(s"Unable to get Filtered Site; Failed with ${ex.getMessage}", ex)
-            complete(StatusCodes.BadRequest, "Unable to get Filtered Site")
-        }
-      }
-    }
-  } ~ path("site" / "filter" / LongNumber) { siteId =>
-    put {
-      entity(as[SiteFilter]) { siteFilter =>
-        val filteredSite = Future {
-          val filters = siteFilter.filters
-          val mayBeSite = cachedSite.get(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val instances = site.instances
-              val (siteFiltersToSave, filteredInstances) = if (filters.nonEmpty) {
-                val siteFilters = site.filters
-                val listOfSiteFilters = siteFilters.map { siteFilter => SiteFilter(siteFilter.id, siteFilter.accountInfo, filters) }
-                val listOfInstances = instances.flatMap { instance =>
-                  val filterExists = filters.find(filter => filterExistsInTags(instance, filter))
-                  filterExists.flatMap(filter => Some(instance))
-                }
-                (listOfSiteFilters, listOfInstances)
-              }
-              else {
-                (site.filters, instances)
-              }
-              val instancesToSave = getInstancesToSave(filteredInstances.toSet)
-              val lbsToSave = getLoadBalancersToSave(site.loadBalancers)
-              val sgsToSave = getScalingGroupsToSave(site.scalingGroups)
-              val rInstancesToSave = getReservedInstancesToSave(site.reservedInstanceDetails)
-              val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList)
-              siteToSave.toNeo4jGraph(siteToSave)
-              cachedSite.put(siteId, siteToSave)
-              Some(siteToSave)
-            case None => logger.warn(s"could not get Site from cache for siteId : $siteId")
-              None
-
-          }
-        }
-        onComplete(filteredSite) {
-          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-          case Failure(ex) =>
-            logger.error(s"Unable to populate Filtered Instances; Failed with ${ex.getMessage}", ex)
-            complete(StatusCodes.BadRequest, "Unable to populated Filtered Instances")
-        }
-      }
-    }
-  }
-
-
   def siteServiceRoutes = pathPrefix("sites") {
     path("site" / LongNumber) { siteId =>
       get {
@@ -1444,7 +1421,7 @@ object Main extends App {
                     case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
                   }
                 }
-                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList))
+                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, site.groupBy))
               case None =>
                 logger.warn(s"Failed in fromNeo4jGraph of Site for siteId : $siteId")
                 None
@@ -1502,65 +1479,299 @@ object Main extends App {
           }
         }
       }
+    } ~ path(LongNumber / "scalegroups") { siteId =>
+      get {
+        parameter("type") {
+          viewType =>
+            val scalingGroups = Future {
+              val mayBeSite = Site1.fromNeo4jGraph(siteId)
+              mayBeSite.map(site => site.scalingGroups).getOrElse(List.empty[ScalingGroup])
+            }
+
+            onComplete(scalingGroups) {
+              case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case Failure(exception) =>
+                logger.error(s"Unable to get ScalingGroups. Failed with : ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to get Scaling Groups.")
+            }
+        }
+      }
+    } ~ path(LongNumber / "instances") { siteId =>
+      put {
+        entity(as[Instance]) { instance =>
+          val buildInstance = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite match {
+              case Some(site) =>
+                val listOfInstances = site.instances
+                val newListOfInstances = instance :: listOfInstances
+                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, site.groupBy)
+                siteToSave.toNeo4jGraph(siteToSave)
+                "Instance added successfully to Site"
+              case None =>
+                throw new NotFoundException(s"Site Entity with ID : $siteId Not Found")
+            }
+          }
+
+          onComplete(buildInstance) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to build Instance. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to build Instance.")
+          }
+        }
+      }
+    } ~ path(LongNumber / "instances" / Segment) { (siteId, id) =>
+      get {
+        parameter("type") {
+          view =>
+            val instance = Future {
+              val mayBeSite = Site1.fromNeo4jGraph(siteId)
+              val mayBeInstance = mayBeSite match {
+                case Some(site) => site.instances.find(instance => instance.instanceId.contains(id))
+                case None => throw new NotFoundException(s"Site Entity with ID : $siteId Not Found")
+              }
+              mayBeInstance.map { instance =>
+                val viewType = ViewType.toViewType(view)
+                val filteredInstance = viewType match {
+                  case OPERATIONS => filterInstanceViewOperations(instance, ViewLevel.toViewLevel("DETAILED"))
+                  case ARCHITECTURE => filterInstanceViewArchitecture(instance, ViewLevel.toViewLevel("DETAILED"))
+                  case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("DETAILED"))
+                }
+                filteredInstance
+              }
+            }
+            onComplete(instance) {
+              case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case Failure(exception) =>
+                logger.error(s"Unable to get Instance. Failed with : ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to get Instance.")
+            }
+        }
+      }
+    } ~ path(LongNumber / "delta") { siteId =>
+      get {
+        val siteDelta = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site) =>
+              val instancesBeforeSync = site.instances
+              val synchedSite = populateInstances(site)
+              synchedSite.toNeo4jGraph(synchedSite)
+              val filteredSite = populateFilteredInstances(siteId, List.empty[Filter])
+              saveCachedSite(siteId)
+              filteredSite match {
+                case Some(siteInCache) =>
+                  val instancesAfterSync = siteInCache.instances
+                  val beforeSyncInstanceIds = instancesBeforeSync.flatMap(instance => instance.instanceId).toSet
+                  val afterSyncInstanceIds = instancesAfterSync.flatMap(instance => instance.instanceId).toSet
+                  val commonInstanceIds = beforeSyncInstanceIds.intersect(afterSyncInstanceIds)
+                  val deletedInstances = instancesBeforeSync.filterNot {
+                    instance =>
+                      instance.instanceId.exists { id =>
+                        commonInstanceIds.contains(id)
+                      }
+                  }
+                  val addedInstances = instancesAfterSync.filterNot {
+                    instance =>
+                      instance.instanceId.exists { id =>
+                        commonInstanceIds.contains(id)
+                      }
+                  }
+                  val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
+                    SiteDeltaStatus.toDeltaStatus("CHANGED")
+                  } else {
+                    SiteDeltaStatus.toDeltaStatus("UNCHANGED")
+                  }
+                  Some(SiteDelta(site.id, deltaStatus, addedInstances, deletedInstances))
+                case None =>
+                  logger.warn(s"could not get site from cache for siteId : $siteId")
+                  None
+              }
+            case None =>
+              logger.warn(s"could not get site with siteId : $siteId")
+              None
+          }
+        }
+        onComplete(siteDelta) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to get Site Delta. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get Site Delta.")
+        }
+      }
+    } ~ path(LongNumber / "groupby") { siteId =>
+      put {
+        entity(as[String]) { groupBy =>
+          val response = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite match {
+              case Some(site) => val siteToSave = site.copy(groupBy = groupBy)
+                siteToSave.toNeo4jGraph(siteToSave)
+                "Added GroupBy successfully!"
+              case None => throw new NotFoundException(s"Site Entity not found with ID : $siteId")
+            }
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to add GroupBy ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to add groupBy")
+          }
+        }
+      }
+    } ~ path(LongNumber / "groupby") { siteId =>
+      get {
+        val siteGroupBy = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          val mayBeGroupBy = mayBeSite match {
+            case Some(site) => site.groupBy
+            case None => throw new NotFoundException(s"Site Entity with ID : $siteId Not Found")
+          }
+          mayBeGroupBy
+        }
+
+        onComplete(siteGroupBy) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to get Site GroupBy. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get Site GroupBy.")
+        }
+      }
+    } ~ path(LongNumber / "instances" / Segment) {
+    (siteId, instanceId) =>
+      delete {
+        val response = Future {
+          val mayBeSite = Site1.fromNeo4jGraph(siteId)
+          mayBeSite match {
+            case Some(site) =>
+              val mayBeInstance = site.instances.find(instance => instance.instanceId.contains(instanceId))
+              mayBeInstance match {
+                case Some(instance) =>
+                  site.groupsList.foreach { group =>
+                    val mayBeInstanceGroup = group.instances.find(instanceInGroup => instanceInGroup.instanceId.contains(instanceId))
+                    mayBeInstanceGroup.map(instanceGroup => Neo4jRepository.deleteRelationship(instanceGroup.id.get, instance.id.get, "HAS_Instance"))
+                  }
+                  Neo4jRepository.deleteRelationship(site.id.get, instance.id.get, "HAS_Instance")
+                case None => throw new NotFoundException(s"Instance Entity with id : $instanceId is not found")
+              }
+            case None => throw new NotFoundException(s"Site Entity with id : $siteId is not found")
+          }
+        }
+        onComplete(response) {
+          case Success(responseMessage) => complete(StatusCodes.OK, "Deleted Successfully!")
+          case Failure(exception) =>
+            logger.error(s"Unable to delete the Instance with id $instanceId ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to delete the Instance with id $instanceId")
+        }
+      }
+  } ~ path(LongNumber / "instances" / Segment / "tags") {
+    (siteId, instanceId) => put {
+      entity(as[List[KeyValueInfo]]) {
+        tagsToAdd =>
+          val response = Future {
+            addTags(siteId, instanceId, tagsToAdd)
+            "Updated successfully!"
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to update the tags ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to update the tags!")
+          }
+      }
     }
-  }
-
-  val route: Route = userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~ apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
-
-
-  val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
-  logger.info(s"Server online at http://${AGU.HOST}:${AGU.PORT}")
-
-
-  def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
-    User.fromNeo4jGraph(userId) match {
-      case Some(user) => user.publicKeys.dropWhile(_.id.get != keyId).headOption
-      case None => None
+  } ~ path(LongNumber / "instances" / "tags") {
+    siteId => put {
+      entity(as[Map[String, JsValue]]) {
+        map =>
+          val response = Future {
+            if (map.contains("instanceIds")) {
+              val instanceIds = map("instanceIds").asInstanceOf[List[String]]
+              val tags = map("tags").asInstanceOf[List[KeyValueInfo]]
+              instanceIds.foreach(instanceId => addTags(siteId, instanceId, tags))
+              "Updated successfully"
+            } else {
+              throw new Exception("Unable get istanceIds from request")
+            }
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to update the tags ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to update tags for instances")
+          }
+      }
     }
-  }
-
-  def getOrCreateKeyPair(keyName: String, keyMaterial: String, keyFilePath: Option[String], status: KeyPairStatus, defaultUser: Option[String], passPhase: Option[String]): KeyPairInfo = {
-    val mayBeKeyPair = Neo4jRepository.getSingleNodeByLabelAndProperty("KeyPairInfo", "keyName", keyName).flatMap(node => KeyPairInfo.fromNeo4jGraph(node.getId))
-
-    mayBeKeyPair match {
-      case Some(keyPairInfo) =>
-        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
-      case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
+  } ~ path(LongNumber / "applications") {
+    siteId => put {
+      entity(as[Application]) {
+        application =>
+          val response = Future {
+            val mayBeSite = Site1.fromNeo4jGraph(siteId)
+            mayBeSite match {
+              case Some(site) => saveApplication(site, application)
+                "Updated successfully!"
+              case None => throw new NotFoundException(s"Site Entity not found with ID : $siteId")
+            }
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unabel to save the Application ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to save the application")
+          }
+      }
     }
-  }
-
-  def saveKeyPair(keyPairInfo: KeyPairInfo): Option[KeyPairInfo] = {
-    val filePath = getKeyFilePath(keyPairInfo.keyName)
-    try {
-      FileUtils.createDirectories(getKeyFilesDir)
-      FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
-      // TODO: change permissions to 600
-    } catch {
-      case e: Throwable => logger.error(e.getMessage, e)
-    }
-    val node = keyPairInfo.toNeo4jGraph(KeyPairInfo(keyPairInfo.id, keyPairInfo.keyName, keyPairInfo.keyFingerprint, keyPairInfo.keyMaterial, Some(filePath), keyPairInfo.status, keyPairInfo.defaultUser, keyPairInfo.passPhrase))
-    KeyPairInfo.fromNeo4jGraph(node.getId)
-  }
-
-  def getKeyFilesDir: String = s"${Constants.getTempDirectoryLocation}${Constants.FILE_SEPARATOR}"
-
-  def getKeyFilePath(keyName: String) = s"$getKeyFilesDir$keyName.pem"
-
-  def getAPMServers: mutable.MutableList[APMServerDetails] = {
-    logger.debug(s"Executing $getClass :: getAPMServers")
-    val nodes = APMServerDetails.getAllEntities
-    logger.debug(s"Getting all entities and size is :${nodes.size}")
-    val list = mutable.MutableList.empty[APMServerDetails]
-    nodes.foreach {
-      node =>
-        val aPMServerDetails = APMServerDetails.fromNeo4jGraph(node.getId)
-        aPMServerDetails match {
-          case Some(serverDetails) => list.+=(serverDetails)
-          case _ => logger.warn(s"Node not found with ID: ${node.getId}")
+  } ~ path(LongNumber / "applications" / LongNumber) {
+    (siteId, appId) =>
+      get {
+        val response = Future {
+          Application.fromNeo4jGraph(appId)
+        }
+        onComplete(response) {
+          case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+          case Failure(exception) =>
+            logger.error(s"Unable to get Application entity ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to get application with id $appId")
+        }
+      }
+  } ~ path(LongNumber / "applications" / LongNumber) {
+    (siteId, appId) =>
+      delete {
+        val response = Future {
+          Neo4jRepository.deleteEntity(appId)
+          "Deleted Successfully!"
+        }
+        onComplete(response) {
+          case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+          case Failure(exception) =>
+            logger.error(s"Unable to delete the Application with ID : $appId ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to delete the Application with ID : $appId")
+        }
+      }
+  } ~ path(LongNumber / "applications") {
+      (siteId) =>
+        post {
+          entity(as[Application]) {
+            application =>
+              val response = Future {
+                if (application.id.nonEmpty) {
+                  application.toNeo4jGraph(application)
+                  "Updated successfully!"
+                } else {
+                  throw new Exception("Entity ID is mandatory for updating")
+                }
+              }
+              onComplete(response) {
+                case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+                case Failure(exception) =>
+                  logger.error(s"Unable to update the Applicaation ${exception.getMessage}", exception)
+                  complete(StatusCodes.BadRequest, s"Unable to update Application with id ${application.id}")
+              }
+          }
         }
     }
-    logger.debug(s"Reurning list of APM Servers $list")
-    list
   }
 
   def filterInstanceViewList(instance: Instance, viewLevel: ViewLevel): Instance = {
@@ -1614,6 +1825,40 @@ object Main extends App {
     }
   }
 
+  def populateFilteredInstances(siteId: Long, filters: List[Filter]): Option[Site1] = {
+    val mayBeSite = cachedSite.get(siteId)
+    mayBeSite match {
+      case Some(site) =>
+        val instances = site.instances
+        val (siteFiltersToSave, filteredInstances) = if (filters.nonEmpty) {
+          val siteFilters = site.filters
+          val listOfSiteFilters = siteFilters.map {
+            siteFilter => SiteFilter(siteFilter.id, siteFilter.accountInfo, filters)
+          }
+          val listOfInstances = instances.flatMap {
+            instance =>
+              val filterExists = filters.find(filter => filterExistsInTags(instance, filter))
+              filterExists.map(filter => instance)
+          }
+          (listOfSiteFilters, listOfInstances)
+        }
+        else {
+          (site.filters, instances)
+        }
+        val instancesToSave = getInstancesToSave(filteredInstances.toSet)
+        val lbsToSave = getLoadBalancersToSave(site.loadBalancers)
+        val sgsToSave = getScalingGroupsToSave(site.scalingGroups)
+        val rInstancesToSave = getReservedInstancesToSave(site.reservedInstanceDetails)
+        val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList, site.groupBy)
+        siteToSave.toNeo4jGraph(siteToSave)
+        cachedSite.put(siteId, siteToSave)
+        Some(siteToSave)
+      case None => logger.warn(s"could not get Site from cache for siteId : $siteId")
+        None
+    }
+  }
+
+  logger.info(s"Server online at http://${AGU.HOST}:${AGU.PORT}")
 
   def getInstancesToSave(filteredInstances: Set[Instance]): List[Instance] = {
 
@@ -1712,4 +1957,189 @@ object Main extends App {
       case _ => false
     }
   }
+
+  def addTags(siteId: Long, instanceId: String, tagsToAdd: List[KeyValueInfo]): Unit = {
+    val mayBeSite = Site1.fromNeo4jGraph(siteId)
+    mayBeSite.map {
+      site =>
+        val accountInfo = site.filters.map { siteFilter =>
+          siteFilter.accountInfo
+        }
+        val instance = site.instances.find(instance => instance.instanceId.contains(instanceId))
+        instance.map { inst =>
+          val instToSave = inst.copy(tags = tagsToAdd)
+          instToSave.toNeo4jGraph(instToSave)
+        }
+    }
+  }
+
+  def saveApplication(site: Site1, application: Application): Unit = {
+    val applications = List.empty[Application] //TODO has to change Site1 case class
+    val mayBeApp = applications.find(app => application.name.exists(name => app.name.contains(name)))
+    val appToSave = mayBeApp match {
+      case Some(app) =>
+        val app1 = app.copy(instances = application.instances)
+        app1.toNeo4jGraph(app1)
+      case None => application.toNeo4jGraph(application)
+    }
+
+  }
+
+  def populateInstances(site: Site1): Site1 = {
+    val siteFilters = site.filters
+    val siteNode = site.toNeo4jGraph(site)
+    logger.info(s"Parsing instance : ${site.instances}")
+    val (instances, reservedInstanceDetails, loadBalancer, scalingGroup) = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+      (result, siteFilter) =>
+        val accountInfo = siteFilter.accountInfo
+        val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo)
+        val instances = AWSComputeAPI.getInstances(amazonEC2, accountInfo)
+        val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
+        val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
+        val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
+        (result._1 ::: instances, result._2 ::: reservedInstanceDetails, result._3 ::: loadBalancers, result._4 ::: scalingGroup)
+    }
+    val site1 = Site1(Some(siteNode.getId), site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(), site.groupBy)
+    site1
+  }
+
+  def saveCachedSite(siteId: Long): Boolean = {
+    val mayBeSite = cachedSite.get(siteId)
+    mayBeSite.foreach { site =>
+      site.toNeo4jGraph(site)
+      cachedSite.remove(siteId)
+    }
+    mayBeSite.isDefined
+  }
+
+  // scalastyle:off method.length cyclomatic.complexity
+  def siteServices: Route = pathPrefix("site") {
+    get {
+      parameters('viewLevel.as[String]) {
+        (viewLevel) =>
+          val result = Future {
+            logger.info("View level is..." + viewLevel)
+            //Instead of applying map and flat operations at distinct  places,flatMap used directly though container holds only List[Nodes]
+            //Use of map here produces results like List[Option[Site]] but List[Site1] would be better option for next operations.
+            Neo4jRepository.getNodesByLabel("Site1").flatMap { siteNode =>
+              Site1.fromNeo4jGraph(siteNode.getId).map {
+                siteObj => SiteViewFilter.filterInstance(siteObj, ViewLevel.toViewLevel(viewLevel))
+
+              }
+            }
+          }
+          onComplete(result) {
+            case Success(sitesList) => complete(StatusCodes.OK, sitesList)
+            case Failure(ex) => logger.error("Unable to retrieve sites information", ex)
+              complete(StatusCodes.BadRequest, "Failed to get results")
+          }
+      }
+    }
+  } ~ path("site" / LongNumber) {
+    siteId => delete {
+      val maybeDelete = Future {
+        Site1.delete(siteId)
+      }
+      onComplete(maybeDelete) {
+        case Success(isDeleted) =>
+          if (isDeleted) {
+            complete(StatusCodes.OK, "Site deleted successfully")
+          }
+          else {
+            complete(StatusCodes.OK, "Error in site deletion")
+          }
+        case Failure(ex) => logger.info("Failed to delete entity", ex)
+          complete(StatusCodes.BadRequest, "Deletion failed")
+      }
+    }
+  } ~ path("site" / LongNumber / "instances" / Segment) {
+    (siteId, instanceId) => {
+      delete {
+        val mayBeDelete = Future {
+          SiteManagerImpl.deleteIntanceFromSite(siteId, instanceId)
+        }
+        onComplete(mayBeDelete) {
+          case Success(isDeleted) =>
+            if (isDeleted) {
+              complete(StatusCodes.OK, "Instance deleted successfully")
+            }
+            else {
+              complete(StatusCodes.OK, "Error in Instance deletion")
+            }
+          case Failure(ex) => logger.error("Failed to delete the insatnce", ex)
+            complete(StatusCodes.BadRequest, "Failed to delete instance")
+        }
+      }
+    }
+  } ~
+    path("site" / LongNumber / "policies" / Segment) {
+      (siteId, policyId) => {
+        delete {
+          val maybeDelete = Future {
+            SiteManagerImpl.deletePolicy(policyId)
+          }
+          onComplete(maybeDelete) {
+            case Success(isDeleted) =>
+              if (isDeleted) {
+                complete(StatusCodes.OK, "Policy deleted successfully")
+              }
+              else {
+                complete(StatusCodes.OK, "Error in policy deletion")
+              }
+            case Failure(ex) => logger.info(s"Error while deleting policy $policyId", ex)
+              complete(StatusCodes.BadRequest, "Error while deleting policy")
+          }
+        }
+      }
+    } ~
+    path("site" / LongNumber / "policies" / Segment) {
+      (siteId, policyId) => {
+        get {
+          val mayBePolicy = Future {
+            SiteManagerImpl.getAutoScalingPolicy(siteId, policyId)
+          }
+          onComplete(mayBePolicy) {
+            case Success(somePolicy) =>
+              somePolicy match {
+                case Some(policy) => complete(StatusCodes.OK, policy)
+                case None => complete(StatusCodes.OK, s"Policy $policyId is not available")
+              }
+            case Failure(ex) => logger.info(s"Error while retrieving policy $policyId details", ex)
+              complete(StatusCodes.BadRequest, s"Error while retrieving policy  ${policyId} details")
+          }
+        }
+      }
+    }
+
+
+  implicit object GroupTypeFormat extends RootJsonFormat[GroupType] {
+    override def write(obj: GroupType): JsValue = {
+      JsString(obj.groupType.toString)
+    }
+
+    override def read(json: JsValue): GroupType = {
+      json match {
+        case JsString(str) => GroupType.toGroupType(str)
+        case _ => throw DeserializationException("Unable to deserialize Filter Type")
+      }
+    }
+  }
+
+
+  implicit object ConditionFormat extends RootJsonFormat[Condition] {
+    override def write(obj: Condition): JsValue = {
+      logger.info(s"Writing Condition json : ${obj.condition.toString}")
+      JsString(obj.condition.toString)
+    }
+
+    override def read(json: JsValue): Condition = {
+      logger.info(s"Reading json value : ${json.toString}")
+      json match {
+        case JsString(str) => Condition.toCondition(str)
+        case _ => throw DeserializationException("Unable to deserialize the Condition data")
+      }
+    }
+  }
+
+
 }

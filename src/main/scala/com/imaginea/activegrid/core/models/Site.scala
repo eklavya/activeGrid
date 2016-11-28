@@ -18,6 +18,25 @@ object Site {
     Site(Some(id), List.empty[Instance], None, None)
   }
 
+  def fromNeo4jGraph(nodeId: Long): Option[Site] = {
+    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
+    mayBeNode match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node, "siteName", "groupBy")
+        val siteName = map.get("siteName").asInstanceOf[Option[String]]
+        val groupBy = map.get("groupBy").asInstanceOf[Option[String]]
+        val relationship = "HAS_Instance"
+        val childNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship)
+        val instances: List[Instance] = childNodeIds.flatMap { childId =>
+          Instance.fromNeo4jGraph(childId)
+        }
+        Some(Site(Some(nodeId), instances, siteName, groupBy))
+      case None =>
+        logger.warn(s"could not find node for Site with nodeId $nodeId")
+        None
+    }
+  }
+
   implicit class SiteImpl(site: Site) extends Neo4jRep[Site] {
 
     override def toNeo4jGraph(entity: Site): Node = {
@@ -37,22 +56,4 @@ object Site {
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): Option[Site] = {
-    val mayBeNode = Neo4jRepository.findNodeById(nodeId)
-    mayBeNode match {
-      case Some(node) =>
-        val map = Neo4jRepository.getProperties(node, "siteName", "groupBy")
-        val siteName = map.get("siteName").asInstanceOf[Option[String]]
-        val groupBy = map.get("groupBy").asInstanceOf[Option[String]]
-        val relationship = "HAS_Instance"
-        val childNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, relationship)
-        val instances: List[Instance] = childNodeIds.flatMap { childId =>
-          Instance.fromNeo4jGraph(childId)
-        }
-        Some(Site(Some(nodeId), instances, siteName, groupBy))
-      case None =>
-        logger.warn(s"could not find node for Site with nodeId $nodeId")
-        None
-    }
-  }
 }

@@ -17,5 +17,5 @@ object Constants {
   val THREAD_POOL_SIZE = 10
   val MAX_AWAIT_TIME = 5
 
-  def getTempDirectoryLocation: String = TEMP_DIR_LOC
+  val tempDirectoryLocation: String = TEMP_DIR_LOC
 }
