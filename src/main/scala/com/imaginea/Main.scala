@@ -461,7 +461,7 @@ object Main extends App {
             mayBeSite match {
               case Some(site) =>
                 site.toNeo4jGraph(site)
-              case None => throw new NotFoundException(s"Site with id : $siteId")
+              case None => throw new NotFoundException(s"Site with id : $siteId is not found!")
             }
           }
           onComplete(siteResponse) {
@@ -1651,7 +1651,7 @@ object Main extends App {
             if (userDetail.contains("userName")) {
               val sshAccessInfo = mayBeInstance.flatMap(instance => instance.sshAccessInfo)
               sshAccessInfo.foreach { ssh =>
-                val newSSHAccessInfo = ssh.copy(userName = userDetail("userName"))
+                val newSSHAccessInfo = ssh.copy(userName = userDetail.get("userName"))
                 newSSHAccessInfo.toNeo4jGraph(newSSHAccessInfo)
               }
             }
@@ -1676,7 +1676,7 @@ object Main extends App {
                 val mayBeInstance = instances.find(instance => instance.instanceId.contains(id))
                 val sshAccessInfo = mayBeInstance.flatMap(instance => instance.sshAccessInfo)
                 sshAccessInfo.foreach { ssh =>
-                  val newSSHAccessInfo = ssh.copy(userName = name)
+                  val newSSHAccessInfo = ssh.copy(userName = Some(name))
                   newSSHAccessInfo.toNeo4jGraph(newSSHAccessInfo)
                 }
               }

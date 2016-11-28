@@ -267,11 +267,10 @@ object AWSComputeAPI {
         .withFilters(filter))
       describeSnapshotsResult.getSnapshots.foldLeft(Map[String, List[Snapshot]]()) { (map, snapshot) =>
         val volumeId = snapshot.getVolumeId
-        val list = map.get(volumeId)
-        if (list.nonEmpty) {
-          map + ((volumeId, snapshot :: list.get))
-        } else {
-          map + ((volumeId, List(snapshot)))
+        val mayBeList = map.get(volumeId)
+        mayBeList match {
+          case Some(list) => map + ((volumeId, snapshot :: list))
+          case None => map + ((volumeId, List(snapshot)))
         }
       }
     } else {
