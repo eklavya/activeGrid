@@ -43,7 +43,7 @@ object Site1 {
     }
     maybeNode.isDefined
   }
-
+  // scalastyle:off method.length
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
