@@ -288,6 +288,13 @@ object AWSComputeAPI {
     awsInstanceHelper(aWSCredentials1, region)
   }
 
+  def getComputeAPI(accountInfo: AccountInfo,regionName: String): AmazonEC2 = {
+    val region = RegionUtils.getRegion(regionName)
+    val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.get, accountInfo.secretKey.get, regionName)
+    val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
+    awsInstanceHelper(aWSCredentials1, region)
+  }
+
   private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
     new AWSCredentials() {
       def getAWSAccessKeyId: String = {
@@ -367,5 +374,34 @@ object AWSComputeAPI {
       val instanceIds = lbDesc.getInstances.map { awsInstance => awsInstance.getInstanceId }.toList
       LoadBalancer(None, name, vpcId, None, instanceIds, availabilityZones)
     }
+  }
+  def startInstance(amazonEC2: AmazonEC2,instanceIds: List[String]): Map[String,String] = {
+    val startInstanceIdRequest = new StartInstancesRequest(instanceIds)
+    val startInstanceResult = amazonEC2.startInstances(startInstanceIdRequest)
+    startInstanceResult.getStartingInstances.map( instance =>
+      (instance.getInstanceId,instance.getCurrentState.getName)).toMap
+  }
+  def stopInstance(amazonEC2: AmazonEC2,instanceIds: List[String]): Map[String,String] = {
+    val stopInstanceIdRequest = new StopInstancesRequest(instanceIds)
+    val startInstanceResult = amazonEC2.stopInstances(stopInstanceIdRequest)
+    startInstanceResult.getStoppingInstances.map( instance =>
+      (instance.getInstanceId,instance.getCurrentState.getName)).toMap
+  }
+
+  def createSnapshot(amazonEC2: AmazonEC2,volumeId: String): Option[SnapshotInfo] = {
+    val createSnapShotRequest = new CreateSnapshotRequest(volumeId,"snapshot created by orchestrator")
+    val creteSnapShotResponse = amazonEC2.createSnapshot(createSnapShotRequest)
+    if(creteSnapShotResponse != null){
+      Some(createSnapshotInfo(creteSnapShotResponse.getSnapshot))
+    }else None
+  }
+
+  def createImage(amazonEC2: AmazonEC2,instanceId: String,imageName: String): Option[String] = {
+    val createImageRequest = new CreateImageRequest(imageName,imageName)
+    createImageRequest.setDescription("image created by orchestrator")
+    val creteImageResponse = amazonEC2.createImage(createImageRequest)
+    if(creteImageResponse != null){
+      Some(creteImageResponse.getImageId)
+    }else None
   }
 }

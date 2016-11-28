@@ -1600,6 +1600,20 @@ object Main extends App {
         }
         }
       }
+    } ~ path(LongNumber / "instances" / Segment / Segment) { (siteId, ids, action) =>
+      get {
+        onComplete(instancesAction(siteId,ids,action)) {
+          case Success(instancesResponse) =>
+            if(instancesResponse.isEmpty) {
+              complete(StatusCodes.BadRequest, "Unable to apply action on the instances.")
+            }else{
+              complete(StatusCodes.OK, instancesResponse)
+            }
+          case Failure(exception) =>
+            logger.error(s"Unable to apply action in instance. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to apply action on the instances.")
+        }
+      }
     }
   } ~ path(LongNumber / "instances" / Segment) {
     (siteId, instanceId) =>
@@ -1973,6 +1987,60 @@ object Main extends App {
     }
     mayBeSite.isDefined
   }
+
+  private def instancesAction(siteId: Long, ids: String, action: String): Future[Map[String, String]] =
+    Future {
+      val idList = ids.split(",").toList
+      val siteOpt = Site1.fromNeo4jGraph(siteId)
+      val accountInfoOpt: Option[AccountInfo] = siteOpt
+        .flatMap(site => site.filters.headOption)
+        .map(siteFilter => siteFilter.accountInfo)
+
+      val regionVsInstance =
+        siteOpt.map(site => {
+          val instances = site.instances.filter(instance => idList.contains(instance.instanceId.getOrElse("")))
+          instances
+        }).getOrElse(List.empty[Instance]).groupBy(_.region.getOrElse(""))
+
+      accountInfoOpt.map(accountInfo =>
+        regionVsInstance.flatMap { case (region, instances) => {
+          val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo, region)
+          val instanceIds = instances.flatMap(instance => instance.instanceId)
+
+          val response: Map[String, String] = InstanceActionType.toInstanceActionType(action) match {
+            case InstanceActionType.Start => AWSComputeAPI.startInstance(amazonEC2, instanceIds)
+            case InstanceActionType.Stop => AWSComputeAPI.stopInstance(amazonEC2, instanceIds)
+            case InstanceActionType.CreateSnapshot => {
+              val snapShots = for {instance <- instances
+                                   instanceBlockingDevice <- instance.blockDeviceMappings
+                                   volumeId <- instanceBlockingDevice.volume.volumeId
+                                   snapShots <- AWSComputeAPI.createSnapshot(amazonEC2, volumeId)
+              } yield {
+                  val volumeNew = instanceBlockingDevice.volume.copy(
+                    currentSnapshot = Some(snapShots),
+                    snapshotCount = instanceBlockingDevice.volume.snapshotCount.map(count => count + 1))
+                  val node = volumeNew.toNeo4jGraph(volumeNew)
+                  (volumeId -> node.getId.toString)
+                }
+              snapShots.toMap
+            }
+            case InstanceActionType.CreateImage => {
+              val opt =
+                for {instance <- instances.headOption
+                     image <- instance.image
+                     imageName <- image.name
+                     instanceId <- instance.instanceId
+                     imageId <- AWSComputeAPI.createImage(amazonEC2, imageName, instanceId)
+                } yield (Map(instanceId -> imageId))
+              opt.getOrElse(Map.empty[String, String])
+            }
+            case _ => throw new Exception("Action not found")
+          }
+          response
+        }
+        }).getOrElse(Map.empty[String, String])
+    }
+
 
   // scalastyle:off method.length cyclomatic.complexity
   def siteServices: Route = pathPrefix("site") {
