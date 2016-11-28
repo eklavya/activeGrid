@@ -1569,6 +1569,37 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to get Site Delta.")
         }
       }
+    } ~ path(LongNumber / "connections") { siteId =>
+      get {
+        parameter('strategy) { strategy => {
+          //Collect all connection based among instance based on the strategy
+          val connections = Future {
+            def strategyConnection(getConnections: Instance => List[InstanceConnection]) = {
+              val siteOpt = Site1.fromNeo4jGraph(siteId)
+              val site = siteOpt.map(site =>
+                site.instances.flatMap(instance => getConnections(instance))
+              ).getOrElse(List.empty[InstanceConnection])
+              site
+            }
+            ConnectionStrategy.toConnectionStrategy(strategy) match {
+              case ConnectionStrategy.Ssh => strategyConnection(instance => instance.liveConnections)
+              case ConnectionStrategy.SecurityGroup => strategyConnection(instance => instance.estimatedConnections)
+            }
+          }
+          onComplete(connections) {
+            case Success(connectionResponse) =>
+              if (connectionResponse.isEmpty) {
+                complete(StatusCodes.NoContent)
+              } else {
+                complete(StatusCodes.OK, connectionResponse)
+              }
+            case Failure(exception) =>
+              logger.error(s"Unable to get connection for site id $siteId. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get Site connection.")
+          }
+        }
+        }
+      }
     }
   } ~ path(LongNumber / "instances" / Segment) {
     (siteId, instanceId) =>
