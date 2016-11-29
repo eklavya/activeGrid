@@ -14,8 +14,6 @@ object Constants {
   val USER_KEYS: String = "userkeys"
   val FILE_SEPARATOR = File.separator
   val NAME_TAG_KEY = "Name"
-  val THREAD_POOL_SIZE = 10
-  val MAX_AWAIT_TIME = 5
 
   val tempDirectoryLocation: String = TEMP_DIR_LOC
 }
