@@ -1888,7 +1888,7 @@ object Main extends App {
         case Success(successResponse) => complete(StatusCodes.OK, successResponse)
         case Failure(ex) =>
           logger.error(s"Unable to get List; Failed with ${ex.getMessage}", ex)
-          complete(StatusCodes.BadRequest, "Unable to get List of Instances")
+          complete(StatusCodes.BadRequest, "Unable to get List of Applications")
       }
     }
   } ~ path(LongNumber / "applications" / LongNumber) {
