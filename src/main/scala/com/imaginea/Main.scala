@@ -289,24 +289,21 @@ object Main extends App {
   }
 
   implicit object SiteFormat extends RootJsonFormat[Site1] {
-    override def write(i: Site1): JsValue = {
-      val fieldNames = List("id", "siteName", "instances", "reservedInstanceDetails", "filters",
-        "loadBalancers", "scalingGroups","groupsList","scalingPolicies")
-      // scalastyle:off magic.number
+
+    override def write(i: Site1): JsValue =
+    {
       val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields ++= AGU.longToJsField(fieldNames.head, i.id)
-      fields ++= AGU.stringToJsField(fieldNames(1),Some(i.siteName))
-      fields ++= AGU.listToJsValue[Instance]("instances", i.instances,instanceFormat)
-      fields ++= AGU.listToJsValue[ReservedInstanceDetails]("reservedInstanceDetails", i.reservedInstanceDetails, reservedInstanceDetailsFormat)
-      fields ++= AGU.listToJsValue[SiteFilter]("filters", i.filters, siteFilterFormat)
-      fields ++= AGU.listToJsValue[LoadBalancer]("loadBalancers", i.loadBalancers, loadBalancerFormat)
-      fields ++= AGU.listToJsValue[ScalingGroup]("scalingGroups", i.scalingGroups, scalingGroupFormat)
-      fields ++= AGU.listToJsValue[InstanceGroup]("groupsList", i.groupsList, instanceGroupFormat)
-      // scalastyle:on magic.number
+      fields ++= AGU.longToJsField("id", i.id) ++
+      AGU.stringToJsField("siteName",Some(i.siteName)) ++
+      AGU.listToJsValue[Instance]("instances", i.instances,instanceFormat) ++
+      AGU.listToJsValue[ReservedInstanceDetails]("reservedInstanceDetails",
+        i.reservedInstanceDetails, reservedInstanceDetailsFormat) ++
+      AGU.listToJsValue[SiteFilter]("filters", i.filters, siteFilterFormat) ++
+      AGU.listToJsValue[LoadBalancer]("loadBalancers", i.loadBalancers, loadBalancerFormat) ++
+      AGU.listToJsValue[ScalingGroup]("scalingGroups", i.scalingGroups, scalingGroupFormat) ++
+      AGU.listToJsValue[InstanceGroup]("groupsList", i.groupsList, instanceGroupFormat)
       JsObject(fields: _*)
     }
-
-
     override def read(json: JsValue): Site1 = {
       json match {
         case JsObject(map) =>
