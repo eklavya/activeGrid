@@ -2119,13 +2119,13 @@ object Main extends App {
         app1.toNeo4jGraph(app1)
       case None => application.toNeo4jGraph(application)
     }
-
   }
 
   def populateInstances(site: Site1): Site1 = {
     val siteFilters = site.filters
     logger.info(s"Parsing instance : ${site.instances}")
-    val (instances, reservedInstanceDetails, loadBalancer, scalingGroup) = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](), List.empty[LoadBalancer], List.empty[ScalingGroup])) {
+    val (instances, reservedInstanceDetails, loadBalancer, scalingGroup) = siteFilters.foldLeft((List[Instance](), List[ReservedInstanceDetails](),
+      List.empty[LoadBalancer], List.empty[ScalingGroup])) {
       (result, siteFilter) =>
         val accountInfo = siteFilter.accountInfo
         val mayBeRegion = accountInfo.regionName
@@ -2136,7 +2136,8 @@ object Main extends App {
           val reservedInstanceDetails = AWSComputeAPI.getReservedInstances(amazonEC2)
           val loadBalancers = AWSComputeAPI.getLoadBalancers(accountInfo)
           val scalingGroup = AWSComputeAPI.getAutoScalingGroups(accountInfo)
-          (instancesList ::: instances, reservedInstanceDetailsList ::: reservedInstanceDetails, loadBalancerList ::: loadBalancers, scalingGroupList ::: scalingGroup)
+          (instancesList ::: instances, reservedInstanceDetailsList ::: reservedInstanceDetails, loadBalancerList ::: loadBalancers, scalingGroupList :::
+            scalingGroup)
         }.getOrElse(result)
     }
     val site1 = Site1(None, site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(), List.empty[Application],
