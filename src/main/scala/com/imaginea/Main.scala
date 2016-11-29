@@ -102,36 +102,36 @@ object Main extends App {
         "securityGroups", "reservedInstance", "region")
       // scalastyle:off magic.number
       val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields ++= longToJsField(fieldNames.head, i.id)
-      fields ++= stringToJsField(fieldNames(1), i.instanceId)
-      fields ++= List((fieldNames(2), JsString(i.name)))
-      fields ++= stringToJsField(fieldNames(3), i.state)
-      fields ++= stringToJsField(fieldNames(4), i.instanceType)
-      fields ++= stringToJsField(fieldNames(5), i.platform)
-      fields ++= stringToJsField(fieldNames(6), i.architecture)
-      fields ++= stringToJsField(fieldNames(7), i.publicDnsName)
-      fields ++= longToJsField(fieldNames(8), i.launchTime)
-      fields ++= objectToJsValue[StorageInfo](fieldNames(9), i.memoryInfo, storageInfoFormat)
-      fields ++= objectToJsValue[StorageInfo](fieldNames(10), i.rootDiskInfo, storageInfoFormat)
-      fields ++= listToJsValue[KeyValueInfo](fieldNames(11), i.tags, keyValueInfoFormat)
-      fields ++= objectToJsValue[SSHAccessInfo](fieldNames(12), i.sshAccessInfo, sshAccessInfoFormat)
-      fields ++= listToJsValue[InstanceConnection](fieldNames(13), i.liveConnections, instanceConnectionFormat)
-      fields ++= listToJsValue[InstanceConnection](fieldNames(14), i.estimatedConnections, instanceConnectionFormat)
-      fields ++= setToJsValue[ProcessInfo](fieldNames(15), i.processes, processInfoFormat)
-      fields ++= objectToJsValue[ImageInfo](fieldNames(16), i.image, imageFormat)
-      fields ++= listToJsValue[InstanceUser](fieldNames(17), i.existingUsers, instanceUserFormat)
-      fields ++= objectToJsValue[AccountInfo](fieldNames(18), i.account, accountInfoFormat)
-      fields ++= stringToJsField(fieldNames(19), i.availabilityZone)
-      fields ++= stringToJsField(fieldNames(20), i.privateDnsName)
-      fields ++= stringToJsField(fieldNames(21), i.privateIpAddress)
-      fields ++= stringToJsField(fieldNames(22), i.publicIpAddress)
-      fields ++= stringToJsField(fieldNames(23), i.elasticIP)
-      fields ++= stringToJsField(fieldNames(24), i.monitoring)
-      fields ++= stringToJsField(fieldNames(25), i.rootDeviceType)
-      fields ++= listToJsValue[InstanceBlockDeviceMappingInfo](fieldNames(26), i.blockDeviceMappings, instanceBlockingFormat)
-      fields ++= listToJsValue[SecurityGroupInfo](fieldNames(27), i.securityGroups, securityGroupsFormat)
-      fields ++= List((fieldNames(28), JsBoolean(i.reservedInstance)))
-      fields ++= stringToJsField(fieldNames(29), i.region)
+      fields ++= longToJsField(fieldNames.head, i.id) ++
+        stringToJsField(fieldNames(1), i.instanceId) ++
+        List((fieldNames(2), JsString(i.name))) ++
+        stringToJsField(fieldNames(3), i.state) ++
+        stringToJsField(fieldNames(4), i.instanceType) ++
+        stringToJsField(fieldNames(5), i.platform) ++
+        stringToJsField(fieldNames(6), i.architecture) ++
+        stringToJsField(fieldNames(7), i.publicDnsName) ++
+        longToJsField(fieldNames(8), i.launchTime) ++
+        objectToJsValue[StorageInfo](fieldNames(9), i.memoryInfo, storageInfoFormat) ++
+        objectToJsValue[StorageInfo](fieldNames(10), i.rootDiskInfo, storageInfoFormat) ++
+        listToJsValue[KeyValueInfo](fieldNames(11), i.tags, keyValueInfoFormat) ++
+        objectToJsValue[SSHAccessInfo](fieldNames(12), i.sshAccessInfo, sshAccessInfoFormat) ++
+        listToJsValue[InstanceConnection](fieldNames(13), i.liveConnections, instanceConnectionFormat) ++
+        listToJsValue[InstanceConnection](fieldNames(14), i.estimatedConnections, instanceConnectionFormat) ++
+        setToJsValue[ProcessInfo](fieldNames(15), i.processes, processInfoFormat) ++
+        objectToJsValue[ImageInfo](fieldNames(16), i.image, imageFormat) ++
+        listToJsValue[InstanceUser](fieldNames(17), i.existingUsers, instanceUserFormat) ++
+        objectToJsValue[AccountInfo](fieldNames(18), i.account, accountInfoFormat) ++
+        stringToJsField(fieldNames(19), i.availabilityZone) ++
+        stringToJsField(fieldNames(20), i.privateDnsName) ++
+        stringToJsField(fieldNames(21), i.privateIpAddress) ++
+        stringToJsField(fieldNames(22), i.publicIpAddress) ++
+        stringToJsField(fieldNames(23), i.elasticIP) ++
+        stringToJsField(fieldNames(24), i.monitoring) ++
+        stringToJsField(fieldNames(25), i.rootDeviceType) ++
+        listToJsValue[InstanceBlockDeviceMappingInfo](fieldNames(26), i.blockDeviceMappings, instanceBlockingFormat) ++
+        listToJsValue[SecurityGroupInfo](fieldNames(27), i.securityGroups, securityGroupsFormat) ++
+        List((fieldNames(28), JsBoolean(i.reservedInstance))) ++
+        stringToJsField(fieldNames(29), i.region)
       // scalastyle:on magic.number
       JsObject(fields: _*)
     }
@@ -288,14 +288,14 @@ object Main extends App {
         "loadBalancers", "scalingGroups", "groupsList", "applications", "groupBy")
       // scalastyle:off magic.number
       val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields ++= AGU.longToJsField(fieldNames.head, i.id)
-      fields ++= AGU.stringToJsField(fieldNames(1), Some(i.siteName))
-      fields ++= AGU.listToJsValue[Instance]("instances", i.instances, instanceFormat)
-      fields ++= AGU.listToJsValue[ReservedInstanceDetails]("reservedInstanceDetails", i.reservedInstanceDetails, reservedInstanceDetailsFormat)
-      fields ++= AGU.listToJsValue[SiteFilter]("filters", i.filters, siteFilterFormat)
-      fields ++= AGU.listToJsValue[LoadBalancer]("loadBalancers", i.loadBalancers, loadBalancerFormat)
-      fields ++= AGU.listToJsValue[ScalingGroup]("scalingGroups", i.scalingGroups, scalingGroupFormat)
-      fields ++= AGU.listToJsValue[InstanceGroup]("groupsList", i.groupsList, instanceGroupFormat)
+      fields ++= AGU.longToJsField(fieldNames.head, i.id) ++
+        AGU.stringToJsField(fieldNames(1), Some(i.siteName)) ++
+        AGU.listToJsValue[Instance]("instances", i.instances, instanceFormat) ++
+        AGU.listToJsValue[ReservedInstanceDetails]("reservedInstanceDetails", i.reservedInstanceDetails, reservedInstanceDetailsFormat) ++
+        AGU.listToJsValue[SiteFilter]("filters", i.filters, siteFilterFormat) ++
+        AGU.listToJsValue[LoadBalancer]("loadBalancers", i.loadBalancers, loadBalancerFormat) ++
+        AGU.listToJsValue[ScalingGroup]("scalingGroups", i.scalingGroups, scalingGroupFormat) ++
+        AGU.listToJsValue[InstanceGroup]("groupsList", i.groupsList, instanceGroupFormat)
       // scalastyle:on magic.number
       JsObject(fields: _*)
     }
