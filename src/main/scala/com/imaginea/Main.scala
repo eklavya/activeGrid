@@ -334,7 +334,8 @@ object Main extends App {
   implicit val scaleTypeJson = ScaleTypeJson
   implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
   implicit val autoScalingPolicyJson = jsonFormat5(AutoScalingPolicy.apply)
-  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups", "groupsList", "applications", "groupBy")
+  implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups",
+    "groupsList", "applications", "groupBy")
 
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
@@ -1440,7 +1441,8 @@ object Main extends App {
                     case LIST => filterInstanceViewList(instance, ViewLevel.toViewLevel("SUMMARY"))
                   }
                 }
-                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, List.empty[Application], site.groupBy))
+                Some(Site1(site.id, site.siteName, filteredInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups,
+                  site.groupsList, List.empty[Application], site.groupBy))
               case None =>
                 logger.warn(s"Failed in fromNeo4jGraph of Site for siteId : $siteId")
                 None
@@ -1524,7 +1526,8 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val newListOfInstances = instance :: listOfInstances
-                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers, site.scalingGroups, site.groupsList, List.empty[Application], site.groupBy)
+                val siteToSave = Site1(site.id, site.siteName, newListOfInstances, site.reservedInstanceDetails, site.filters, site.loadBalancers,
+                  site.scalingGroups, site.groupsList, List.empty[Application], site.groupBy)
                 siteToSave.toNeo4jGraph(siteToSave)
                 "Instance added successfully to Site"
               case None =>
@@ -1986,7 +1989,8 @@ object Main extends App {
         val lbsToSave = getLoadBalancersToSave(site.loadBalancers)
         val sgsToSave = getScalingGroupsToSave(site.scalingGroups)
         val rInstancesToSave = getReservedInstancesToSave(site.reservedInstanceDetails)
-        val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList, List.empty[Application], site.groupBy)
+        val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList,
+          List.empty[Application], site.groupBy)
         siteToSave.toNeo4jGraph(siteToSave)
         cachedSite.put(siteId, siteToSave)
         Some(siteToSave)
@@ -2107,7 +2111,7 @@ object Main extends App {
   }
 
   def saveApplication(site: Site1, application: Application): Unit = {
-    val applications = List.empty[Application] //TODO has to change Site1 case class
+    val applications = site.applications
     val mayBeApp = applications.find(app => application.name.exists(name => app.name.contains(name)))
     val appToSave = mayBeApp match {
       case Some(app) =>
@@ -2135,7 +2139,8 @@ object Main extends App {
           (instancesList ::: instances, reservedInstanceDetailsList ::: reservedInstanceDetails, loadBalancerList ::: loadBalancers, scalingGroupList ::: scalingGroup)
         }.getOrElse(result)
     }
-    val site1 = Site1(None, site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(), List.empty[Application], site.groupBy)
+    val site1 = Site1(None, site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(), List.empty[Application],
+      site.groupBy)
     site1.toNeo4jGraph(site1)
     site1
   }
