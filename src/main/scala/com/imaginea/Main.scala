@@ -39,12 +39,14 @@ object Main extends App {
 
   implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
   implicit val pageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
-  implicit val userFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "displayName")
+  implicit val userFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked",
+    "credentialsNonExpired", "enabled", "displayName")
   implicit val pageUsersFomat = jsonFormat(Page[User], "startIndex", "count", "totalObjects", "objects")
   implicit val sshKeyContentInfoFormat = jsonFormat(SSHKeyContentInfo, "keyMaterials")
   implicit val softwareFormat = jsonFormat(Software.apply, "id", "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
   implicit val softwarePageFormat = jsonFormat4(Page[Software])
-  implicit val imageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform", "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
+  implicit val imageFormat = jsonFormat(ImageInfo.apply, "id", "imageId", "state", "ownerId", "publicValue", "architecture", "imageType", "platform",
+    "imageOwnerAlias", "name", "description", "rootDeviceType", "rootDeviceName", "version")
   implicit val pageImageFormat = jsonFormat4(Page[ImageInfo])
   implicit val appSettingsFormat = jsonFormat(AppSettings.apply, "id", "settings", "authSettings")
   implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
@@ -102,8 +104,7 @@ object Main extends App {
         "privateIpAddress", "publicIpAddress", "elasticIp", "monitoring", "rootDeviceType", "blockDeviceMappings",
         "securityGroups", "reservedInstance", "region")
       // scalastyle:off magic.number
-      val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields ++= longToJsField(fieldNames.head, i.id) ++
+      val fields = longToJsField(fieldNames.head, i.id) ++
         stringToJsField(fieldNames(1), i.instanceId) ++
         List((fieldNames(2), JsString(i.name))) ++
         stringToJsField(fieldNames(3), i.state) ++
@@ -290,8 +291,7 @@ object Main extends App {
       val fieldNames = List("id", "siteName", "instances", "reservedInstanceDetails", "filters",
         "loadBalancers", "scalingGroups", "groupsList", "applications", "groupBy")
       // scalastyle:off magic.number
-      val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields ++= AGU.longToJsField(fieldNames.head, i.id) ++
+      val fields = AGU.longToJsField(fieldNames.head, i.id) ++
         AGU.stringToJsField(fieldNames(1), Some(i.siteName)) ++
         AGU.listToJsValue[Instance]("instances", i.instances, instanceFormat) ++
         AGU.listToJsValue[ReservedInstanceDetails]("reservedInstanceDetails", i.reservedInstanceDetails, reservedInstanceDetailsFormat) ++
