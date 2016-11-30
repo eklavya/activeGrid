@@ -292,8 +292,7 @@ object Main extends App {
 
     override def write(i: Site1): JsValue =
     {
-      val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields ++= AGU.longToJsField("id", i.id) ++
+      val fields = AGU.longToJsField("id", i.id) ++
       AGU.stringToJsField("siteName",Some(i.siteName)) ++
       AGU.listToJsValue[Instance]("instances", i.instances,instanceFormat) ++
       AGU.listToJsValue[ReservedInstanceDetails]("reservedInstanceDetails",
