@@ -54,8 +54,8 @@ object Site1 {
         val siteName = map.get("siteName").toString
         val instanceRelation = "HAS_Instance"
         val groupBy = map.get("groupBy").toString
-        val childNodeIds_inst: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceRelation)
-        val instances: List[Instance] = childNodeIds_inst.flatMap { childId =>
+        val childNodeIdsInst: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceRelation)
+        val instances: List[Instance] = childNodeIdsInst.flatMap { childId =>
           Instance.fromNeo4jGraph(childId)
         }
         /*val sfRelation = "HAS_SiteFilter"

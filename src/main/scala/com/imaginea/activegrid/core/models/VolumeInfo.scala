@@ -36,8 +36,8 @@ object VolumeInfo {
       node =>
         if (Neo4jRepository.hasLabel(node, volumeInfoLabel)) {
           val map = Neo4jRepository.getProperties(node, "volumeId", "size", "snapshotId", "availabilityZone", "state", "createTime", "volumeType")
-          val childNodeIds_keyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, volumeInfoTagRelation)
-          val keyValueInfos: List[KeyValueInfo] = childNodeIds_keyValueInfos.flatMap { childId =>
+          val childNodeIdsKeyValueInfos = Neo4jRepository.getChildNodeIds(nodeId, volumeInfoTagRelation)
+          val keyValueInfos: List[KeyValueInfo] = childNodeIdsKeyValueInfos.flatMap { childId =>
             KeyValueInfo.fromNeo4jGraph(childId)
           }
 
