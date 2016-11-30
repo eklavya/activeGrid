@@ -14,7 +14,7 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
-import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat, _} // scalastyle:ignore underscore.import
+import spray.json.{_} // scalastyle:ignore underscore.import
 
 import scala.collection.mutable
 import scala.concurrent.Future
