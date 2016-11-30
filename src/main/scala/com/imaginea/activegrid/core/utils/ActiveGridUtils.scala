@@ -52,9 +52,8 @@ object ActiveGridUtils {
   def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
     if (propertyMap.contains(property)) {
       val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
-      listOfObjs.elements.foldLeft(List[T]()) {
-        (list, jsString) =>
-          formateObject.read(jsString) :: list
+      listOfObjs.elements.toList.map{
+        jsString => formateObject.read(jsString)
       }
     } else {
       List.empty[T]
@@ -91,8 +90,4 @@ object ActiveGridUtils {
       case None => rest
     }
   }
-
-
-
 }
-

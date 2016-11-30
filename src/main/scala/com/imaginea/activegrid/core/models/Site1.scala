@@ -4,6 +4,9 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
 /**
   * Created by shareefn on 25/10/16.
   */
@@ -106,10 +109,13 @@ object Site1 {
       val label = "Site1"
       val mapPrimitives = Map("siteName" -> entity.siteName, "groupBy" -> entity.groupBy)
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
-      val relationship_inst = "HAS_Instance"
+      val siteAndInstanceRelation = "HAS_Instance"
+
       entity.instances.foreach { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+        Future {
+          val instanceNode = instance.toNeo4jGraph(instance)
+          Neo4jRepository.setGraphRelationship(node, instanceNode, siteAndInstanceRelation)
+        }
       }
 
       entity.filters.foreach { filter =>

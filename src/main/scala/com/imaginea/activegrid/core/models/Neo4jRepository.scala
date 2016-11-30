@@ -54,7 +54,10 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     id match {
       case Some(nodeId) =>
         logger.info(s"fetching node with Id $nodeId")
-        getNodeById(nodeId)
+        val node = getNodeById(nodeId)
+        logger.info(s"deleting relationships for Node : $nodeId")
+        deleteRelationships(node, isStart = true)
+        node
       case None =>
         logger.info(s"creating node with label $label")
         createNode(label)
@@ -224,6 +227,21 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
           }
         case None => false
       }
+    }
+  }
+
+  def deleteRelationships(node: Node, isStart: Boolean = false): Unit = {
+    val outGoingRelations = getRelationships(node, Direction.OUTGOING)
+    if (outGoingRelations.nonEmpty) {
+      outGoingRelations.foreach {
+        relation =>
+          deleteRelationships(relation.getEndNode)
+      }
+    }
+    val incomingRelations = getRelationships(node, Direction.INCOMING)
+    incomingRelations.foreach(relation => relation.delete())
+    if (!isStart) {
+      node.delete()
     }
   }
 }
