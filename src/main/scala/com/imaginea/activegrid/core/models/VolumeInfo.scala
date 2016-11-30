@@ -22,7 +22,7 @@ case class VolumeInfo(override val id: Option[Long],
 object VolumeInfo {
   val volumeInfoLabel = "VolumeInfo"
   val volumeInfo_Tag_Relation = "HAS_TAGS"
-  val volumeInfo_SnapshotInfo_Relation = "HAS_SNAPSHOT"
+  val volumeInfoAndSnapshotInfoRelation = "HAS_SNAPSHOT"
   val logger = LoggerFactory.getLogger(getClass)
 
   def apply(id: Long): VolumeInfo = {
@@ -41,7 +41,7 @@ object VolumeInfo {
             KeyValueInfo.fromNeo4jGraph(childId)
           }
 
-          val snapshotInfo = Neo4jRepository.getChildNodeId(nodeId, volumeInfo_SnapshotInfo_Relation).flatMap(id => SnapshotInfo.fromNeo4jGraph(id))
+          val snapshotInfo = Neo4jRepository.getChildNodeId(nodeId, volumeInfoAndSnapshotInfoRelation).flatMap(id => SnapshotInfo.fromNeo4jGraph(id))
 
           Some(VolumeInfo(Some(nodeId),
             ActiveGridUtils.getValueFromMapAs[String](map, "volumeId"),
@@ -79,11 +79,10 @@ object VolumeInfo {
           val tagNode = tag.toNeo4jGraph(tag)
           Neo4jRepository.createRelation(volumeInfo_Tag_Relation, node, tagNode)
       }
-      if (entity.currentSnapshot.nonEmpty) {
-        val snapshotInfoNode = entity.currentSnapshot.get.toNeo4jGraph(entity.currentSnapshot.get)
-        Neo4jRepository.createRelation(volumeInfo_SnapshotInfo_Relation, node, snapshotInfoNode)
+      entity.currentSnapshot.foreach { snapshotInfo =>
+        val snapshotInfoNode = snapshotInfo.toNeo4jGraph(snapshotInfo)
+        Neo4jRepository.createRelation(volumeInfoAndSnapshotInfoRelation, node, snapshotInfoNode)
       }
-
       node
     }
 
