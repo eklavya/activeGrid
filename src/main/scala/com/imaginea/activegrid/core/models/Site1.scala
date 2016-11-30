@@ -4,6 +4,9 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
 /**
   * Created by shareefn on 25/10/16.
   */
@@ -28,7 +31,7 @@ object Site1 {
 
   def apply(id: Long): Site1 = {
     Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
-      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup],"test")
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], "test")
   }
 
 
@@ -85,7 +88,7 @@ object Site1 {
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups,groupBy))
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, groupBy))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -98,10 +101,13 @@ object Site1 {
       val label = "Site1"
       val mapPrimitives = Map("siteName" -> entity.siteName, "groupBy" -> entity.groupBy)
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
-      val relationship_inst = "HAS_Instance"
+      val siteAndInstanceRelation = "HAS_Instance"
+
       entity.instances.foreach { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.setGraphRelationship(node, instanceNode, relationship_inst)
+        Future {
+          val instanceNode = instance.toNeo4jGraph(instance)
+          Neo4jRepository.setGraphRelationship(node, instanceNode, siteAndInstanceRelation)
+        }
       }
 
       entity.filters.foreach { filter =>
