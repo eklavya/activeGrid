@@ -22,24 +22,24 @@ object ApplicationTier {
 
   def fromNeo4jGraph(nodeId: Long): Option[AppTier] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-      val node = Neo.findNodeById(nodeId)
-      node.map {
-        appTier =>
-          //Reading properties
-          val map = Neo.getProperties(appTier, "name","description")
+    val node = Neo.findNodeById(nodeId)
+    node.map {
+      appTier =>
+        //Reading properties
+        val map = Neo.getProperties(appTier, "name", "description")
 
-          //Fetching instances
-          val instances = Neo.getChildNodeIds(appTier.getId,Instance.relationLable).flatMap{
-            id => Instance.fromNeo4jGraph(id)
-          }
+        //Fetching instances
+        val instances = Neo.getChildNodeIds(appTier.getId, Instance.relationLable).flatMap {
+          id => Instance.fromNeo4jGraph(id)
+        }
 
-          // Fetching APM Server
-          val apmSrvr = Neo.getChildNodeId(appTier.getId,APMServerDetails.relationLable).flatMap{
-            id => APMServerDetails.fromNeo4jGraph(id)
-          }
-          ApplicationTier(Some(nodeId), map("name").toString, map("description").toString, instances, apmSrvr)
-      }
+        // Fetching APM Server
+        val apmSrvr = Neo.getChildNodeId(appTier.getId, APMServerDetails.relationLable).flatMap {
+          id => APMServerDetails.fromNeo4jGraph(id)
+        }
+        ApplicationTier(Some(nodeId), map("name").toString, map("description").toString, instances, apmSrvr)
     }
+  }
 
   implicit class ApplicationTierImpl(applicationTier: AppTier) extends Neo4jRep[AppTier] {
 
@@ -53,17 +53,17 @@ object ApplicationTier {
       val appTierNode = Neo.saveEntity[AppTier](AppTier.lable, appTier.id, map)
 
       // Creating instances.
-      appTier.instances.map{
+      appTier.instances.map {
         instance =>
           val instnNode = instance.toNeo4jGraph(instance)
-          Neo.createRelation(Instance.relationLable,appTierNode,instnNode)
+          Neo.createRelation(Instance.relationLable, appTierNode, instnNode)
       }
 
       // Creating APMServer
-      appTier.apmServer.map{
+      appTier.apmServer.map {
         srvr =>
           val srvrNod = srvr.toNeo4jGraph(srvr)
-          Neo.createRelation(APMServerDetails.relationLable,appTierNode,srvrNod)
+          Neo.createRelation(APMServerDetails.relationLable, appTierNode, srvrNod)
       }
       appTierNode
     }
