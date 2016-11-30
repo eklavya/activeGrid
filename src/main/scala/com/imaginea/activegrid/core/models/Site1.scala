@@ -4,6 +4,9 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
 /**
   * Created by shareefn on 25/10/16.
   */
@@ -14,7 +17,8 @@ case class Site1(override val id: Option[Long],
                  filters: List[SiteFilter],
                  loadBalancers: List[LoadBalancer],
                  scalingGroups: List[ScalingGroup],
-                 groupsList: List[InstanceGroup]) extends BaseEntity
+                 groupsList: List[InstanceGroup],
+                 groupBy: String) extends BaseEntity
 
 object Site1 {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -25,6 +29,23 @@ object Site1 {
   val siteRIRelation = "HAS_ReservedInstance"
   val siteSFRelation = "HAS_SiteFilter"
 
+  def apply(id: Long): Site1 = {
+    Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], "test")
+  }
+
+
+  def delete(siteId: Long): Boolean = {
+    val maybeNode = Neo4jRepository.findNodeById(siteId)
+    maybeNode.map {
+      node => {
+        logger.info(s"Site is $siteId available,It properties are...." + node.toString)
+        Neo4jRepository.deleteEntity(node.getId)
+      }
+    }
+    maybeNode.isDefined
+  }
+
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -32,8 +53,9 @@ object Site1 {
         val map = Neo4jRepository.getProperties(node, "siteName")
         val siteName = map.get("siteName").toString
         val instanceRelation = "HAS_Instance"
-        val childNodeIdsInst: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceRelation)
-        val instances: List[Instance] = childNodeIdsInst.flatMap { childId =>
+        val groupBy = map.get("groupBy").toString
+        val childNodeIds_inst: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceRelation)
+        val instances: List[Instance] = childNodeIds_inst.flatMap { childId =>
           Instance.fromNeo4jGraph(childId)
         }
         /*val sfRelation = "HAS_SiteFilter"
@@ -66,7 +88,7 @@ object Site1 {
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups))
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, groupBy))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -77,12 +99,15 @@ object Site1 {
 
     override def toNeo4jGraph(entity: Site1): Node = {
       val label = "Site1"
-      val mapPrimitives = Map("siteName" -> entity.siteName)
+      val mapPrimitives = Map("siteName" -> entity.siteName, "groupBy" -> entity.groupBy)
       val node = Neo4jRepository.saveEntity[Site1](label, entity.id, mapPrimitives)
-      val instanceRelation = "HAS_Instance"
+      val siteAndInstanceRelation = "HAS_Instance"
+
       entity.instances.foreach { instance =>
-        val instanceNode = instance.toNeo4jGraph(instance)
-        Neo4jRepository.setGraphRelationship(node, instanceNode, instanceRelation)
+        Future {
+          val instanceNode = instance.toNeo4jGraph(instance)
+          Neo4jRepository.setGraphRelationship(node, instanceNode, siteAndInstanceRelation)
+        }
       }
 
       entity.filters.foreach { filter =>

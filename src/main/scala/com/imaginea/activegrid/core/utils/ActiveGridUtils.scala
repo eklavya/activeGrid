@@ -1,8 +1,8 @@
 package com.imaginea.activegrid.core.utils
 
 import com.amazonaws.regions.RegionUtils
-import com.imaginea.activegrid.core.models.InstanceProvider
-import com.typesafe.config.{Config, ConfigFactory}
+import com.imaginea.activegrid.core.models._
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -18,6 +18,7 @@ object ActiveGridUtils {
   val PORT = config.getInt("http.port")
   val DBPATH = config.getString("neo4j.dbpath")
 
+
   def getValueFromMapAs[T](map: Map[String, Any], key: String): Option[T] = {
     map.get(key).map(_.asInstanceOf[T])
   }
@@ -28,4 +29,11 @@ object ActiveGridUtils {
         region.getName :: list
     }
   }
+
+  def relationLbl(clsName: String): String = {
+    "HAS_" + clsName
+  }
+
+
 }
+

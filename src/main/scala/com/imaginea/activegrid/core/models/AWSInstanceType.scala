@@ -13,6 +13,34 @@ sealed trait AWSInstanceType {
 
 case object AWSInstanceType {
 
+  def toAWSInstanceType(awsInstanceName: String): AWSInstanceType = {
+    awsInstanceName match {
+      case "t1.micro" => T1Micro
+      case "t2.micro" => T2Micro
+      case "m1.small" => M1Small
+      case "m1.medium" => M1Medium
+      case "m1.large" => M1Large
+      case "m1.xlarge" => M1XLarge
+      case "m3.medium" => M3Medium
+      case "m3.large" => M3Large
+      case "m3.xlarge" => M3XLarge
+      case "m3.2xlarge" => M32XLarge
+      case "m2.xlarge" => M2XLarge
+      case "m2.2xlarge" => M22XLarge
+      case "m2.4xlarge" => M24XLarge
+      case "hi1.4xlarge" => HI14XLarge
+      case "hi1.8xlarge" => HI18XLarge
+      case "c1.medium" => C1Medium
+      case "c1.xlarge" => C1XLarge
+      case "c3.large" => C3Large
+      case "c3.xlarge" => C3XLarge
+      case "c3.2xlarge" => C32XLarge
+      case "c3.4xlarge" => C34XLarge
+      case "c3.8xlarge" => C38XLarge
+      case _ => NEWERBETTER
+    }
+  }
+
   case object T1Micro extends AWSInstanceType {
     override def instanceType: String = "t1.micro"
 
@@ -197,31 +225,4 @@ case object AWSInstanceType {
     override def rootPartitionSize: Double = 1D
   }
 
-  def toAWSInstanceType(awsInstanceName: String): AWSInstanceType = {
-    awsInstanceName match {
-      case "t1.micro" => T1Micro
-      case "t2.micro" => T2Micro
-      case "m1.small" => M1Small
-      case "m1.medium" => M1Medium
-      case "m1.large" => M1Large
-      case "m1.xlarge" => M1XLarge
-      case "m3.medium" => M3Medium
-      case "m3.large" => M3Large
-      case "m3.xlarge" => M3XLarge
-      case "m3.2xlarge" => M32XLarge
-      case "m2.xlarge" => M2XLarge
-      case "m2.2xlarge" => M22XLarge
-      case "m2.4xlarge" => M24XLarge
-      case "hi1.4xlarge" => HI14XLarge
-      case "hi1.8xlarge" => HI18XLarge
-      case "c1.medium" => C1Medium
-      case "c1.xlarge" => C1XLarge
-      case "c3.large" => C3Large
-      case "c3.xlarge" => C3XLarge
-      case "c3.2xlarge" => C32XLarge
-      case "c3.4xlarge" => C34XLarge
-      case "c3.8xlarge" => C38XLarge
-      case _ => NEWERBETTER
-    }
-  }
 }

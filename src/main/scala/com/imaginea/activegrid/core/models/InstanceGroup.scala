@@ -17,7 +17,26 @@ case class InstanceGroup(override val id: Option[Long],
 object InstanceGroup {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val instanceGroupLabel = "InstanceGroup"
-  val instanceGroupInstanceRelation = "HAS_INSTANCE"
+  val instanceGroupAndInstanceRelation = "HAS_INSTANCE"
+
+  def fromNeo4jGraph(nodeId: Long): Option[InstanceGroup] = {
+    Neo4jRepository.findNodeById(nodeId).flatMap {
+      node =>
+        if (Neo4jRepository.hasLabel(node, instanceGroupLabel)) {
+          val childNodeIds: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceGroupAndInstanceRelation)
+          val instances: List[Instance] = childNodeIds.flatMap { childId =>
+            Instance.fromNeo4jGraph(childId)
+          }
+
+          Some(InstanceGroup(Some(node.getId),
+            Neo4jRepository.getProperty[String](node, "groupType"),
+            Neo4jRepository.getProperty[String](node, "name"),
+            instances))
+        } else {
+          None
+        }
+    }
+  }
 
   implicit class InstanceGroupImpl(instanceGroup: InstanceGroup) extends Neo4jRep[InstanceGroup] {
     override def toNeo4jGraph(entity: InstanceGroup): Node = {
@@ -28,7 +47,7 @@ object InstanceGroup {
       entity.instances.foreach {
         instance =>
           val childNode = instance.toNeo4jGraph(instance)
-          Neo4jRepository.createRelation(instanceGroupInstanceRelation, node, childNode)
+          Neo4jRepository.createRelation(instanceGroupAndInstanceRelation, node, childNode)
       }
       node
     }
@@ -38,19 +57,4 @@ object InstanceGroup {
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): Option[InstanceGroup] = {
-    Neo4jRepository.findNodeById(nodeId) match {
-      case Some(node) =>
-        val instances = node.getRelationships.foldLeft(List.empty[Instance]) {
-          (list, relationship) =>
-            Instance.fromNeo4jGraph(relationship.getEndNode.getId).get :: list
-        }
-
-        Some(InstanceGroup(Some(node.getId),
-          Neo4jRepository.getProperty[String](node, "groupType"),
-          Neo4jRepository.getProperty[String](node, "name"),
-          instances))
-      case None => None
-    }
-  }
 }
