@@ -138,7 +138,12 @@ object AWSComputeAPI {
   def createSSHAccessInfo(keyName: String): Option[SSHAccessInfo] = {
     val node = Neo4jRepository.getNodeByProperty("KeyPairInfo", "keyName", keyName)
     val keyPairInfo = node.flatMap { node => KeyPairInfo.fromNeo4jGraph(node.getId) }
-    keyPairInfo.map(info => SSHAccessInfo(None, info, "", 0))
+    keyPairInfo match {
+      case Some(keyPair) => Some(SSHAccessInfo(None, keyPair, None, 0))
+      case None =>
+        val keyPair = KeyPairInfo(keyName, "keymaterial", None, KeyPairStatus.toKeyPairStatus("NOT_YET_UPLOADED"))
+        Some(SSHAccessInfo(None, keyPair, None, 0))
+    }
   }
 
   def getSecurityGroupInfo(totalSecurityGroups: Map[String, SecurityGroup], instanceGroupIdentifiers: List[GroupIdentifier]): List[SecurityGroupInfo] = {
@@ -268,11 +273,10 @@ object AWSComputeAPI {
         .withFilters(filter))
       describeSnapshotsResult.getSnapshots.foldLeft(Map[String, List[Snapshot]]()) { (map, snapshot) =>
         val volumeId = snapshot.getVolumeId
-        val list = map.get(volumeId)
-        if (list.nonEmpty) {
-          map + ((volumeId, snapshot :: list.get))
-        } else {
-          map + ((volumeId, List(snapshot)))
+        val mayBeList = map.get(volumeId)
+        mayBeList match {
+          case Some(list) => map + ((volumeId, snapshot :: list))
+          case None => map + ((volumeId, List(snapshot)))
         }
       }
     } else {
