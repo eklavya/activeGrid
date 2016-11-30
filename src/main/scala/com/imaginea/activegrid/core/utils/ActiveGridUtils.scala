@@ -16,7 +16,7 @@ object ActiveGridUtils {
 
   def getUriInfo() : String = {
     //Need to implement,Dummy response
-    "http://"+HOST+":"+PORT+"/"
+    "http://" + HOST + ":" + PORT + "/"
   }
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
