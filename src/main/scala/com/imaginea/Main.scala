@@ -1218,10 +1218,12 @@ object Main extends App {
             mayBeFile match {
               case Some(fileName) => accum + ((name, value))
               case None =>
-                if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase")) 
+                if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase") ) {
                   accum + ((name, value))
-                else
+                }
+                else {
                   accum
+                }
             }
           })
 
@@ -1382,7 +1384,9 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
-                  InstanceFlavor(instance.instanceType.get, None, instance.memoryInfo.get.total, instance.rootDiskInfo.get.total)
+                  val memInfo = instance.memoryInfo match { case Some(info) => info.total case _ => 0 }
+                  val dskInfo = instance.rootDiskInfo match { case Some(info) => info.total case _ => 0 }
+                  InstanceFlavor(instance.instanceType.getOrElse(""),None,memInfo,dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)
 
