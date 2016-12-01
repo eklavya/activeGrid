@@ -1962,6 +1962,51 @@ object Main extends App {
               }
           }
         }
+    } ~ path(LongNumber / "connections") { siteId =>
+      get {
+        parameter('strategy) { strategy => {
+          //Collect all connection based among instance based on the strategy
+          val connections = Future {
+            def strategyConnection(getConnections: Instance => List[InstanceConnection]) = {
+              val siteOpt = Site1.fromNeo4jGraph(siteId)
+              val site = siteOpt.map(site =>
+                site.instances.flatMap(instance => getConnections(instance))
+              ).getOrElse(List.empty[InstanceConnection])
+              site
+            }
+            ConnectionStrategy.toStrategy(strategy) match {
+              case ConnectionStrategy.Ssh => strategyConnection(instance => instance.liveConnections)
+              case ConnectionStrategy.SecurityGroup => strategyConnection(instance => instance.estimatedConnections)
+            }
+          }
+          onComplete(connections) {
+            case Success(connectionResponse) =>
+              if (connectionResponse.isEmpty) {
+                complete(StatusCodes.NoContent)
+              } else {
+                complete(StatusCodes.OK, connectionResponse)
+              }
+            case Failure(exception) =>
+              logger.error(s"Unable to get connection for site id $siteId. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get Site connection.")
+          }
+        }
+        }
+      }
+    } ~ path(LongNumber / "instances" / Segment / Segment) { (siteId, ids, action) =>
+      get {
+        onComplete(instancesAction(siteId,ids,action)) {
+          case Success(instancesResponse) =>
+            if(instancesResponse.isEmpty) {
+              complete(StatusCodes.BadRequest, "Unable to apply action on the instances.")
+            }else{
+              complete(StatusCodes.OK, instancesResponse)
+            }
+          case Failure(exception) =>
+            logger.error(s"Unable to apply action in instance. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to apply action on the instances.")
+        }
+      }
     }
   }
 
@@ -2226,6 +2271,59 @@ object Main extends App {
           case None => regionsVsInstanceIds + ((region, List(id)))
         }
       }.getOrElse(regionsVsInstanceIds)
+    }
+  }
+
+  private def instancesAction(siteId: Long, ids: String, action: String) =
+    Future {
+      val idList = ids.split(",").toList
+      val siteOpt = Site1.fromNeo4jGraph(siteId)
+      val accountInfoOpt = siteOpt
+        .flatMap(site => site.filters.headOption)
+        .map(siteFilter => siteFilter.accountInfo)
+
+      val regionVsInstance =
+        siteOpt.map(site => {
+          val instances = site.instances.filter(instance => idList.contains(instance.instanceId.getOrElse("")))
+          instances
+        }).getOrElse(List.empty[Instance]).groupBy(_.region.getOrElse(""))
+
+      accountInfoOpt.map(accountInfo =>
+        regionVsInstance.flatMap { case (region, instances) => executeAction(action, region, instances, accountInfo)
+        }).getOrElse(Map.empty[String, String])
+    }
+
+  private def executeAction(action: String, region: String, instances: List[Instance], accountInfo: AccountInfo) = {
+    val amazonEC2 = AWSComputeAPI.getComputeAPI(accountInfo, region)
+    val instanceIds = instances.flatMap(instance => instance.instanceId)
+    InstanceActionType.toType(action) match {
+      case InstanceActionType.Start => AWSComputeAPI.startInstance(amazonEC2, instanceIds)
+      case InstanceActionType.Stop => AWSComputeAPI.stopInstance(amazonEC2, instanceIds)
+      case InstanceActionType.CreateSnapshot => {
+        val snapShots =
+          for {instance <- instances
+               instanceBlockingDevice <- instance.blockDeviceMappings
+               volumeId <- instanceBlockingDevice.volume.volumeId
+          } yield {
+            val snapShots = AWSComputeAPI.createSnapshot(amazonEC2, volumeId)
+            val volumeNew = instanceBlockingDevice.volume.copy(
+              currentSnapshot = Some(snapShots),
+              snapshotCount = instanceBlockingDevice.volume.snapshotCount.map(count => count + 1))
+            val node = volumeNew.toNeo4jGraph(volumeNew)
+            (volumeId -> node.getId.toString)
+          }
+        snapShots.toMap
+      }
+      case InstanceActionType.CreateImage => {
+        val opt =
+          for {instance <- instances.headOption
+               image <- instance.image
+               imageName <- image.name
+               instanceId <- instance.instanceId
+          } yield (Map(instanceId -> AWSComputeAPI.createImage(amazonEC2, imageName, instanceId)))
+        opt.getOrElse(Map.empty[String, String])
+      }
+      case _ => throw new Exception("Action not found")
     }
   }
 
