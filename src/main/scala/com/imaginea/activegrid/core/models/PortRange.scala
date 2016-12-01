@@ -7,7 +7,9 @@ import org.slf4j.LoggerFactory
 /**
   * Created by shareefn on 7/10/16.
   */
-case class PortRange(override val id: Option[Long], fromPort: Int, toPort: Int) extends BaseEntity
+case class PortRange(override val id: Option[Long], fromPort: Int, toPort: Int) extends BaseEntity{
+  def containsPort(port: Int): Boolean = port >= fromPort && port <= toPort
+}
 
 object PortRange {
 
