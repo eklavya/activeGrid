@@ -18,6 +18,7 @@ case class Site1(override val id: Option[Long],
                  loadBalancers: List[LoadBalancer],
                  scalingGroups: List[ScalingGroup],
                  groupsList: List[InstanceGroup],
+                 applications: List[Application],
                  groupBy: String,
                  scalingPolicies: List[AutoScalingPolicy]) extends BaseEntity
 
@@ -29,10 +30,12 @@ object Site1 {
   val site_IG_Relation = "HAS_InstanceGroup"
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
+  val siteApplications = "HAS_Applications"
 
   def apply(id: Long): Site1 = {
     Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
-      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], "test", List.empty[AutoScalingPolicy])
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup],
+      List.empty[InstanceGroup], List.empty[Application],"test",List.empty[AutoScalingPolicy])
   }
 
 
@@ -89,11 +92,17 @@ object Site1 {
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
 
+        val childNodeIdsApplications:List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteApplications)
+        val applications: List[Application] = childNodeIdsApplications.flatMap{
+          applicationId => Application.fromNeo4jGraph(applicationId)
+        }
+
+
         val policies = Neo4jRepository.getChildNodeIds(nodeId, AutoScalingPolicy.relationLable).flatMap {
           id => AutoScalingPolicy.fromNeo4jGraph(id)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, groupBy, policies))
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, applications,groupBy, policies))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -142,6 +151,12 @@ object Site1 {
         val policyNode = policy.toNeo4jGraph(policy)
         Neo4jRepository.setGraphRelationship(node, policyNode, AutoScalingPolicy.relationLable)
       }
+
+      entity.applications.foreach { application =>
+        val applicationsNode = application.toNeo4jGraph(application)
+        Neo4jRepository.setGraphRelationship(node, applicationsNode, siteApplications)
+      }
+
       node
     }
 

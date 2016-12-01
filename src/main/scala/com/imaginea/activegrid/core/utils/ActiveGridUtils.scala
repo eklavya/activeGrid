@@ -43,14 +43,13 @@ object ActiveGridUtils {
         case JsFalse => Some(false.asInstanceOf[T])
         case JsTrue => Some(true.asInstanceOf[T])
         case _ => None
-
       }
     } else {
       None
     }
   }
-  def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue],
-                                      property: String, formateObject: RootJsonFormat[T]): List[T] = {
+
+  def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
     if (propertyMap.contains(property)) {
       val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
       listOfObjs.elements.toList.map(formateObject.read)
@@ -59,46 +58,34 @@ object ActiveGridUtils {
     }
   }
 
-  def stringToJsField(fieldName: String, fieldValue: Option[String],
-                      rest: List[JsField] = Nil): List[(String, JsValue)] = {
-    fieldValue match {
-      case Some(x) => (fieldName, JsString(x)) :: rest
-      case None => rest
-    }
-  }
-
-  def longToJsField(fieldName: String, fieldValue: Option[Long],
-                    rest: List[JsField] = Nil): List[(String, JsValue)] = {
-    fieldValue match {
-      case Some(x) => (fieldName, JsNumber(x)) :: rest
-      case None => rest
-    }
-  }
-
-  def objectToJsValue[T](fieldName: String, obj: Option[T],
-                         jsonFormat: RootJsonFormat[T],
-                         rest: List[JsField] = Nil): List[(String, JsValue)] =
-  {
+  def objectToJsValue[T](fieldName: String, obj: Option[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
     obj match {
       case Some(x) => (fieldName, jsonFormat.write(x.asInstanceOf[T])) :: rest
       case None => rest
     }
   }
 
-  def listToJsValue[T](fieldName: String, objList: List[T],
-                       jsonFormat: RootJsonFormat[T],
-                       rest: List[JsField] = Nil): List[(String, JsValue)] =
-  {
-    objList.map { obj => (fieldName, jsonFormat.write(obj))}
+  def listToJsValue[T](fieldName: String, objList: List[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+    objList.map { obj => (fieldName, jsonFormat.write(obj))
+    }
   }
 
-  def setToJsValue[T](fieldName: String, objList: Set[T],
-                      jsonFormat: RootJsonFormat[T],
-                      rest: List[JsField] = Nil): List[(String, JsValue)] =
-  {
-    objList.map { obj => (fieldName, jsonFormat.write(obj))}.toList
+  def setToJsValue[T](fieldName: String, objList: Set[T], jsonFormat: RootJsonFormat[T], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+    objList.map { obj => (fieldName, jsonFormat.write(obj))
+    }.toList
   }
 
+  def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+    fieldValue match {
+      case Some(x) => (fieldName, JsNumber(x)) :: rest
+      case None => rest
+    }
+  }
 
+  def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+    fieldValue match {
+      case Some(x) => (fieldName, JsString(x)) :: rest
+      case None => rest
+    }
+  }
 }
-
