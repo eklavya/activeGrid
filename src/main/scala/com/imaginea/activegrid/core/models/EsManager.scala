@@ -50,9 +50,8 @@ object EsManager {
     searchRequest.setQuery(query)
     searchRequest.setSize(searchHitsSize)
     val response = searchRequest.execute.actionGet
-    response.getHits.foldLeft(List.empty[EsSearchResponse]) {
-      (responses, hit) =>
-        EsSearchResponse(hit.getType, esSearchQuery.outputField, hit.getId) :: responses
+    response.getHits.toList.map { hit =>
+      EsSearchResponse(hit.getType, esSearchQuery.outputField, hit.getId)
     }
   }
 
@@ -80,13 +79,13 @@ object EsManager {
       .flatMap(index => Option(index.mapping(mappingType)))
     //getMetaData.index(index).mapping(mappingType)\
     mayBeMapping match {
-      case Some(mapping) => flattenKeys(mapping.getSourceAsMap, mappingType).toSet
+      case Some(mapping) => flattenKeys(mapping.getSourceAsMap, mappingType)
       case None => Set.empty[String]
     }
 
   }
 
-  def flattenKeys(map: java.util.Map[String, AnyRef], parent: String): List[String] = {
+  def flattenKeys(map: java.util.Map[String, AnyRef], parent: String): Set[String] = {
     if (map.contains("properties")) {
       val properties = map("properties").asInstanceOf[java.util.Map[String, AnyRef]]
       properties.flatMap {
@@ -95,11 +94,11 @@ object EsManager {
           if (interMap.contains("dynamic")) {
             flattenKeys(interMap, parent + "." + key)
           } else {
-            List(parent)
+            Set(parent)
           }
-      }.toList
+      }.toSet
     } else {
-      List(parent)
+      Set(parent)
     }
   }
 

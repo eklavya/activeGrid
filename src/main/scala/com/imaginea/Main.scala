@@ -295,6 +295,21 @@ object Main extends App {
   implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
   implicit val autoScalingPolicyJson = jsonFormat5(AutoScalingPolicy.apply)
 
+  implicit object esQueryTypeFormat extends RootJsonFormat[EsQueryType] {
+    override def write(obj: EsQueryType): JsValue = obj.queryType.asInstanceOf[JsValue]
+
+    override def read(json: JsValue): EsQueryType = {
+      json match {
+        case JsString(str) => EsQueryType.convertToQueryType(str)
+        case _ => throw DeserializationException("Unable to deserialize QueryType")
+      }
+    }
+  }
+
+  implicit val esQueryFieldFormat = jsonFormat2(EsQueryField.apply)
+  implicit val esSearchQueryFormat = jsonFormat6(EsSearchQuery.apply)
+  implicit val esSearchResponseFormat = jsonFormat3(EsSearchResponse.apply)
+
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
       JsString(obj.deltaStatus.toString)
@@ -461,6 +476,7 @@ object Main extends App {
             mayBeSite match {
               case Some(site) =>
                 site.toNeo4jGraph(site)
+                indexSite(site)
               case None => throw new NotFoundException(s"Site with id : $siteId is not found!")
             }
           }
@@ -655,8 +671,46 @@ object Main extends App {
       }
     }
   }
+
+  val esServiceRoutes = pathPrefix("es") {
+    path("search") {
+      post {
+        entity(as[EsSearchQuery]) { esQuery =>
+          val response = Future {
+            EsManager.boolQuery(esQuery)
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to get the documents ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get the documents")
+          }
+        }
+      }
+    } ~ path("mappings") {
+      post {
+        entity(as[EsSearchQuery]) {
+          esSerachQuery =>
+            val response = Future {
+              if (esSerachQuery.types.nonEmpty) {
+                EsManager.fieldMappings(esSerachQuery.index, esSerachQuery.types.head)
+              } else {
+                throw new Exception("Search types should not be empty")
+              }
+            }
+            onComplete(response) {
+              case Success(reponseMessage) => complete(StatusCodes.OK, reponseMessage)
+              case Failure(exception) =>
+                logger.error(s"Unable to get mappings ${exception.getMessage}", exception)
+                complete(StatusCodes.OK, "Unable to get mappings")
+            }
+        }
+      }
+    }
+  }
+
   val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
-    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ esServiceRoutes
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
@@ -1758,118 +1812,132 @@ object Main extends App {
         }
       }
     } ~ path(LongNumber / "instances" / Segment) {
-    (siteId, instanceId) =>
-      delete {
-        val response = Future {
-          val mayBeSite = Site1.fromNeo4jGraph(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val mayBeInstance = site.instances.find(instance => instance.instanceId.contains(instanceId))
-              mayBeInstance match {
-                case Some(instance) =>
-                  site.groupsList.foreach { group =>
-                    val mayBeInstanceGroup = group.instances.find(instanceInGroup => instanceInGroup.instanceId.contains(instanceId))
-                    mayBeInstanceGroup.map(instanceGroup => Neo4jRepository.deleteRelationship(instanceGroup.id.get, instance.id.get, "HAS_Instance"))
-                  }
-                  Neo4jRepository.deleteRelationship(site.id.get, instance.id.get, "HAS_Instance")
-                case None => throw new NotFoundException(s"Instance Entity with id : $instanceId is not found")
-              }
-            case None => throw new NotFoundException(s"Site Entity with id : $siteId is not found")
-          }
-        }
-        onComplete(response) {
-          case Success(responseMessage) => complete(StatusCodes.OK, "Deleted Successfully!")
-          case Failure(exception) =>
-            logger.error(s"Unable to delete the Instance with id $instanceId ${exception.getMessage}", exception)
-            complete(StatusCodes.BadRequest, s"Unable to delete the Instance with id $instanceId")
-        }
-      }
-  } ~ path(LongNumber / "instances" / Segment / "tags") {
-    (siteId, instanceId) => put {
-      entity(as[List[KeyValueInfo]]) {
-        tagsToAdd =>
-          val response = Future {
-            addTags(siteId, instanceId, tagsToAdd)
-            "Updated successfully!"
-          }
-          onComplete(response) {
-            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
-            case Failure(exception) =>
-              logger.error(s"Unable to update the tags ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to update the tags!")
-          }
-      }
-    }
-  } ~ path(LongNumber / "instances" / "tags") {
-    siteId => put {
-      entity(as[Map[String, JsValue]]) {
-        map =>
-          val response = Future {
-            if (map.contains("instanceIds")) {
-              val instanceIds = map("instanceIds").asInstanceOf[List[String]]
-              val tags = map("tags").asInstanceOf[List[KeyValueInfo]]
-              instanceIds.foreach(instanceId => addTags(siteId, instanceId, tags))
-              "Updated successfully"
-            } else {
-              throw new Exception("Unable get istanceIds from request")
-            }
-          }
-          onComplete(response) {
-            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
-            case Failure(exception) =>
-              logger.error(s"Unable to update the tags ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to update tags for instances")
-          }
-      }
-    }
-  } ~ path(LongNumber / "applications") {
-    siteId => put {
-      entity(as[Application]) {
-        application =>
+      (siteId, instanceId) =>
+        delete {
           val response = Future {
             val mayBeSite = Site1.fromNeo4jGraph(siteId)
             mayBeSite match {
-              case Some(site) => saveApplication(site, application)
-                "Updated successfully!"
-              case None => throw new NotFoundException(s"Site Entity not found with ID : $siteId")
+              case Some(site) =>
+                val mayBeInstance = site.instances.find(instance => instance.instanceId.contains(instanceId))
+                mayBeInstance match {
+                  case Some(instance) =>
+                    instance.id match {
+                      case Some(instId) =>
+                        site.groupsList.foreach { group =>
+                          val mayBeInstanceGroup = group.instances.find(instanceInGroup => instanceInGroup.instanceId.contains(instanceId))
+                          mayBeInstanceGroup match {
+                            case Some(instanceGroup) =>
+                              instanceGroup.id.foreach { instanceGroupId =>
+                                Neo4jRepository.deleteRelationship(instanceGroupId, instId, "HAS_Instance")
+                              }
+                            case None =>
+                              logger.warn(s"InstanceGroup is not found with instanceId $instanceId")
+                          }
+                        }
+                        Neo4jRepository.deleteRelationship(siteId, instId, "HAS_Instance")
+                        "Deleted successfully!"
+                      case None =>
+                        logger.warn("Instance node id is None")
+                        "Unable to delete the instance!"
+                    }
+                  case None => throw new NotFoundException(s"Instance Entity with id : $instanceId is not found")
+                }
+              case None => throw new NotFoundException(s"Site Entity with id : $siteId is not found")
             }
           }
           onComplete(response) {
             case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
             case Failure(exception) =>
-              logger.error(s"Unabel to save the Application ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to save the application")
+              logger.error(s"Unable to delete the Instance with id $instanceId ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Unable to delete the Instance with id $instanceId")
           }
-      }
-    }
-  } ~ path(LongNumber / "applications" / LongNumber) {
-    (siteId, appId) =>
-      get {
-        val response = Future {
-          Application.fromNeo4jGraph(appId)
         }
-        onComplete(response) {
-          case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
-          case Failure(exception) =>
-            logger.error(s"Unable to get Application entity ${exception.getMessage}", exception)
-            complete(StatusCodes.BadRequest, s"Unable to get application with id $appId")
-        }
-      }
-  } ~ path(LongNumber / "applications" / LongNumber) {
-    (siteId, appId) =>
-      delete {
-        val response = Future {
-          Neo4jRepository.deleteEntity(appId)
-          "Deleted Successfully!"
-        }
-        onComplete(response) {
-          case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
-          case Failure(exception) =>
-            logger.error(s"Unable to delete the Application with ID : $appId ${exception.getMessage}", exception)
-            complete(StatusCodes.BadRequest, s"Unable to delete the Application with ID : $appId")
+    } ~ path(LongNumber / "instances" / Segment / "tags") {
+      (siteId, instanceId) => put {
+        entity(as[List[KeyValueInfo]]) {
+          tagsToAdd =>
+            val response = Future {
+              addTags(siteId, instanceId, tagsToAdd)
+              "Updated successfully!"
+            }
+            onComplete(response) {
+              case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+              case Failure(exception) =>
+                logger.error(s"Unable to update the tags ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to update the tags!")
+            }
         }
       }
-  } ~ path(LongNumber / "applications") {
+    } ~ path(LongNumber / "instances" / "tags") {
+      siteId => put {
+        entity(as[Map[String, JsValue]]) {
+          map =>
+            val response = Future {
+              if (map.contains("instanceIds")) {
+                val instanceIds = map("instanceIds").asInstanceOf[List[String]]
+                val tags = map("tags").asInstanceOf[List[KeyValueInfo]]
+                instanceIds.foreach(instanceId => addTags(siteId, instanceId, tags))
+                "Updated successfully"
+              } else {
+                throw new Exception("Unable get istanceIds from request")
+              }
+            }
+            onComplete(response) {
+              case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+              case Failure(exception) =>
+                logger.error(s"Unable to update the tags ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to update tags for instances")
+            }
+        }
+      }
+    } ~ path(LongNumber / "applications") {
+      siteId => put {
+        entity(as[Application]) {
+          application =>
+            val response = Future {
+              val mayBeSite = Site1.fromNeo4jGraph(siteId)
+              mayBeSite match {
+                case Some(site) => saveApplication(site, application)
+                  "Updated successfully!"
+                case None => throw new NotFoundException(s"Site Entity not found with ID : $siteId")
+              }
+            }
+            onComplete(response) {
+              case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+              case Failure(exception) =>
+                logger.error(s"Unabel to save the Application ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to save the application")
+            }
+        }
+      }
+    } ~ path(LongNumber / "applications" / LongNumber) {
+      (siteId, appId) =>
+        get {
+          val response = Future {
+            Application.fromNeo4jGraph(appId)
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to get Application entity ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Unable to get application with id $appId")
+          }
+        }
+    } ~ path(LongNumber / "applications" / LongNumber) {
+      (siteId, appId) =>
+        delete {
+          val response = Future {
+            Neo4jRepository.deleteEntity(appId)
+            "Deleted Successfully!"
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to delete the Application with ID : $appId ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Unable to delete the Application with ID : $appId")
+          }
+        }
+    } ~ path(LongNumber / "applications") {
       (siteId) =>
         post {
           entity(as[Application]) {
@@ -1993,7 +2061,7 @@ object Main extends App {
       existingInstance match {
         case Some(e) =>
           e.copy(state = instance.state, publicDnsName = instance.publicDnsName, privateDnsName = instance.privateDnsName,
-            privateIpAddress = instance.privateIpAddress, publicIpAddress = instance.publicIpAddress, reservedInstance = instance.reservedInstance )
+            privateIpAddress = instance.privateIpAddress, publicIpAddress = instance.publicIpAddress, reservedInstance = instance.reservedInstance)
 
         case None => instance
       }
@@ -2075,15 +2143,16 @@ object Main extends App {
 
   def addTags(siteId: Long, instanceId: String, tagsToAdd: List[KeyValueInfo]): Unit = {
     val mayBeSite = Site1.fromNeo4jGraph(siteId)
-    mayBeSite.map {
+    mayBeSite.foreach {
       site =>
         val accountInfo = site.filters.map { siteFilter =>
           siteFilter.accountInfo
         }
         val instance = site.instances.find(instance => instance.instanceId.contains(instanceId))
-        instance.map { inst =>
+        instance.foreach { inst =>
           val instToSave = inst.copy(tags = tagsToAdd)
           instToSave.toNeo4jGraph(instToSave)
+          EsManager.indexEntity[Instance](inst, site.siteName, "instance")
         }
     }
   }
@@ -2151,6 +2220,12 @@ object Main extends App {
         }
       }.getOrElse(regionsVsInstanceIds)
     }
+  }
+
+  def indexSite(site: Site1): Unit = {
+    val index = site.siteName
+    site.instances.foreach(instance => EsManager.indexEntity[Instance](instance, index, "instance"))
+    site.loadBalancers.foreach(loadBalancer => EsManager.indexEntity[LoadBalancer](loadBalancer, index, "lb"))
   }
 
   // scalastyle:off method.length cyclomatic.complexity
