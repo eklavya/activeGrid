@@ -20,6 +20,7 @@ libraryDependencies ++= {
     "org.apache.jclouds.provider" % "aws-ec2" % "1.6.3",
     "org.apache.jclouds.provider" % "aws-s3" % "1.6.3",
     "com.amazonaws" % "aws-java-sdk" % "1.11.46",
-    "org.scalastyle" %% "scalastyle" % "0.8.0"
+    "org.scalastyle" %% "scalastyle" % "0.8.0",
+    "org.elasticsearch" % "elasticsearch" % "0.19.0"
   )
 }
