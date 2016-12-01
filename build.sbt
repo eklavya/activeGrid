@@ -20,6 +20,10 @@ libraryDependencies ++= {
     "org.apache.jclouds.provider" % "aws-ec2" % "1.6.3",
     "org.apache.jclouds.provider" % "aws-s3" % "1.6.3",
     "com.amazonaws" % "aws-java-sdk" % "1.11.46",
-    "org.scalastyle" %% "scalastyle" % "0.8.0"
+    "org.scalastyle" %% "scalastyle" % "0.8.0",
+
+    "com.jcraft" % "jsch" % "0.1.50",
+    "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+    "org.scalamock" %% "scalamock-scalatest-support" % "3.3.0" % "test"
   )
 }
