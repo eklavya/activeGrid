@@ -26,7 +26,7 @@ object AWSComputeAPI {
   }
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-
+  // scalastyle:off method.length
   def getInstances(amazonEC2: AmazonEC2, accountInfo: AccountInfo): List[Instance] = {
 
     val awsInstancesResult = getAWSInstances(amazonEC2)

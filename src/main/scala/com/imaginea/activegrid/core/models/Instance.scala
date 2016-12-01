@@ -71,7 +71,7 @@ object Instance {
       List.empty[InstanceUser], None, None, None, None, None, None, None, None, List.empty, List.empty,
       reservedInstance = false, None
     )
-
+  // scalastyle:off method.length
   def fromNeo4jGraph(nodeId: Long): Option[Instance] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
