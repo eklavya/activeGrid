@@ -18,6 +18,7 @@ case class Site1(override val id: Option[Long],
                  loadBalancers: List[LoadBalancer],
                  scalingGroups: List[ScalingGroup],
                  groupsList: List[InstanceGroup],
+                 applications: List[Application],
                  groupBy: String) extends BaseEntity
 
 object Site1 {
@@ -28,10 +29,11 @@ object Site1 {
   val site_IG_Relation = "HAS_InstanceGroup"
   val site_RI_Relation = "HAS_ReservedInstance"
   val site_SF_Relation = "HAS_SiteFilter"
+  val siteApplications = "HAS_Applications"
 
   def apply(id: Long): Site1 = {
     Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
-      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], "test")
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], List.empty[Application], "test")
   }
 
 
@@ -88,7 +90,13 @@ object Site1 {
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, groupBy))
+        val childNodeIdsApplications: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteApplications)
+        val applications: List[Application] = childNodeIdsApplications.flatMap {
+          applicationId => Application.fromNeo4jGraph(applicationId)
+        }
+
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, applications, groupBy))
+
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -133,6 +141,12 @@ object Site1 {
         val instanceGroupNode = ig.toNeo4jGraph(ig)
         Neo4jRepository.setGraphRelationship(node, instanceGroupNode, site_IG_Relation)
       }
+
+      entity.applications.foreach { application =>
+        val applicationsNode = application.toNeo4jGraph(application)
+        Neo4jRepository.setGraphRelationship(node, applicationsNode, siteApplications)
+      }
+
       node
     }
 
