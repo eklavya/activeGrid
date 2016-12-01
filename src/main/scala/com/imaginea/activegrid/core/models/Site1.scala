@@ -102,7 +102,8 @@ object Site1 {
           id => AutoScalingPolicy.fromNeo4jGraph(id)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, applications,groupBy, policies))
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers,
+          scalingGroups, instanceGroups, applications,groupBy, policies))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
