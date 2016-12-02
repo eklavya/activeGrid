@@ -36,7 +36,7 @@ object AutoScalingPolicy {
           id => PolicyCondition.fromGraph(id)
         }
         //Fetching applications
-        val application = Neo.getChildNodeIds(policy.getId, Application.relationLable).flatMap {
+        val application = Neo.getChildNodeIds(policy.getId, Application.relationLabel).flatMap {
           id => Application.fromNeo4jGraph(id)
         }.headOption
 
@@ -65,7 +65,7 @@ object AutoScalingPolicy {
       val appNode = entity.application.foreach {
         app =>
           val appNode = app.toNeo4jGraph(app)
-          Neo.createRelation(Application.relationLable, policyNode, appNode)
+          Neo.createRelation(Application.relationLabel, policyNode, appNode)
       }
 
       //Mapping primary conditions
