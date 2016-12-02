@@ -2,19 +2,19 @@ package com.imaginea
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._ // scalastyle:ignore underscore.import
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives._ // scalastyle:ignore underscore.import
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.{InstanceGroup, _}
+import com.imaginea.activegrid.core.models.{InstanceGroup, _} // scalastyle:ignore underscore.import
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol._
-import spray.json.{DeserializationException, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, RootJsonFormat, _}
+import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
+import spray.json._ // scalastyle:ignore underscore.import
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -38,7 +38,8 @@ object Main extends App {
     }
   }
 
-  implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser", "passPhrase")
+  implicit val keyPairInfoFormat = jsonFormat(KeyPairInfo.apply, "id", "keyName", "keyFingerprint", "keyMaterial", "filePath", "status", "defaultUser",
+    "passPhrase")
   implicit val pageKeyPairInfo = jsonFormat(Page[KeyPairInfo], "startIndex", "count", "totalObjects", "objects")
   implicit val userFormat = jsonFormat(User.apply, "id", "userName", "password", "email", "uniqueId", "publicKeys", "accountNonExpired", "accountNonLocked",
     "credentialsNonExpired", "enabled", "displayName")
@@ -53,7 +54,8 @@ object Main extends App {
   implicit val portRangeFormat = jsonFormat(PortRange.apply, "id", "fromPort", "toPort")
   implicit val sshAccessInfoFormat = jsonFormat(SSHAccessInfo.apply, "id", "keyPair", "userName", "port")
   implicit val instanceConnectionFormat = jsonFormat(InstanceConnection.apply, "id", "sourceNodeId", "targetNodeId", "portRanges")
-  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command", "owner", "residentBytes", "software", "softwareVersion")
+  implicit val processInfoFormat = jsonFormat(ProcessInfo.apply, "id", "pid", "parentPid", "name", "command", "owner", "residentBytes", "software",
+    "softwareVersion")
   implicit val instanceUserFormat = jsonFormat(InstanceUser.apply, "id", "userName", "publicKeys")
   implicit val instanceFlavorFormat = jsonFormat(InstanceFlavor.apply, "name", "cpuCount", "memory", "rootDisk")
   implicit val pageInstFormat = jsonFormat4(Page[InstanceFlavor])
@@ -326,7 +328,6 @@ object Main extends App {
     }
 
   }
-
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
 
   implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
@@ -484,7 +485,7 @@ object Main extends App {
     }
 
   }
-  val discoveryRoutes = pathPrefix("discover") {
+  val discoveryRoutes: Route = pathPrefix("discover") {
     path("site") {
       put {
         entity(as[Site1]) { site =>
@@ -707,7 +708,7 @@ object Main extends App {
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
-  def appSettingServiceRoutes = post {
+  def appSettingServiceRoutes: Route = post {
     path("appsettings") {
       entity(as[AppSettings]) {
         appsetting =>
@@ -1281,7 +1282,7 @@ object Main extends App {
   def catalogRoutes: Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
-        val getImages: Future[Page[ImageInfo]] = Future {
+        val Images: Future[Page[ImageInfo]] = Future {
           val imageLabel: String = "ImageInfo"
           val nodesList = Neo4jRepository.getNodesByLabel(imageLabel)
           val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
@@ -1289,7 +1290,7 @@ object Main extends App {
           Page[ImageInfo](imageInfoList)
         }
 
-        onComplete(getImages) {
+        onComplete(Images) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
             logger.error(s"Unable to Retrieve ImageInfo List. Failed with : ${exception.getMessage}", exception)
@@ -1355,13 +1356,13 @@ object Main extends App {
       }
     } ~ path("softwares") {
       get {
-        val getSoftwares = Future {
+        val softwares = Future {
           val softwareLabel: String = "SoftwaresTest2"
           val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
           val softwaresList = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
           Page[Software](softwaresList)
         }
-        onComplete(getSoftwares) {
+        onComplete(softwares) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
             logger.error(s"Unable to Retrieve Softwares List. Failed with :  ${exception.getMessage}", exception)
@@ -1455,7 +1456,7 @@ object Main extends App {
     }
   }
 
-  def siteServiceRoutes = pathPrefix("sites") {
+  def siteServiceRoutes: Route = pathPrefix("sites") {
     path("site" / LongNumber) { siteId =>
       get {
         parameter("type") { view =>
@@ -2455,6 +2456,4 @@ object Main extends App {
       }
     }
   }
-
-
 }

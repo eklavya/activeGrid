@@ -8,7 +8,7 @@ import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.regions.{Region, RegionUtils}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
-import com.amazonaws.services.ec2.model._
+import com.amazonaws.services.ec2.model._ //scalastyle:ignore underscore.import
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
@@ -16,12 +16,13 @@ import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
+  //scalastyle:off method.length
   def getInstances(amazonEC2: AmazonEC2, accountInfo: AccountInfo): List[Instance] = {
 
     val awsInstancesResult = getAWSInstances(amazonEC2)
@@ -88,6 +89,7 @@ object AWSComputeAPI {
     }
     instances
   }
+  //scalastyle:on method.length
 
   def getAWSInstances(amazonEC2: AmazonEC2): List[model.Instance] = {
     amazonEC2.describeInstances.getReservations.toList.flatMap {

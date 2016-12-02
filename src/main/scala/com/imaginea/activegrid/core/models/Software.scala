@@ -20,8 +20,8 @@ Software(override val id: Option[Long],
 
 object Software {
 
-  val lable = Software.getClass.getSimpleName
-  val relationLable = ActiveGridUtils.relationLbl(lable)
+  val label = Software.getClass.getSimpleName
+  val relationLabel = ActiveGridUtils.relationLbl(label)
 
   def fromNeo4jGraph(nodeId: Long): Option[Software] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -47,7 +47,7 @@ object Software {
 
   implicit class SoftwareImpl(software: Software) extends Neo4jRep[Software] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    val label = "SoftwaresTest2"
+    val label = "Softwares"
 
     override def toNeo4jGraph(software: Software): Node = {
       logger.debug(s"In toGraph for Software: $software")
