@@ -37,7 +37,7 @@ object AutoScalingPolicy {
           id => PolicyCondition.fromGraph(id)
         }
         //Fetching applications
-        val application = Neo.getChildNodeIds(policy.getId, Application.relationLable).flatMap {
+        val application = Neo.getChildNodeIds(policy.getId, Application.relationLabel).flatMap {
           id => Application.fromNeo4jGraph(id)
         }.headOption
 

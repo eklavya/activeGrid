@@ -143,7 +143,9 @@ object Builder{
     loadBalancers = List.empty,
     scalingGroups = List.empty,
     applications = List.empty,
-    groupsList = List.empty
+    groupsList = List.empty,
+    applications = List.empty,
+    groupBy = "groupBy"
   )
   val topology = new Topology(site1)
 }
