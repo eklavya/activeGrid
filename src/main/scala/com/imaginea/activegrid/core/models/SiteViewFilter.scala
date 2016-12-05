@@ -14,11 +14,14 @@ object SiteViewFilter extends ViewFilter[Site1] {
   }
 
   def getDetailedSiteView(t: Site1): Site1 = {
-    Site1(t.id, t.siteName, t.instances, t.reservedInstanceDetails, t.filters, t.loadBalancers, t.scalingGroups, t.groupsList, t.groupBy, t.scalingPolicies)
+    Site1(t.id, t.siteName, t.instances, t.reservedInstanceDetails, t.filters,
+      t.loadBalancers, t.scalingGroups, t.groupsList,t.applications,
+      t.groupBy,t.scalingPolicies )
   }
 
   def getSummarySiteView(t: Site1): Site1 = {
     Site1(t.id, t.siteName, t.instances, List.empty[ReservedInstanceDetails],
-      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], t.groupBy, t.scalingPolicies)
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup],
+      List.empty[InstanceGroup],List.empty[Application], t.groupBy,t.scalingPolicies)
   }
 }

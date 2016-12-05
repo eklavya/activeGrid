@@ -2,18 +2,13 @@ package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
 import com.imaginea.activegrid.core.utils.ActiveGridUtils
-
+x
 
 /**
   * Created by sivag on 3/11/16.
   */
 object SiteManagerImpl {
-  def getAutoScalingPolicies(siteId: Long): List[AutoScalingPolicy] = {
-    Site1.fromNeo4jGraph(siteId) match {
-      case Some(site) => site.scalingPolicies
-      case None => List.empty[AutoScalingPolicy]
-    }
-  }
+
   def deleteIntanceFromSite(siteId: Long, instanceId: String): Boolean = {
     val siteNode = Site1.fromNeo4jGraph(siteId)
     siteNode.map { site =>

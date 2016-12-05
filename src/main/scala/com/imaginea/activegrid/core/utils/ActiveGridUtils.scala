@@ -7,7 +7,7 @@ import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 
 /**
   * Created by babjik on 13/10/16.
@@ -55,32 +55,12 @@ object ActiveGridUtils {
     }
   }
 
-  def getValueAsString(option: Option[String]): String = {
-
-    option.getOrElse("")
-  }
-
   def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
     if (propertyMap.contains(property)) {
       val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
       listOfObjs.elements.toList.map(formateObject.read)
-      }
-     else {
+    } else {
       List.empty[T]
-    }
-  }
-
-  def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-    fieldValue match {
-      case Some(x) => (fieldName, JsString(x)) :: rest
-      case None => rest
-    }
-  }
-
-  def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
-    fieldValue match {
-      case Some(x) => (fieldName, JsNumber(x)) :: rest
-      case None => rest
     }
   }
 
@@ -101,6 +81,17 @@ object ActiveGridUtils {
     }.toList
   }
 
+  def longToJsField(fieldName: String, fieldValue: Option[Long], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+    fieldValue match {
+      case Some(x) => (fieldName, JsNumber(x)) :: rest
+      case None => rest
+    }
+  }
 
+  def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+    fieldValue match {
+      case Some(x) => (fieldName, JsString(x)) :: rest
+      case None => rest
+    }
+  }
 }
-
