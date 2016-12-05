@@ -146,7 +146,7 @@ object AWSComputeAPI {
   def createSSHAccessInfo(keyName: String): Option[SSHAccessInfo] = {
     val node = Neo4jRepository.getNodeByProperty("KeyPairInfo", "keyName", keyName)
     val keyPairInfo = node.flatMap { node => KeyPairInfo.fromNeo4jGraph(node.getId) }
-    keyPairInfo.map(info => SSHAccessInfo(None, info, "", 0))
+    keyPairInfo.map(info => SSHAccessInfo(None, info, None, None))
   }
 
   def getSecurityGroupInfo(totalSecurityGroups: Map[String, SecurityGroup], instanceGroupIdentifiers: List[GroupIdentifier]): List[SecurityGroupInfo] = {
