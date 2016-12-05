@@ -2485,7 +2485,7 @@ object Main extends App {
     override def write(i: CommandExecutionContext): JsValue = {
       val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
       // scalastyle:off magic.number
-      val fields = List((fieldNames.head, JsString(i.contextName))) ++
+      val fields = List((fieldNames(0), JsString(i.contextName))) ++
         List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
         List((fieldNames(2), site1Format.write(i.contextObject))) ++
         AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat) ++
