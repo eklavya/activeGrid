@@ -1,8 +1,6 @@
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
-import com.imaginea.activegrid.core.utils.ActiveGridUtils
-x
 
 /**
   * Created by sivag on 3/11/16.
@@ -38,23 +36,13 @@ object SiteManagerImpl {
       policyNode => AutoScalingPolicy.fromNeo4jGraph(policyNode.getId)
     }
   }
-
-  // Adding new scaling policies
-  def  addAutoScalingPolicy(siteId:Long,asPolicy:AutoScalingPolicy) : AutoScalingPolicy = {
-    Neo.findNodeByLabelAndId(Site1.label,siteId).foreach{
-      site =>
-        val policyNode = asPolicy.toNeo4jGraph(asPolicy)
-        Neo.createRelation(AutoScalingPolicy.relationLable,site,policyNode)
-        val strtDelay = 10000
-        val repeatCnt = 5
-        val rptIntrvl = 10000
-        val uri = ActiveGridUtils.getUriInfo()
-       //Code
+  def getAutoScalingPolies(siteId: Long, policyId: String): List[AutoScalingPolicy] = {
+    Neo.findNodeByLabelAndId(Site1.label, siteId).flatMap {
+      siteNode =>
+       Site1.fromNeo4jGraph(siteNode.getId).map{
+         siteObj => siteObj.scalingPolicies
+       }
     }
-
-
-
-    asPolicy
   }
 
 }
