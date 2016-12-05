@@ -1287,7 +1287,7 @@ object Main extends App {
   def catalogRoutes: Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
-        val Images: Future[Page[ImageInfo]] = Future {
+        val images: Future[Page[ImageInfo]] = Future {
           val imageLabel: String = "ImageInfo"
           val nodesList = Neo4jRepository.getNodesByLabel(imageLabel)
           val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
@@ -1295,7 +1295,7 @@ object Main extends App {
           Page[ImageInfo](imageInfoList)
         }
 
-        onComplete(Images) {
+        onComplete(images) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
             logger.error(s"Unable to Retrieve ImageInfo List. Failed with : ${exception.getMessage}", exception)
@@ -1462,7 +1462,7 @@ object Main extends App {
       }
     }
   }
-
+  //scalastyle:off method.length
   def siteServiceRoutes: Route = pathPrefix("sites") {
     path("site" / LongNumber) { siteId =>
       get {

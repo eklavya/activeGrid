@@ -40,10 +40,13 @@ object SiteManagerImpl {
     def getAutoScalingPolicies(siteId: Long): List[AutoScalingPolicy] = {
     val mayBeSite = Neo.findNodeByLabelAndId(Site1.label, siteId)
       mayBeSite match {
-     case Some(siteNode) => Site1.fromNeo4jGraph(siteNode.getId).map{
-         siteObj => siteObj.scalingPolicies
-       }.head
-     case _ => List.empty[AutoScalingPolicy]
+        case Some(siteNode) =>
+          val maySiteObj = Site1.fromNeo4jGraph(siteId)
+          maySiteObj match {
+            case Some(site) => site.scalingPolicies
+            case _ => List.empty[AutoScalingPolicy]
+       }
+        case _ => List.empty[AutoScalingPolicy]
     }
   }
 }
