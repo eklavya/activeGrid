@@ -20,9 +20,14 @@ import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
-  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  def getAutoScalingPolicies(accountInfo: AccountInfo): List[AutoScalingPolicy] = {
+    //Need to write logic
+    List.empty[AutoScalingPolicy]
+  }
 
-  //scalastyle:off method.length
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  // scalastyle:off method.length
+
   def getInstances(amazonEC2: AmazonEC2, accountInfo: AccountInfo): List[Instance] = {
 
     val awsInstancesResult = getAWSInstances(amazonEC2)

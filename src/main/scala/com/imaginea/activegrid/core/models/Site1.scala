@@ -19,7 +19,8 @@ case class Site1(override val id: Option[Long],
                  scalingGroups: List[ScalingGroup],
                  groupsList: List[InstanceGroup],
                  applications: List[Application],
-                 groupBy: String) extends BaseEntity
+                 groupBy: String,
+                 scalingPolicies: List[AutoScalingPolicy]) extends BaseEntity
 
 object Site1 {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -33,7 +34,8 @@ object Site1 {
 
   def apply(id: Long): Site1 = {
     Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
-      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup], List.empty[InstanceGroup], List.empty[Application], "test")
+      List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup],
+      List.empty[InstanceGroup], List.empty[Application],"test",List.empty[AutoScalingPolicy])
   }
 
 
@@ -47,7 +49,7 @@ object Site1 {
     }
     maybeNode.isDefined
   }
-
+  // scalastyle:off method.length
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
     mayBeNode match {
@@ -95,8 +97,13 @@ object Site1 {
           applicationId => Application.fromNeo4jGraph(applicationId)
         }
 
-        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers, scalingGroups, instanceGroups, applications, groupBy))
 
+        val policies = Neo4jRepository.getChildNodeIds(nodeId, AutoScalingPolicy.relationLable).flatMap {
+          id => AutoScalingPolicy.fromNeo4jGraph(id)
+        }
+
+        Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers,
+          scalingGroups, instanceGroups, applications,groupBy, policies))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -140,6 +147,10 @@ object Site1 {
       entity.groupsList.foreach { ig =>
         val instanceGroupNode = ig.toNeo4jGraph(ig)
         Neo4jRepository.setGraphRelationship(node, instanceGroupNode, siteIGRelation)
+      }
+      entity.scalingPolicies.foreach { policy =>
+        val policyNode = policy.toNeo4jGraph(policy)
+        Neo4jRepository.setGraphRelationship(node, policyNode, AutoScalingPolicy.relationLable)
       }
 
       entity.applications.foreach { application =>

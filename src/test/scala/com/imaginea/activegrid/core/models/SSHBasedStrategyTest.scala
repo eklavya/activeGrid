@@ -146,7 +146,8 @@ object Builder{
     applications = List.empty,
     groupsList = List.empty,
     applications = List.empty,
-    groupBy = "groupBy"
+    groupBy = "groupBy",
+    scalingPolicies = List.empty
   )
   val topology = new Topology(site1)
 }
