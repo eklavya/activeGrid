@@ -1,7 +1,9 @@
 package com.imaginea.activegrid.core.utils
 
 import com.amazonaws.regions.RegionUtils
+import com.imaginea.Main
 import com.imaginea.activegrid.core.models._
+import com.typesafe.akka.extension.quartz.QuartzSchedulerExtension
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -15,6 +17,8 @@ import scala.collection.JavaConversions._
 object ActiveGridUtils {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val config = ConfigFactory.load
+  val system = Main.system
+  val scheduler = QuartzSchedulerExtension(system)
   val HOST = config.getString("http.host")
   val PORT = config.getInt("http.port")
   val DBPATH = config.getString("neo4j.dbpath")
