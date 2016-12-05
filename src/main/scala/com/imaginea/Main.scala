@@ -2552,7 +2552,7 @@ object Main extends App {
     mayBeKeyFilePath match {
       case Some(keyFilePath) =>
         val defaultUser = mayBeKeyPair.flatMap(keyPair => keyPair.defaultUser)
-        val mayBeUserName: Option[String] = mayBeSSHAccessInfo.map(ssh => ssh.userName).getOrElse(defaultUser)
+        val mayBeUserName = mayBeSSHAccessInfo.map(ssh => ssh.userName).getOrElse(defaultUser)
         mayBeUserName match {
           case Some(userName) =>
             val port = mayBeSSHAccessInfo.flatMap(ssh => ssh.port)
@@ -2561,13 +2561,65 @@ object Main extends App {
             val hostPropAndSSHSession = startSession(hostProp, instance, userName, keyFilePath, newPort, passPhrase, sessionTimeout)
             hostPropAndSSHSession match {
               case Some(hostPropertyAndSSHSession) => hostPropertyAndSSHSession
-              case None =>
-                logger.warn(s"Could not start session")
-                throw new RuntimeException("could not start session")
+              case None => throw new RuntimeException("could not start session")
             }
           case None => throw new Exception("userName not found")
         }
       case None => throw new RuntimeException("sshKey not uploaded")
+    }
+  }
+
+  implicit object ContextTypeFormat extends RootJsonFormat[ContextType] {
+
+    override def write(obj: ContextType): JsValue = {
+      JsString(obj.contextType.toString)
+    }
+
+    override def read(json: JsValue): ContextType = {
+      json match {
+        case JsString(str) => ContextType.toContextType(str)
+        case _ => throw DeserializationException("Unable to deserialize Context Type")
+      }
+    }
+  }
+
+  implicit object commandExecutionContextFormat extends RootJsonFormat[CommandExecutionContext] {
+    override def write(i: CommandExecutionContext): JsValue = {
+      val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
+      // scalastyle:off magic.number
+      val fields = List((fieldNames.head, JsString(i.contextName))) ++
+        List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
+        List((fieldNames(2), site1Format.write(i.contextObject))) ++
+        AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat) ++
+        i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
+        List((fieldNames(5), JsNumber(i.siteId))) ++
+        List((fieldNames(6), JsString(i.user)))
+      // scalastyle:on magic.number
+      JsObject(fields: _*)
+    }
+
+    override def read(json: JsValue): CommandExecutionContext = {
+      //TODO need to write custom read
+      throw new Exception("read not implemented yet")
+    }
+  }
+
+  def commandRoutes: Route = pathPrefix("terminal") {
+    path("start") {
+      put {
+        entity(as[CommandExecutionContext]) { context =>
+          val session = Future {
+            val id = startTerminalSession(context)
+            s"Session created with session id: $id"
+          }
+          onComplete(session) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to start Terminal Session. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to Start Terminal Session.")
+          }
+        }
+      }
     }
   }
 }
