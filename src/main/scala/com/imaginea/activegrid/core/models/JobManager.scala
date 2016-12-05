@@ -32,11 +32,15 @@ object JobManager {
     //job.id.foreach(Neo.findNodeByLabelAndId(Job.lable,_).foreach(_.delete))
   }
   // update Job
-  def updateJob(job: Job) : Boolean = {
-
-    // Need to write.
-    true
-
+  def updateJob(properties: Map[String,Any]) : Boolean = {
+        val id = properties("id").toString.toLong
+        val mayBeNode = Neo.findNodeByLabelAndId(Job.lable,id)
+        mayBeNode.foreach {
+          jobNode => properties.foreach {
+            tple => jobNode.setProperty(tple._1, tple._2)
+          }
+        }
+        mayBeNode.isDefined
   }
   def scheduleJob(job: Job) : Unit = {
     //Need to implement
