@@ -72,4 +72,5 @@ object ApplicationTier {
       AppTier.fromNeo4jGraph(nodeId)
     }
   }
+
 }

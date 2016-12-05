@@ -99,7 +99,7 @@ object Instance {
         val rootDeviceType = map.get("rootDeviceType").asInstanceOf[Option[String]]
         val reservedInstance = map.get("reservedInstance") match {
           case Some(value) => value.asInstanceOf[Boolean]
-            case _ => false
+          case _ => false
         }
         val region = map.get("region").asInstanceOf[Option[String]]
         //TO DO
