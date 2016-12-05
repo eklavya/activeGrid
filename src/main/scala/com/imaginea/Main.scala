@@ -296,7 +296,7 @@ object Main extends App {
       val fieldNames = List("id", "siteName", "instances", "reservedInstanceDetails", "filters",
         "loadBalancers", "scalingGroups", "groupsList", "applications", "groupBy")
       // scalastyle:off magic.number
-      val fields = AGU.longToJsField(fieldNames.head, i.id) ++
+      val fields = AGU.longToJsField(fieldNames(0), i.id) ++
         AGU.stringToJsField(fieldNames(1), Some(i.siteName)) ++
         AGU.listToJsValue[Instance]("instances", i.instances, instanceFormat) ++
         AGU.listToJsValue[ReservedInstanceDetails]("reservedInstanceDetails", i.reservedInstanceDetails, reservedInstanceDetailsFormat) ++
@@ -2467,35 +2467,86 @@ object Main extends App {
     }
   }
 
+  implicit object ContextTypeFormat extends RootJsonFormat[ContextType] {
+
+    override def write(obj: ContextType): JsValue = {
+      JsString(obj.contextType.toString)
+    }
+
+    override def read(json: JsValue): ContextType = {
+      json match {
+        case JsString(str) => ContextType.toContextType(str)
+        case _ => throw DeserializationException("Unable to deserialize Context Type")
+      }
+    }
+  }
+
+  implicit object commandExecutionContextFormat extends RootJsonFormat[CommandExecutionContext] {
+    override def write(i: CommandExecutionContext): JsValue = {
+      val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
+      // scalastyle:off magic.number
+      val fields = List((fieldNames.head, JsString(i.contextName))) ++
+        List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
+        List((fieldNames(2), site1Format.write(i.contextObject))) ++
+        AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat) ++
+        i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
+        List((fieldNames(5), JsNumber(i.siteId))) ++
+        List((fieldNames(6), JsString(i.user)))
+      // scalastyle:on magic.number
+      JsObject(fields: _*)
+    }
+
+    override def read(json: JsValue): CommandExecutionContext = {
+      //TODO need to write custom read
+      throw new Exception("read not implemented yet")
+    }
+  }
+
+  def commandRoutes: Route = pathPrefix("terminal") {
+    path("start") {
+      put {
+        entity(as[CommandExecutionContext]) { context =>
+          val session = Future {
+            val terminalId = generateRandomId
+            val date = new Date
+            val instanceIds = context.instances
+            val (_, sshSessions) = instanceIds.foldLeft(None: Option[String], List.empty[SSHSession]) { (result, instanceId) =>
+              val (hostPropToUse, listOfSSHSessions) = result
+              val mayBeInstance = getInstance(context.siteId, instanceId)
+              val mayBeHostPropAndSession = mayBeInstance.map { instance =>
+                buildSSHSession(instance, hostPropToUse)
+              }
+              mayBeHostPropAndSession match {
+                case Some(hostAndSession) =>
+                  val (host, sshSession) = hostAndSession
+                  (Some(host), sshSession :: listOfSSHSessions)
+                case None => result
+              }
+            }
+            val session = TerminalSession(terminalId, None, List.empty[String], context, sshSessions, date, date)
+            sessionCache.put(session.id, session)
+            s"Session created with session id: ${session.id}"
+          }
+          onComplete(session) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to start Terminal Session. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to Start Terminal Session.")
+          }
+        }
+      }
+    }
+  }
+
+
   def generateRandomId: Long = {
     val range = 1234567L
     val randomId = (Random.nextDouble() * range).asInstanceOf[Long]
     randomId
   }
 
-  def startTerminalSession(context: CommandExecutionContext): Long = {
-    val terminalId = generateRandomId
-    val date = new Date
-    val instanceIds = context.instances
-    val (_, sshSessions) = instanceIds.foldLeft(None: Option[String], List.empty[SSHSession]) { (result, instanceId) =>
-      val (hostPropToUse, listOfSSHSessions) = result
-      val mayBeInstance = getInstance(context.siteId, instanceId)
-      val mayBeHostPropAndSession = mayBeInstance.map { instance =>
-        buildSSHSession(instance, hostPropToUse)
-      }
-      mayBeHostPropAndSession match {
-        case Some(hostAndSession) =>
-          val (host, sshSession) = hostAndSession
-          (Some(host), sshSession :: listOfSSHSessions)
-        case None => result
-      }
-    }
-    val session = TerminalSession(terminalId, None, List.empty[String], context, sshSessions, date, date)
-    sessionCache.put(session.id, session)
-    session.id
-  }
-
-  def startSession(hostProperty: Option[String], instance: Instance, userName: String, keyLocation: String, port: Option[Int], passPhrase: Option[String], sessionTimeout: Int): Option[(String, SSHSession)] = {
+  def startSession(hostProperty: Option[String], instance: Instance, userName: String, keyLocation: String, port: Option[Int],
+                   passPhrase: Option[String], sessionTimeout: Int): Option[(String, SSHSession)] = {
     hostProperty match {
       case Some(property) =>
         try {
@@ -2538,9 +2589,9 @@ object Main extends App {
         }
       case None =>
         val session = startSession(Some("privateIp"), instance, userName, keyLocation, port, passPhrase, sessionTimeout)
-        if (session.isEmpty)
+        if (session.isEmpty) {
           startSession(Some("publicDns"), instance, userName, keyLocation, port, passPhrase, -1)
-        else session
+        } else { session }
     }
   }
 
@@ -2566,60 +2617,6 @@ object Main extends App {
           case None => throw new Exception("userName not found")
         }
       case None => throw new RuntimeException("sshKey not uploaded")
-    }
-  }
-
-  implicit object ContextTypeFormat extends RootJsonFormat[ContextType] {
-
-    override def write(obj: ContextType): JsValue = {
-      JsString(obj.contextType.toString)
-    }
-
-    override def read(json: JsValue): ContextType = {
-      json match {
-        case JsString(str) => ContextType.toContextType(str)
-        case _ => throw DeserializationException("Unable to deserialize Context Type")
-      }
-    }
-  }
-
-  implicit object commandExecutionContextFormat extends RootJsonFormat[CommandExecutionContext] {
-    override def write(i: CommandExecutionContext): JsValue = {
-      val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
-      // scalastyle:off magic.number
-      val fields = List((fieldNames.head, JsString(i.contextName))) ++
-        List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
-        List((fieldNames(2), site1Format.write(i.contextObject))) ++
-        AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat) ++
-        i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
-        List((fieldNames(5), JsNumber(i.siteId))) ++
-        List((fieldNames(6), JsString(i.user)))
-      // scalastyle:on magic.number
-      JsObject(fields: _*)
-    }
-
-    override def read(json: JsValue): CommandExecutionContext = {
-      //TODO need to write custom read
-      throw new Exception("read not implemented yet")
-    }
-  }
-
-  def commandRoutes: Route = pathPrefix("terminal") {
-    path("start") {
-      put {
-        entity(as[CommandExecutionContext]) { context =>
-          val session = Future {
-            val id = startTerminalSession(context)
-            s"Session created with session id: $id"
-          }
-          onComplete(session) {
-            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case Failure(exception) =>
-              logger.error(s"Unable to start Terminal Session. Failed with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to Start Terminal Session.")
-          }
-        }
-      }
     }
   }
 }
