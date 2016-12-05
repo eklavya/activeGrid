@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -18,6 +19,7 @@ object AutoScalingPolicy {
 
   val logger = LoggerFactory.getLogger(AutoScalingPolicy.getClass)
   val lable = AutoScalingPolicy.getClass.getSimpleName
+  val relationLable = ActiveGridUtils.relationLbl(lable)
 
   val conditionLbl2 = "HAS_SECONDARY_COND"
   val conditionLbl1 = "HAS_PRIMARY_COND"
@@ -34,7 +36,7 @@ object AutoScalingPolicy {
           id => PolicyCondition.fromGraph(id)
         }
         //Fetching applications
-        val application = Neo.getChildNodeIds(policy.getId, Application.relationLable).flatMap {
+        val application = Neo.getChildNodeIds(policy.getId, Application.relationLabel).flatMap {
           id => Application.fromNeo4jGraph(id)
         }.headOption
 
@@ -63,7 +65,7 @@ object AutoScalingPolicy {
       val appNode = entity.application.foreach {
         app =>
           val appNode = app.toNeo4jGraph(app)
-          Neo.createRelation(Application.relationLable, policyNode, appNode)
+          Neo.createRelation(Application.relationLabel, policyNode, appNode)
       }
 
       //Mapping primary conditions
