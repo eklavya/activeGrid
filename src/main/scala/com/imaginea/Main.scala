@@ -15,11 +15,12 @@ import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
 import spray.json._ // scalastyle:ignore underscore.import
-
+import java.util.Date
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationLong
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Random, Success}
+import com.jcraft.jsch.{JSch, JSchException}
 
 object Main extends App {
 
@@ -27,6 +28,7 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   val cachedSite = mutable.Map.empty[Long, Site1]
+  val sessionCache = mutable.Map.empty[Long, TerminalSession]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
@@ -2462,6 +2464,110 @@ object Main extends App {
         case JsString(str) => Condition.toCondition(str)
         case _ => throw DeserializationException("Unable to deserialize the Condition data")
       }
+    }
+  }
+
+  def generateRandomId: Long = {
+    val range = 1234567L
+    val randomId = (Random.nextDouble() * range).asInstanceOf[Long]
+    randomId
+  }
+
+  def startTerminalSession(context: CommandExecutionContext): Long = {
+    val terminalId = generateRandomId
+    val date = new Date
+    val instanceIds = context.instances
+    val (_, sshSessions) = instanceIds.foldLeft(None: Option[String], List.empty[SSHSession]) { (result, instanceId) =>
+      val (hostPropToUse, listOfSSHSessions) = result
+      val mayBeInstance = getInstance(context.siteId, instanceId)
+      val mayBeHostPropAndSession = mayBeInstance.map { instance =>
+        buildSSHSession(instance, hostPropToUse)
+      }
+      mayBeHostPropAndSession match {
+        case Some(hostAndSession) =>
+          val (host, sshSession) = hostAndSession
+          (Some(host), sshSession :: listOfSSHSessions)
+        case None => result
+      }
+    }
+    val session = TerminalSession(terminalId, None, List.empty[String], context, sshSessions, date, date)
+    sessionCache.put(session.id, session)
+    session.id
+  }
+
+  def startSession(hostProperty: Option[String], instance: Instance, userName: String, keyLocation: String, port: Option[Int], passPhrase: Option[String], sessionTimeout: Int): Option[(String, SSHSession)] = {
+    hostProperty match {
+      case Some(property) =>
+        try {
+          val jsch = new JSch
+          JSch.setConfig("StrictHostKeyChecking", "no")
+          val increasedSessionTimeOut = if (sessionTimeout == -1) Constants.DEFAULT_SESSION_TIMEOUT else sessionTimeout
+          passPhrase match {
+            case Some(p) => jsch.addIdentity(keyLocation, p)
+            case None => jsch.addIdentity(keyLocation)
+          }
+          val propertyAndSession = if (property == "privateIp") {
+            val ip = instance.privateIpAddress
+            ip match {
+              case Some(privateIp) => Some((property, privateIp, jsch.getSession(userName, privateIp)))
+              case None =>
+                logger.warn("privateIpAddress not found")
+                None
+            }
+          } else {
+            val ip = instance.publicDnsName
+            ip match {
+              case Some(publicIp) => Some((property, publicIp, jsch.getSession(userName, publicIp)))
+              case None =>
+                logger.warn("publicDnsName not found")
+                None
+            }
+          }
+          propertyAndSession.map { result =>
+            val (hostProp, serverIp, session) = result
+            session.setTimeout(increasedSessionTimeOut)
+            port.foreach(p => session.setPort(p))
+            session.connect()
+            (hostProp, SSHSession(serverIp, userName, jsch, session, keyLocation, port, passPhrase, increasedSessionTimeOut))
+          }
+        }
+        catch {
+          case e: JSchException =>
+            logger.warn("Failed due to Jsch Exception")
+            None
+        }
+      case None =>
+        val session = startSession(Some("privateIp"), instance, userName, keyLocation, port, passPhrase, sessionTimeout)
+        if (session.isEmpty)
+          startSession(Some("publicDns"), instance, userName, keyLocation, port, passPhrase, -1)
+        else session
+    }
+  }
+
+  def buildSSHSession(instance: Instance, hostProp: Option[String]): (String, SSHSession) = {
+    val mayBeSSHAccessInfo = instance.sshAccessInfo
+    val mayBeKeyPair = mayBeSSHAccessInfo.map(ssh => ssh.keyPair)
+    val mayBeKeyFilePath = mayBeKeyPair.flatMap(keyPair => keyPair.filePath)
+    val passPhrase = mayBeKeyPair.flatMap(keyPair => keyPair.passPhrase)
+    mayBeKeyFilePath match {
+      case Some(keyFilePath) =>
+        val defaultUser = mayBeKeyPair.flatMap(keyPair => keyPair.defaultUser)
+        val mayBeUserName: Option[String] = mayBeSSHAccessInfo.map(ssh => ssh.userName).getOrElse(defaultUser)
+        mayBeUserName match {
+          case Some(userName) =>
+            val port = mayBeSSHAccessInfo.flatMap(ssh => ssh.port)
+            val newPort = port.filter(p => p != 0)
+            val sessionTimeout = 5 * 1000
+            val hostPropAndSSHSession = startSession(hostProp, instance, userName, keyFilePath, newPort, passPhrase, sessionTimeout)
+            hostPropAndSSHSession match {
+              case Some(hostPropertyAndSSHSession) => hostPropertyAndSSHSession
+              case None =>
+                logger.warn(s"Could not start session")
+                throw new RuntimeException("could not start session")
+            }
+          case None => throw new Exception("userName not found")
+        }
+      case None => throw new RuntimeException("sshKey not uploaded")
     }
   }
 }

@@ -5,7 +5,7 @@ package com.imaginea.activegrid.core.models
   */
 case class CommandExecutionContext(contextName : String,
                                    contextType: ContextType,
-                                   contextObject : AnyRef,
+                                   contextObject : Site1,
                                    parentContext: Option[CommandExecutionContext],
                                    instances : Array[String],
                                    siteId: Long,
