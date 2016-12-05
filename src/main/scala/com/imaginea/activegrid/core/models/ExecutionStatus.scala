@@ -4,10 +4,9 @@ package com.imaginea.activegrid.core.models
 /**
   * Created by sivag on 20/10/16.
   */
-case class ExecutionStatus(status:Boolean,msg:String)
+case class ExecutionStatus(status: Boolean, msg: String)
 
-object ExecutionStatus
-{
+object ExecutionStatus {
   def apply(status: Boolean): ExecutionStatus = ExecutionStatus(status, "")
 }
 

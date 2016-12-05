@@ -3,7 +3,7 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 
 
 /**
@@ -20,31 +20,6 @@ object AppSettings {
   val settingsRelationName = "Has_Settings"
   val authSettingsRelationName = "Has_AuthSettings"
   val logger = LoggerFactory.getLogger(getClass)
-
-  implicit class AppSettingsImpl(entity: AppSettings) extends Neo4jRep[AppSettings] {
-
-    override def toNeo4jGraph(entity: AppSettings): Node = {
-      logger.info(s"Executing $getClass :: toNeo4jGraph")
-      repo.withTx { neo =>
-        val node: Node = repo.createNode(labelName)(neo)
-        logger.info(s"Persisting settings with relation ${entity.settings} ")
-        val settingsNode = repo.createNode(settingsLableName)(neo)
-        entity.settings.foreach { case (key, value) => settingsNode.setProperty(key, value) }
-        createRelationShip(node, settingsNode, settingsRelationName)
-        logger.info("Persisting auth settings with relation")
-        val authSettingsNode = repo.createNode(authSettingsLableName)(neo)
-        entity.authSettings.foreach { case (key, value) => authSettingsNode.setProperty(key, value) }
-        createRelationShip(node, authSettingsNode, authSettingsRelationName)
-        node
-      }
-    }
-
-    override def fromNeo4jGraph(nodeId: Long): Option[AppSettings] = {
-      logger.info(s"Executing $getClass ::fromNeo4jGraph ")
-      val appSettings = AppSettings.fromNeo4jGraph(nodeId)
-      appSettings
-    }
-  }
 
   implicit def createRelationShip(parentNode: Node, childNode: Node, relationship: String): Unit = {
     logger.info(s"Executing $getClass :: createRelationShip")
@@ -105,6 +80,20 @@ object AppSettings {
     }
   }
 
+  def getAppSettingNode: Option[Node] = {
+    repo.withTx {
+      neo =>
+        try {
+          val nodes = repo.getAllNodesWithLabel(labelName)(neo)
+          nodes.lastOption
+        } catch {
+          case nse: NoSuchElementException =>
+            logger.warn(nse.getMessage, nse)
+            None
+        }
+    }
+  }
+
   def deleteSettings(settingNames: List[String], relation: String): Boolean = {
     logger.info(s"Executing $getClass ::deleteSettings")
     repo.withTx {
@@ -127,18 +116,30 @@ object AppSettings {
     }
   }
 
-  def getAppSettingNode: Option[Node] = {
-    repo.withTx {
-      neo =>
-        try {
-          val nodes = repo.getAllNodesWithLabel(labelName)(neo)
-          nodes.headOption
-        } catch {
-          case nse: NoSuchElementException =>
-            logger.warn(nse.getMessage, nse)
-            None
-        }
+  implicit class AppSettingsImpl(entity: AppSettings) extends Neo4jRep[AppSettings] {
+
+    override def toNeo4jGraph(entity: AppSettings): Node = {
+      logger.info(s"Executing $getClass :: toNeo4jGraph")
+      repo.withTx { neo =>
+        val node: Node = repo.createNode(labelName)(neo)
+        logger.info(s"Persisting settings with relation ${entity.settings} ")
+        val settingsNode = repo.createNode(settingsLableName)(neo)
+        entity.settings.foreach { case (key, value) => settingsNode.setProperty(key, value) }
+        createRelationShip(node, settingsNode, settingsRelationName)
+        logger.info("Persisting auth settings with relation")
+        val authSettingsNode = repo.createNode(authSettingsLableName)(neo)
+        entity.authSettings.foreach { case (key, value) => authSettingsNode.setProperty(key, value) }
+        createRelationShip(node, authSettingsNode, authSettingsRelationName)
+        node
+      }
+    }
+
+    override def fromNeo4jGraph(nodeId: Long): Option[AppSettings] = {
+      logger.info(s"Executing $getClass ::fromNeo4jGraph ")
+      val appSettings = AppSettings.fromNeo4jGraph(nodeId)
+      appSettings
     }
   }
+
 }
 

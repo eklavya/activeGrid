@@ -10,15 +10,15 @@ sealed trait ContextType {
 }
 
 case object USER_HOME extends ContextType {
-  override def contextType: String = "LIST"
+  override def contextType: String = "USER_HOME"
 }
 
 case object SITE extends ContextType {
-  override def contextType: String = "OPERATIONS"
+  override def contextType: String = "SITE"
 }
 
 case object INSTANCE extends ContextType {
-  override def contextType: String = "ARCHITECTURE"
+  override def contextType: String = "INSTANCE"
 }
 
 case object ContextType {

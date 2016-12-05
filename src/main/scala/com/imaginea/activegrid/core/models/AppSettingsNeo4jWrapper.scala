@@ -4,14 +4,14 @@ import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 import scala.collection.immutable.HashMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
- * Created by sivag on 6/10/16.
- */
+  * Created by sivag on 6/10/16.
+  */
 object AppSettingsNeo4jWrapper {
 
   val labels =
@@ -40,6 +40,12 @@ object AppSettingsNeo4jWrapper {
     }
   }
 
+  def setNodeProperties(n: Node, settings: Map[String, String]) {
+    settings.foreach {
+      case (k, v) => n.setProperty(k, v);
+    }
+  }
+
   def fromNeo4jGraph(nodeId: Long): Option[ApplicationSettings] = {
     rep.withTx {
       neo => {
@@ -54,8 +60,13 @@ object AppSettingsNeo4jWrapper {
     }
   }
 
-  private def label(settingsType: String) =
-    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")) labels("HAS") else labels("HGS")
+  def getSettingsByRelation(rootNode: Node, relationName: String): Map[String, String] = {
+    val relationNode = getRelationNodeByName(rootNode, relationName)
+    relationNode match {
+      case Some(node) => node.getAllProperties.mapValues(_.toString()).toMap[String, String]
+      case None => Map.empty[String, String]
+    }
+  }
 
   def updateSettings(settingsToUpdate: Map[String, String], settingsType: String): Future[ExecutionStatus] = {
     updateOrDeleteSettings(settingsToUpdate, label(settingsType), "UPDATE")
@@ -65,20 +76,8 @@ object AppSettingsNeo4jWrapper {
     updateOrDeleteSettings(settingsToDelete, label(settingsType), "DELETE")
   }
 
-  def getSettingsByRelation(rootNode: Node, relationName: String): Map[String, String] = {
-    val relationNode = getRelationNodeByName(rootNode, relationName)
-    relationNode match {
-      case Some(node) => node.getAllProperties.mapValues(_.toString()).toMap[String, String]
-      case None => Map.empty[String, String]
-    }
-  }
-
-  def getRelationNodeByName(rootNode: Node, relationName: String): Option[Node] = {
-    rootNode.getRelationships.find(relation => relation.getType.name() == relationName) match {
-      case Some(relationship) => Some(relationship.getEndNode)
-      case None => None
-    }
-  }
+  private def label(settingsType: String) =
+    if (settingsType.equalsIgnoreCase("AUTH_SETTINGS")) labels("HAS") else labels("HGS")
 
   def updateOrDeleteSettings(settings: Map[String, String]
                              , relationName: String
@@ -98,9 +97,10 @@ object AppSettingsNeo4jWrapper {
     }
   }
 
-  def setNodeProperties(n: Node, settings: Map[String, String]) {
-    settings.foreach {
-      case (k, v) => n.setProperty(k, v);
+  def getRelationNodeByName(rootNode: Node, relationName: String): Option[Node] = {
+    rootNode.getRelationships.find(relation => relation.getType.name() == relationName) match {
+      case Some(relationship) => Some(relationship.getEndNode)
+      case None => None
     }
   }
 }

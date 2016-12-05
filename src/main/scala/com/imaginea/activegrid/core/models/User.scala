@@ -6,8 +6,8 @@ import org.neo4j.graphdb.{Node, Relationship}
 import org.slf4j.LoggerFactory
 
 /**
- * Created by babjik on 26/9/16.
- */
+  * Created by babjik on 26/9/16.
+  */
 case class User(override val id: Option[Long]
                 , username: String
                 , password: String
@@ -24,6 +24,44 @@ case class User(override val id: Option[Long]
 
 object User {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+
+  def fromNeo4jGraph(nodeId: Long): Option[User] = {
+    Neo4jRepository.findNodeById(nodeId) match {
+      case Some(node) =>
+        val map = Neo4jRepository.getProperties(node
+          , "username"
+          , "password"
+          , "email"
+          , "uniqueId"
+          , "accountNonExpired"
+          , "accountNonLocked"
+          , "credentialsNonExpired"
+          , "enabled"
+          , "displayName")
+
+        val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.hasPublicKeys)
+
+        val keyPairInfos = keyPairInfoNodes.flatMap(keyPairNode => {
+          KeyPairInfo.fromNeo4jGraph(keyPairNode.getId)
+        })
+
+        val user = User(Some(nodeId),
+          map("username").toString,
+          map("password").toString,
+          map("email").toString,
+          map("uniqueId").toString,
+          keyPairInfos,
+          map("accountNonExpired").asInstanceOf[Boolean],
+          map("accountNonLocked").asInstanceOf[Boolean],
+          map("credentialsNonExpired").asInstanceOf[Boolean],
+          map("enabled").asInstanceOf[Boolean],
+          map("displayName").toString)
+
+        logger.debug(s"user - $user")
+        Some(user)
+      case None => None
+    }
+  }
 
   implicit class RichUser(user: User) extends Neo4jRep[User] {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -56,62 +94,25 @@ object User {
     }
   }
 
-  def fromNeo4jGraph(nodeId: Long): Option[User] = {
-    Neo4jRepository.findNodeById(nodeId) match {
-      case Some(node) =>
-        val map = Neo4jRepository.getProperties(node
-          , "username"
-          , "password"
-          , "email"
-          , "uniqueId"
-          , "accountNonExpired"
-          , "accountNonLocked"
-          , "credentialsNonExpired"
-          , "enabled"
-          , "displayName")
-
-        val keyPairInfoNodes = Neo4jRepository.getNodesWithRelation(node, UserUtils.has_publicKeys)
-
-        val keyPairInfos = keyPairInfoNodes.flatMap(keyPairNode => {
-          KeyPairInfo.fromNeo4jGraph(keyPairNode.getId)
-        })
-
-        val user = User(Some(nodeId),
-          map("username").toString,
-          map("password").toString,
-          map("email").toString,
-          map("uniqueId").toString,
-          keyPairInfos,
-          map("accountNonExpired").asInstanceOf[Boolean],
-          map("accountNonLocked").asInstanceOf[Boolean],
-          map("credentialsNonExpired").asInstanceOf[Boolean],
-          map("enabled").asInstanceOf[Boolean],
-          map("displayName").toString)
-
-        logger.debug(s"user - $user")
-        Some(user)
-      case None => None
-    }
-  }
 }
 
 object UserUtils {
-  val has_publicKeys = "HAS_publicKeys"
+  val hasPublicKeys = "HAS_publicKeys"
 
   def addKeyPair(userId: Long, keyPairInfo: KeyPairInfo): Option[Relationship] = {
     Neo4jRepository.findNodeById(userId) match {
       case Some(userNode) =>
         val publicKeyNode = keyPairInfo.toNeo4jGraph(keyPairInfo)
-        Some(Neo4jRepository.createRelation(has_publicKeys, userNode, publicKeyNode))
+        Some(Neo4jRepository.createRelation(hasPublicKeys, userNode, publicKeyNode))
       case None => None
     }
   }
 
-  def getUserKeysDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
+  def getKeyFilePath(userId: Long, keyName: String): String = s"${getKeyDirPath(userId)}$keyName.pub"
 
   def getKeyDirPath(userId: Long): String = s"$getUserKeysDir${Constants.FILE_SEPARATOR}${userId.toString}${Constants.FILE_SEPARATOR}"
 
-  def getKeyFilePath(userId: Long, keyName: String): String = s"${getKeyDirPath(userId)}$keyName.pub"
+  def getUserKeysDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}${Constants.USER_KEYS}"
 
 }
 
