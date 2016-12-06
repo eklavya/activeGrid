@@ -1,6 +1,5 @@
 package com.imaginea.activegrid.core.models
 
-import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -8,7 +7,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by shareefn on 7/10/16.
   */
-case class SSHAccessInfo(override val id: Option[Long], keyPair: KeyPairInfo, userName: Option[String], port: Int) extends BaseEntity
+case class SSHAccessInfo(override val id: Option[Long], keyPair: KeyPairInfo, userName: Option[String], port: Option[Int]) extends BaseEntity
 
 object SSHAccessInfo {
 
@@ -19,8 +18,8 @@ object SSHAccessInfo {
     mayBeNode match {
       case Some(node) =>
         val map = Neo4jRepository.getProperties(node, "userName", "port")
-        val userName = ActiveGridUtils.getValueFromMapAs[String](map, "userName")
-        val port = map("port").toString.toInt
+        val userName = map.get("userName").asInstanceOf[Option[String]]
+        val port = map.get("port").asInstanceOf[Option[Int]]
         val relationship = "HAS_keyPair"
         val keyPairInfo: Option[KeyPairInfo] = Neo4jRepository.getChildNodeId(nodeId, relationship).flatMap(id => KeyPairInfo.fromNeo4jGraph(id))
 

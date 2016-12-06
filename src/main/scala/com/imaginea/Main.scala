@@ -15,11 +15,12 @@ import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
 import spray.json._ // scalastyle:ignore underscore.import
-
+import java.util.Date
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationLong
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Random, Success}
+import com.jcraft.jsch.{JSch, JSchException}
 
 object Main extends App {
 
@@ -27,6 +28,7 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   val cachedSite = mutable.Map.empty[Long, Site1]
+  val sessionCache = mutable.Map.empty[Long, TerminalSession]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
@@ -294,7 +296,7 @@ object Main extends App {
       val fieldNames = List("id", "siteName", "instances", "reservedInstanceDetails", "filters",
         "loadBalancers", "scalingGroups", "groupsList", "applications", "groupBy")
       // scalastyle:off magic.number
-      val fields = AGU.longToJsField(fieldNames.head, i.id) ++
+      val fields = AGU.longToJsField(fieldNames(0), i.id) ++
         AGU.stringToJsField(fieldNames(1), Some(i.siteName)) ++
         AGU.listToJsValue[Instance]("instances", i.instances, instanceFormat) ++
         AGU.listToJsValue[ReservedInstanceDetails]("reservedInstanceDetails", i.reservedInstanceDetails, reservedInstanceDetailsFormat) ++
@@ -705,7 +707,7 @@ object Main extends App {
     }
   }
   val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
-    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
   // scalastyle:off cyclomatic.complexity
@@ -2462,6 +2464,158 @@ object Main extends App {
         case JsString(str) => Condition.toCondition(str)
         case _ => throw DeserializationException("Unable to deserialize the Condition data")
       }
+    }
+  }
+
+  implicit object ContextTypeFormat extends RootJsonFormat[ContextType] {
+
+    override def write(obj: ContextType): JsValue = {
+      JsString(obj.contextType.toString)
+    }
+
+    override def read(json: JsValue): ContextType = {
+      json match {
+        case JsString(str) => ContextType.toContextType(str)
+        case _ => throw DeserializationException("Unable to deserialize Context Type")
+      }
+    }
+  }
+
+  implicit object commandExecutionContextFormat extends RootJsonFormat[CommandExecutionContext] {
+    override def write(i: CommandExecutionContext): JsValue = {
+      val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
+      // scalastyle:off magic.number
+      val fields = List((fieldNames(0), JsString(i.contextName))) ++
+        List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
+        List((fieldNames(2), site1Format.write(i.contextObject))) ++
+        AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat) ++
+        i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
+        List((fieldNames(5), JsNumber(i.siteId))) ++
+        List((fieldNames(6), JsString(i.user)))
+      // scalastyle:on magic.number
+      JsObject(fields: _*)
+    }
+
+    override def read(json: JsValue): CommandExecutionContext = {
+      //TODO need to write custom read
+      throw new Exception("read not implemented yet")
+    }
+  }
+
+  def commandRoutes: Route = pathPrefix("terminal") {
+    path("start") {
+      put {
+        entity(as[CommandExecutionContext]) { context =>
+          val session = Future {
+            val terminalId = generateRandomId
+            val date = new Date
+            val instanceIds = context.instances
+            val (_, sshSessions) = instanceIds.foldLeft(None: Option[String], List.empty[SSHSession]) { (result, instanceId) =>
+              val (hostPropToUse, listOfSSHSessions) = result
+              val mayBeInstance = getInstance(context.siteId, instanceId)
+              val mayBeHostPropAndSession = mayBeInstance.map { instance =>
+                buildSSHSession(instance, hostPropToUse)
+              }
+              mayBeHostPropAndSession match {
+                case Some(hostAndSession) =>
+                  val (host, sshSession) = hostAndSession
+                  (Some(host), sshSession :: listOfSSHSessions)
+                case None => result
+              }
+            }
+            val session = TerminalSession(terminalId, None, List.empty[String], context, sshSessions, date, date)
+            sessionCache.put(session.id, session)
+            s"Session created with session id: ${session.id}"
+          }
+          onComplete(session) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to start Terminal Session. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to Start Terminal Session.")
+          }
+        }
+      }
+    }
+  }
+
+  def generateRandomId: Long = {
+    val range = 1234567L
+    val randomId = (Random.nextDouble() * range).asInstanceOf[Long]
+    randomId
+  }
+
+  def startSession(hostProperty: Option[String], instance: Instance, userName: String, keyLocation: String, port: Option[Int],
+                   passPhrase: Option[String], sessionTimeout: Int): Option[(String, SSHSession)] = {
+    hostProperty match {
+      case Some(property) =>
+        try {
+          val jsch = new JSch
+          JSch.setConfig("StrictHostKeyChecking", "no")
+          val increasedSessionTimeOut = if (sessionTimeout == -1) Constants.DEFAULT_SESSION_TIMEOUT else sessionTimeout
+          passPhrase match {
+            case Some(p) => jsch.addIdentity(keyLocation, p)
+            case None => jsch.addIdentity(keyLocation)
+          }
+          val propertyAndSession = if (property == "privateIp") {
+            val ip = instance.privateIpAddress
+            ip match {
+              case Some(privateIp) => Some((property, privateIp, jsch.getSession(userName, privateIp)))
+              case None =>
+                logger.warn("privateIpAddress not found")
+                None
+            }
+          } else {
+            val ip = instance.publicDnsName
+            ip match {
+              case Some(publicIp) => Some((property, publicIp, jsch.getSession(userName, publicIp)))
+              case None =>
+                logger.warn("publicDnsName not found")
+                None
+            }
+          }
+          propertyAndSession.map { result =>
+            val (hostProp, serverIp, session) = result
+            session.setTimeout(increasedSessionTimeOut)
+            port.foreach(p => session.setPort(p))
+            session.connect()
+            (hostProp, SSHSession(serverIp, userName, jsch, session, keyLocation, port, passPhrase, increasedSessionTimeOut))
+          }
+        }
+        catch {
+          case e: JSchException =>
+            logger.warn("Failed due to Jsch Exception")
+            None
+        }
+      case None =>
+        val session = startSession(Some("privateIp"), instance, userName, keyLocation, port, passPhrase, sessionTimeout)
+        if (session.isEmpty) {
+          startSession(Some("publicDns"), instance, userName, keyLocation, port, passPhrase, -1)
+        } else { session }
+    }
+  }
+
+  def buildSSHSession(instance: Instance, hostProp: Option[String]): (String, SSHSession) = {
+    val mayBeSSHAccessInfo = instance.sshAccessInfo
+    val mayBeKeyPair = mayBeSSHAccessInfo.map(ssh => ssh.keyPair)
+    val mayBeKeyFilePath = mayBeKeyPair.flatMap(keyPair => keyPair.filePath)
+    val passPhrase = mayBeKeyPair.flatMap(keyPair => keyPair.passPhrase)
+    mayBeKeyFilePath match {
+      case Some(keyFilePath) =>
+        val defaultUser = mayBeKeyPair.flatMap(keyPair => keyPair.defaultUser)
+        val mayBeUserName = mayBeSSHAccessInfo.map(ssh => ssh.userName).getOrElse(defaultUser)
+        mayBeUserName match {
+          case Some(userName) =>
+            val port = mayBeSSHAccessInfo.flatMap(ssh => ssh.port)
+            val newPort = port.filter(p => p != 0)
+            val sessionTimeout = 5 * 1000
+            val hostPropAndSSHSession = startSession(hostProp, instance, userName, keyFilePath, newPort, passPhrase, sessionTimeout)
+            hostPropAndSSHSession match {
+              case Some(hostPropertyAndSSHSession) => hostPropertyAndSSHSession
+              case None => throw new RuntimeException("could not start session")
+            }
+          case None => throw new Exception("userName not found")
+        }
+      case None => throw new RuntimeException("sshKey not uploaded")
     }
   }
 }
