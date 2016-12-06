@@ -14,6 +14,7 @@ object Constants {
   val USER_KEYS: String = "userkeys"
   val FILE_SEPARATOR = File.separator
   val NAME_TAG_KEY = "Name"
+  val DEFAULT_SESSION_TIMEOUT = 1500
 
   val tempDirectoryLocation: String = TEMP_DIR_LOC
 }
