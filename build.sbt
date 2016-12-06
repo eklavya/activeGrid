@@ -17,6 +17,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-spray-json-experimental" % AkkaVersion,
     "ch.qos.logback" % "logback-classic" % "1.1.7",
     "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
+    "org.quartz-scheduler" % "quartz" % "2.2.3",
     "com.enragedginger" %% "akka-quartz-scheduler" % "1.6.0-akka-2.4.x",
     "eu.fakod" % "neo4j-scala_2.11" % neo4jScalaVersion,
     "org.apache.jclouds.provider" % "aws-ec2" % "1.6.3",
