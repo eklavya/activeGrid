@@ -51,6 +51,7 @@ object ActiveGridUtils {
         case JsNumber(str) => Some(str.asInstanceOf[T])
         case JsFalse => Some(false.asInstanceOf[T])
         case JsTrue => Some(true.asInstanceOf[T])
+        case JsObject(str) => Some(str.asInstanceOf[T])
         case _ => None
       }
     } else {
