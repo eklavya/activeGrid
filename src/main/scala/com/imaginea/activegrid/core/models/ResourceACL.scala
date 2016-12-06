@@ -3,7 +3,6 @@ package com.imaginea.activegrid.core.models
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
-
 /**
   * Created by ranjithrajd on 25/10/16.
   */
@@ -42,3 +41,4 @@ object ResourceACL {
   }
 
 }
+

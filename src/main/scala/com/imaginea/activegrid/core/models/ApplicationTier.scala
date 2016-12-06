@@ -17,8 +17,8 @@ case class ApplicationTier(override val id: Option[Long],
 
 object ApplicationTier {
 
-  val lable = ApplicationTier.getClass.getSimpleName
-  val relationLable = ActiveGridUtils.relationLbl(lable)
+  val label = ApplicationTier.getClass.getSimpleName
+  val relationLabel = ActiveGridUtils.relationLbl(label)
 
   def fromNeo4jGraph(nodeId: Long): Option[AppTier] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -29,12 +29,12 @@ object ApplicationTier {
         val map = Neo.getProperties(appTier, "name", "description")
 
         //Fetching instances
-        val instances = Neo.getChildNodeIds(appTier.getId, Instance.relationLable).flatMap {
+        val instances = Neo.getChildNodeIds(appTier.getId, Instance.relationLabel).flatMap {
           id => Instance.fromNeo4jGraph(id)
         }
 
         // Fetching APM Server
-        val apmSrvr = Neo.getChildNodeId(appTier.getId, APMServerDetails.relationLable).flatMap {
+        val apmSrvr = Neo.getChildNodeId(appTier.getId, APMServerDetails.relationLabel).flatMap {
           id => APMServerDetails.fromNeo4jGraph(id)
         }
         ApplicationTier(Some(nodeId), map("name").toString, map("description").toString, instances, apmSrvr)
@@ -50,20 +50,20 @@ object ApplicationTier {
       logger.debug(s"In toGraph for Software: $appTier")
 
       val map = Map("name" -> appTier.name, "description" -> appTier.description)
-      val appTierNode = Neo.saveEntity[AppTier](AppTier.lable, appTier.id, map)
+      val appTierNode = Neo.saveEntity[AppTier](AppTier.label, appTier.id, map)
 
       // Creating instances.
       appTier.instances.map {
         instance =>
           val instnNode = instance.toNeo4jGraph(instance)
-          Neo.createRelation(Instance.relationLable, appTierNode, instnNode)
+          Neo.createRelation(Instance.relationLabel, appTierNode, instnNode)
       }
 
       // Creating APMServer
       appTier.apmServer.map {
         srvr =>
           val srvrNod = srvr.toNeo4jGraph(srvr)
-          Neo.createRelation(APMServerDetails.relationLable, appTierNode, srvrNod)
+          Neo.createRelation(APMServerDetails.relationLabel, appTierNode, srvrNod)
       }
       appTierNode
     }

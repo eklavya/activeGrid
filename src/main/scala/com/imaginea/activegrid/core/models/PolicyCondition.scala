@@ -40,12 +40,12 @@ object PolicyCondition {
 
 
         //Fetching ApplicationTier
-        val appTier = Neo.getChildNodeId(policy.getId, ApplicationTier.relationLable).flatMap {
+        val appTier = Neo.getChildNodeId(policy.getId, ApplicationTier.relationLabel).flatMap {
           appTierId => ApplicationTier.fromNeo4jGraph(appTierId)
         }
 
         //Fetching ScalingGroup
-        val scalingGroup = Neo.getChildNodeId(policy.getId, ScalingGroup.relationLable).flatMap {
+        val scalingGroup = Neo.getChildNodeId(policy.getId, ScalingGroup.relationLabel).flatMap {
           sgId => ScalingGroup.fromNeo4jGraph(sgId)
         }
 
@@ -85,13 +85,13 @@ object PolicyCondition {
           pc.appTier.map {
             appTier =>
               val appNode = appTier.toNeo4jGraph(appTier)
-              Neo.createRelation(ApplicationTier.relationLable, pcNode, appNode)
+              Neo.createRelation(ApplicationTier.relationLabel, pcNode, appNode)
           }
 
           pc.scalingGroup.map {
             sgroup =>
               val sGroupNode = sgroup.toNeo4jGraph(sgroup)
-              Neo.createRelation(ScalingGroup.relationLable, pcNode, sGroupNode)
+              Neo.createRelation(ScalingGroup.relationLabel, pcNode, sGroupNode)
           }
           pcNode
         }

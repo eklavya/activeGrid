@@ -8,7 +8,7 @@ import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.regions.{Region, RegionUtils}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
-import com.amazonaws.services.ec2.model._
+import com.amazonaws.services.ec2.model._ //scalastyle:ignore underscore.import
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
@@ -16,11 +16,17 @@ import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
+  def getAutoScalingPolicies(accountInfo: AccountInfo): List[AutoScalingPolicy] = {
+    //Need to write logic
+    List.empty[AutoScalingPolicy]
+  }
+
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+  // scalastyle:off method.length
 
   def getInstances(amazonEC2: AmazonEC2, accountInfo: AccountInfo): List[Instance] = {
 
@@ -88,6 +94,7 @@ object AWSComputeAPI {
     }
     instances
   }
+  //scalastyle:on method.length
 
   def getAWSInstances(amazonEC2: AmazonEC2): List[model.Instance] = {
     amazonEC2.describeInstances.getReservations.toList.flatMap {
@@ -384,5 +391,30 @@ object AWSComputeAPI {
     val describeInstanceResult = amazonEC2.describeInstanceStatus(describeInstanceRequest)
     val result = describeInstanceResult.getInstanceStatuses.toList
     result.map(insStatus => insStatus.getInstanceId -> insStatus.getInstanceState.getName).toMap
+  }
+  def startInstance(amazonEC2: AmazonEC2,instanceIds: List[String]): Map[String,String] = {
+    val startInstanceIdRequest = new StartInstancesRequest(instanceIds)
+    val startInstanceResult = amazonEC2.startInstances(startInstanceIdRequest)
+    startInstanceResult.getStartingInstances.map( instance =>
+      (instance.getInstanceId,instance.getCurrentState.getName)).toMap
+  }
+  def stopInstance(amazonEC2: AmazonEC2,instanceIds: List[String]): Map[String,String] = {
+    val stopInstanceIdRequest = new StopInstancesRequest(instanceIds)
+    val startInstanceResult = amazonEC2.stopInstances(stopInstanceIdRequest)
+    startInstanceResult.getStoppingInstances.map( instance =>
+      (instance.getInstanceId,instance.getCurrentState.getName)).toMap
+  }
+
+  def createSnapshot(amazonEC2: AmazonEC2,volumeId: String): SnapshotInfo = {
+    val createSnapShotRequest = new CreateSnapshotRequest(volumeId,"snapshot created by orchestrator")
+    val creteSnapShotResponse = amazonEC2.createSnapshot(createSnapShotRequest)
+    createSnapshotInfo(creteSnapShotResponse.getSnapshot)
+  }
+
+  def createImage(amazonEC2: AmazonEC2,instanceId: String,imageName: String): String = {
+    val createImageRequest = new CreateImageRequest(imageName, imageName)
+    createImageRequest.setDescription("image created by orchestrator")
+    val creteImageResponse = amazonEC2.createImage(createImageRequest)
+    creteImageResponse.getImageId
   }
 }
