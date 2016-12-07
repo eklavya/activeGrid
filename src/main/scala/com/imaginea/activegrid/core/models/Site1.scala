@@ -92,8 +92,8 @@ object Site1 {
           ReservedInstanceDetails.fromNeo4jGraph(childId)
         }
 
-        val childNodeIdsApplications:List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteApplications)
-        val applications: List[Application] = childNodeIdsApplications.flatMap{
+        val childNodeIdsApplications: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, siteApplications)
+        val applications: List[Application] = childNodeIdsApplications.flatMap {
           applicationId => Application.fromNeo4jGraph(applicationId)
         }
 
