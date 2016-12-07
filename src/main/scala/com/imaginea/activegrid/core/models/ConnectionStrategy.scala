@@ -1,8 +1,8 @@
 package com.imaginea.activegrid.core.models
 
 /**
- * Created by ranjithrajd on 23/11/16.
- */
+  * Created by ranjithrajd on 23/11/16.
+  */
 sealed trait ConnectionStrategy {
   def name: String
 
