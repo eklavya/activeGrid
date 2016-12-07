@@ -6,7 +6,9 @@ import org.neo4j.graphdb.Node
 /**
   * Created by sivag on 6/12/16.
   */
-case class PolicyJob(override val id:Option[Long],siteId:Long,baseUri:Option[String],job: Option[Job],autoScalingPolicy: Option[AutoScalingPolicy]) extends BaseEntity
+case class PolicyJob(override val id:Option[Long],
+                     siteId:Long,baseUri:Option[String],
+                     job: Option[Job],autoScalingPolicy: Option[AutoScalingPolicy]) extends BaseEntity
 
 object PolicyJob
 {
@@ -16,7 +18,7 @@ object PolicyJob
   def fromNeo4jGraph(id:Long) : Option[PolicyJob] = {
     Neo.findNodeByLabelAndId(PolicyJob.lable,id).map{
       policyJob =>
-        val siteId = Neo.getProperty[Long](policyJob,"siteId") match {case Some(id) => id case _ => 0l}
+        val siteId = Neo.getProperty[Long](policyJob,"siteId") match {case Some(id) => id case _ => 0L}
         val baseUri = Neo.getProperty[String](policyJob,"baseUri")
         val job = Neo.getChildNodeId(id,Job.relationLable).flatMap{
           id => Job.fromNeo4jGraph(id)

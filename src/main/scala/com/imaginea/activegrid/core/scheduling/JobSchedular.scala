@@ -28,6 +28,7 @@ object JobSchedular
     implicit val executionContext = Main.executionContext
     policyJob.job.foreach {
       jobDetails =>
+        //scalastyle:off magic.number
         val strtDelay : Long = jobDetails.startDelay match {
           case Some(v) => v
           case None => 1000
@@ -36,7 +37,7 @@ object JobSchedular
           case Some(v) => v
           case  None => 1000
         }
-
+        //scalastyle:on magic.number
         val triggerHandlingActor = system.actorOf(Props(classOf[PolicyJobActor]))
         system.scheduler.schedule(
           FiniteDuration.apply(strtDelay, TimeUnit.MILLISECONDS),
