@@ -7,7 +7,7 @@ import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import spray.json._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 
 /**
   * Created by babjik on 13/10/16.
@@ -42,6 +42,7 @@ object ActiveGridUtils {
         case JsNumber(str) => Some(str.asInstanceOf[T])
         case JsFalse => Some(false.asInstanceOf[T])
         case JsTrue => Some(true.asInstanceOf[T])
+        case JsObject(str) => Some(str.asInstanceOf[T])
         case _ => None
       }
     } else {
