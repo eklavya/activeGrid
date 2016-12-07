@@ -26,13 +26,13 @@ object JobSchedular
     val system = Main.system
     policyJob.job.foreach {
       jobDetails =>
-        val strtDelay = jobDetails.startDelay match {
+        val strtDelay : Long = jobDetails.startDelay match {
           case Some(v) => v
-          case _ => 1000L
+          case None => 1000
         }
-        val intrvl = jobDetails.reptIntrvl match {
+        val intrvl : Long = jobDetails.reptIntrvl match {
           case Some(v) => v
-          case _ => 1000L
+          case  None => 1000
         }
         val triggerHandlingActor = system.actorOf(Props(classOf[PolicyJobActor]))
         system.scheduler.schedule(

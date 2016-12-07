@@ -164,7 +164,8 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     withTx
     {
       implicit neo => findNodeById(id).foreach {
-      node => props.foreach(field => node.setProperty(field._1,field._2))
+      node =>
+        for ((prop,value) <- props) { node.setProperty(prop,value) }
     }
   }
 
