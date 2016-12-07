@@ -18,4 +18,7 @@ class PolicyJobActor extends Actor {
     case _ =>
       logger.info("Unsupported type")
   }
+  def evaluate(policyJob: PolicyJob) : Unit = {
+
+  }
 }

@@ -23,7 +23,9 @@ object JobSchedular
   }
 
   def schedulePolicyJob(policyJob: PolicyJob): Unit = {
-    val system = Main.system
+    implicit val system = Main.system
+    implicit val materializer = Main.materializer
+    implicit val executionContext = Main.executionContext
     policyJob.job.foreach {
       jobDetails =>
         val strtDelay : Long = jobDetails.startDelay match {
@@ -34,6 +36,7 @@ object JobSchedular
           case Some(v) => v
           case  None => 1000
         }
+
         val triggerHandlingActor = system.actorOf(Props(classOf[PolicyJobActor]))
         system.scheduler.schedule(
           FiniteDuration.apply(strtDelay, TimeUnit.MILLISECONDS),

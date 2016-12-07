@@ -6,7 +6,7 @@ import org.neo4j.graphdb.Node
 /**
   * Created by sivag on 6/12/16.
   */
-case class PolicyJob(override val id:Long,siteId:Long,baseUri:Option[String],job: Option[Job],autoScalingPolicy: Option[AutoScalingPolicy]) extends BaseEntity
+case class PolicyJob(override val id:Option[Long],siteId:Long,baseUri:Option[String],job: Option[Job],autoScalingPolicy: Option[AutoScalingPolicy]) extends BaseEntity
 
 object PolicyJob
 {
@@ -24,14 +24,14 @@ object PolicyJob
         val apolicy = Neo.getChildNodeId(id,AutoScalingPolicy.relationLable)flatMap{
           id => AutoScalingPolicy.fromNeo4jGraph(id)
         }
-        PolicyJob(id,siteId,baseUri,job,apolicy)
+        PolicyJob(Some(id),siteId,baseUri,job,apolicy)
     }
   }
   implicit class RichPolicyJobImpl(policyJob: PolicyJob) extends Neo4jRep[PolicyJob] {
 
     override def toNeo4jGraph(entity: PolicyJob): Node = {
       val props = Map("siteId" -> entity.siteId,"baseUri" -> entity.baseUri)
-      val policyJobNode = Neo.saveEntity[PolicyJob](PolicyJob.lable,Some(entity.id),props)
+      val policyJobNode = Neo.saveEntity[PolicyJob](PolicyJob.lable,entity.id,props)
 
       entity.job.foreach{
         job => Neo.createRelation(Job.relationLable,policyJobNode,job.toNeo4jGraph(job))

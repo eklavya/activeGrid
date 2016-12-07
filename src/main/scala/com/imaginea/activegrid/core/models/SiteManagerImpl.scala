@@ -1,7 +1,7 @@
 package com.imaginea.activegrid.core.models
 
 import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
-import com.imaginea.activegrid.core.scheduling.{JobManager, JobSchedular}
+import com.imaginea.activegrid.core.scheduling.{JobManager => JM }
 import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
 
 
@@ -56,11 +56,11 @@ object SiteManagerImpl {
     val reptIntrvl = Some(1000L)
     val jobType = JobType.convert("POLICY")
     val uriInfo = Some(AGU.getUriInfo())
-    //TODO 'name' property have to set from  AutoScalingPolicy. Bean declaration required
+    //TODO 'name' property have to set from  AutoScaling Policy. Bean declaration required
     val name = "DummyName"
     val job = Job(Some(0L),"PolicyJob",jobType,Some(""),startDelay,reptCount,reptIntrvl,Some(true))
-    val policyJob = PolicyJob(policyNode.getId,siteId,uriInfo,Some(job),Some(policy))
-    JobManager.scheduleJob(policyJob)
+    val pjob = PolicyJob(Some(policyNode.getId),siteId,uriInfo,Some(job),Some(policy))
+    JM.scheduleJob(pjob)
     policy
   }
 

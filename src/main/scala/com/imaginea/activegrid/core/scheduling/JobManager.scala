@@ -48,7 +48,7 @@ object JobManager {
     mayBeNode.isDefined
   }
 
-  def scheduleJob(job: PolicyJob): Unit = {
-    JobSchedular.schedulePolicyJob(job)
+  def scheduleJob(policyJob: PolicyJob): Unit = {
+    JobSchedular.schedulePolicyJob(policyJob)
   }
 }
