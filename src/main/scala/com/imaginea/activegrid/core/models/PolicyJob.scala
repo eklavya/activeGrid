@@ -44,7 +44,6 @@ object PolicyJob
       }
       policyJobNode
     }
-
     override def fromNeo4jGraph(id: Long): Option[PolicyJob] = {
       PolicyJob.fromNeo4jGraph(id)
     }

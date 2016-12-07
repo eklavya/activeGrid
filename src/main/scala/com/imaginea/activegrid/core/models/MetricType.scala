@@ -11,7 +11,7 @@ sealed trait MetricType {
   override def toString: String = metricType
 }
 
-case object CPU extends MetricType {
+case object CPUUTILIZATION extends MetricType {
   override def metricType: String = "CPU_UTILIZATION"
 }
 
@@ -43,7 +43,7 @@ case object IOWRITES extends MetricType {
 case object MetricType {
   def toMetricType(metricType: String): MetricType = {
     metricType match {
-      case "CPU_UTILIZATION" => CPU
+      case "CPU_UTILIZATION" => CPUUTILIZATION
       case "DISK_UTILIZATION" => DISK
       case "MEMORY_UTILIZATION" => MEMORY
       case "RESPONSE_TIME" => RESPONSE
