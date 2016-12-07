@@ -22,8 +22,6 @@ object ActiveGridUtils {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val config = ConfigFactory.load
-  val system = Main.system
-  val scheduler = QuartzSchedulerExtension(system)
   val HOST = config.getString("http.host")
   val PORT = config.getInt("http.port")
   val DBPATH = config.getString("neo4j.dbpath")

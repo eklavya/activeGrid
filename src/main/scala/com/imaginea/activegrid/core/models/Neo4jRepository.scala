@@ -160,14 +160,11 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       case None => None
     }
   }
-  def updateNodeByLabelAndId[T<:BaseEntity](label: String, id: Long,props:Map[String,Any]): Unit = withTx { implicit neo =>
-    val mayBeNode = findNodeById(id)
-    mayBeNode match {
-      case Some(node) =>
-        props.map{
-            field => node.setProperty(field._1,field._2)
-        }
-      case None => None
+  def updateNodeByLabelAndId[T<:BaseEntity](label: String, id: Long,props:Map[String,Any]): Unit =
+    withTx
+    {
+      implicit neo => findNodeById(id).foreach {
+      node => props.foreach(field => node.setProperty(field._1,field._2))
     }
   }
 
