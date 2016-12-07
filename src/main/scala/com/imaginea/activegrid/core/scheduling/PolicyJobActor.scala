@@ -1,8 +1,7 @@
 package com.imaginea.activegrid.core.scheduling
 
 import akka.actor.Actor
-import com.imaginea.activegrid.core.models.PolicyJob
-import com.imaginea.activegrid.core.models.AutoScalingPolicyEvaluator
+import com.imaginea.activegrid.core.models.{AutoScalingPolicyEvaluator, PolicyJob}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -12,6 +11,7 @@ import org.slf4j.LoggerFactory
 class PolicyJobActor extends Actor {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+
   override def receive: Receive = {
     case job: PolicyJob =>
       AutoScalingPolicyEvaluator.evaluate(job)

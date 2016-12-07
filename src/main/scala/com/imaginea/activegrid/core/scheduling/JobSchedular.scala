@@ -9,12 +9,11 @@ import com.imaginea.activegrid.core.scheduling.{JobManager => JM}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.FiniteDuration
-
-
 /**
   * Created by sivag on 2/12/16.
   */
-object JobSchedular {
+object JobSchedular
+{
 
   val logger = LoggerFactory.getLogger(JobSchedular.getClass)
 
@@ -29,11 +28,11 @@ object JobSchedular {
       jobDetails =>
         val strtDelay = jobDetails.startDelay match {
           case Some(v) => v
-          case _ => 0L
+          case _ => 1000L
         }
         val intrvl = jobDetails.reptIntrvl match {
           case Some(v) => v
-          case _ => 0L
+          case _ => 1000L
         }
         val triggerHandlingActor = system.actorOf(Props(classOf[PolicyJobActor]))
         system.scheduler.schedule(
