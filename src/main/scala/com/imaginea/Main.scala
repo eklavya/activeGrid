@@ -652,6 +652,31 @@ object Main extends App {
               complete(StatusCodes.BadRequest, "Unable to get tags")
           }
       }
+    } ~path("sites" / LongNumber / "topology") { siteId =>
+      post {
+        val siteTopology = Future {
+          val siteOption = Site1.fromNeo4jGraph(siteId)
+          siteOption.map { site =>
+
+            val softwareLabel: String = "SoftwaresTest2"
+            val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
+            val softwares = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
+            val topology = new Topology(site,Set.empty,site.instances)
+            val sshBaseStrategy = new SSHBasedStrategy(topology, softwares, true)
+            //TODO: InstanceGroup & Application save
+            val topologyResult = sshBaseStrategy.getTopology
+
+            //Saving the Site with collected instance details
+            site.toNeo4jGraph(topologyResult.site)
+          }
+        }
+        onComplete(siteTopology) {
+          case Success(successResponse) => complete(StatusCodes.OK, "Saved the site topology")
+          case Failure(ex) =>
+            logger.error(s"Unable to find topology; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to find topology for the Site")
+        }
+      }
     }
   } ~ path("keypairs" / LongNumber) { siteId =>
     get {
