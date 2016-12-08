@@ -7,9 +7,8 @@ case class Topology(site: Site1,
                     keyNames : Set[String] = Set.empty,
                     nodes: List[Instance]
                     ) {
-  val idVsInstance: Map[String,Instance] = nodes.map(node => (node.instanceId.get -> node)).toMap
+  val idVsInstance = nodes.map(node => (node.instanceId.get -> node)).toMap
 
-  //TODO : getInstanceByIp
   def getInstanceByIp(serverIp: String ): Option[Instance] = {
     val instanceResult = nodes.find(instance => {
       val privateIpAddress = instance.privateIpAddress
@@ -18,8 +17,4 @@ case class Topology(site: Site1,
     })
     instanceResult
   }
-}
-
-object Topology{
-
 }

@@ -14,28 +14,28 @@ sealed trait InstanceRole {
 }
 
 object InstanceRole {
-
+  import Ports._
   case object LoadBalancer extends InstanceRole {
     override val knownSoftwares: List[KnownSoftware] = List(KnownSoftware.Apache, KnownSoftware.Nginx)
-    override val ports: List[Int] = List(80, 443)
+    override val ports: List[Int] = List(Port80, Port443)
     override val name: String = "LB"
   }
 
   case object Web extends InstanceRole {
     override val knownSoftwares: List[KnownSoftware] = List(KnownSoftware.Tomcat, KnownSoftware.PServer)
-    override val ports: List[Int] = List(8080, 8008, 8181, 8443, 9080)
+    override val ports: List[Int] = List(Port8080, Port8008, Port8181, Port8443, Port9080)
     override val name: String = "WEB"
   }
 
   case object Database extends InstanceRole {
     override val knownSoftwares: List[KnownSoftware] = List(KnownSoftware.Mysql)
-    override val ports: List[Int] = List(3306, 1521, 2483, 1433, 5432)
+    override val ports: List[Int] = List(Port3306, Port1521, Port2483, Port1433, Port5432)
     override val name: String = "DATABASE"
   }
 
   case object Monitoring extends InstanceRole {
     override val knownSoftwares: List[KnownSoftware] = List(KnownSoftware.Graphite)
-    override val ports: List[Int] = List(6379)
+    override val ports: List[Int] = List(Port6379)
     override val name: String = "MONITORING"
   }
 
@@ -59,4 +59,24 @@ object InstanceRole {
   }
   def listensOnPort(portRange: PortRange):Set[InstanceRole] =
     allInstanceRole.filter( role => role.ports.exists( port=> portRange.containsPort(port))).toSet
+}
+
+object Ports{
+  val Port80 = 80
+  val Port443 = 443
+
+  val Port8080 = 8080
+  val Port8008 = 8008
+  val Port8181 = 8181
+  val Port8443 = 8443
+  val Port9080 = 9080
+
+  val Port3306 = 3306
+  val Port1521 = 1521
+  val Port2483 = 2483
+  val Port1433 = 1433
+  val Port5432 = 5432
+
+  val Port6379 = 6379
+
 }

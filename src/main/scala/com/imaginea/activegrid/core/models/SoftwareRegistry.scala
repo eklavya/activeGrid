@@ -60,9 +60,9 @@ object SoftwareProcess {
       RubyProcess :: CollectDProcess ::
       ApacheProcess :: Apache2Process :: PythonProcess :: NginxProcess :: Nil
 
-  def isKnownProcess(processName: String): Boolean = getAllProcess.contains(toSoftwareProcess(processName))
+  def isKnownProcess(processName: String): Boolean = getAllProcess.contains(toProcessType(processName))
 
-  def toSoftwareProcess(process: String): SoftwareProcess = {
+  def toProcessType(process: String): SoftwareProcess = {
     process match {
       case "nginx" => NginxProcess
       case "graphite" => GraphiteProcess
@@ -138,7 +138,7 @@ object KnownSoftware {
     override val discoverApplications: Boolean = false
   }
 
-  def toKnownSoftware(software: String): KnownSoftware = {
+  def toSoftwareType(software: String): KnownSoftware = {
     software match {
       case "Nginx" => Nginx
       case "Graphite" => Graphite
