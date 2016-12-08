@@ -1,6 +1,5 @@
 package com.imaginea.activegrid.core.models
 
-import org.neo4j.cypher.internal.compiler.v2_2.ast.False
 
 
 /**
@@ -10,6 +9,7 @@ object AutoScalingPolicyEvaluator {
 
   def evaluate(policyJob: PolicyJob): Unit = {
     val scalingPolicy = policyJob.autoScalingPolicy
+    val baseUri = policyJob.baseUri match {case Some(uri) => uri case _ => ""}
     scalingPolicy.map
     {
       policy =>
@@ -21,12 +21,27 @@ object AutoScalingPolicyEvaluator {
             val apps :List[Application] = List.empty[Application]
             apps.filter(p => p.name.equals(app.name)).map{
               application =>
+                if(evaluatePrimaryConditions(application,policy.primaryConditions))
+                {
+                  policy.secondaryConditions.foreach
+                  {
+                    policyCondition =>
+                      if(evaluateSecondaryConditions(policyCondition,policyJob.siteId,baseUri)){
+                         val scaleType = policyCondition.scaleType match { case Some(stype) => stype case _ => ScaleType.toScaleType("")}
+                         val scaleSize = scaleType.equals(SCALEUP)
+
+                      }
+                  }
+                }
+                policy
+
             }
         }
     }
   }
   def evaluatePrimaryConditions(application: Application,conditions:List[PolicyCondition]) : Boolean = {
-    conditions.forall {
+
+    conditions.exists{
       condition =>
         val responseTimeChk = condition.metricType.forall(ctype => (ctype.equals(RESPONSE)))
         val conditionChk = condition.conditionType.forall(cftype => cftype.equals(GREATERTHAN))
@@ -37,17 +52,17 @@ object AutoScalingPolicyEvaluator {
 
     condition.conditionType match {
       case Some(ctype) if(ctype.conditionType.equals(CPUUTILIZATION)) =>
-        condition.appTier.map{  appTier => appTier.instances.map{
-            instance =>
+        condition.appTier.forall{
+          appTier => appTier.instances.exists{ instance =>
               // todo instance usuage and resouce utilization will realized when APManager's 'fetchMetricData' completed.
               val metrics = new ResouceUtilization("",List.empty[DataPoint])
-              metrics.getDataPoints().map{  dp => if(dp.getValue > condition.thresHold) { true }
-              }
+              metrics.getDataPoints().indexWhere( dp => dp.getValue > condition.thresHold) > -1
           }
         }
-        true
       case _ => false
     }
   }
-
+  def triggerAutoScaling(siteId:Long,scalingGroupId:Long,scaleSize:Int)  = {
+    SiteManagerImpl.setAutoScalingGroupSize(siteId,scalingGroupId,scaleSize)
+  }
 }

@@ -9,6 +9,11 @@ import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
   * Created by sivag on 3/11/16.
   */
 object SiteManagerImpl {
+
+  def setAutoScalingGroupSize(siteId: Long, scalingGroupId: Long, scaleSize: Int) = {
+
+  }
+
   def getAutoScalingPolicies(siteId: Long): List[AutoScalingPolicy] = {
     Site1.fromNeo4jGraph(siteId) match {
       case Some(site) => site.scalingPolicies
@@ -48,7 +53,6 @@ object SiteManagerImpl {
   // Adding new scaling policy
   def  addAutoScalingPolicy(siteId:Long,policy:AutoScalingPolicy) : AutoScalingPolicy =
   {
-
     val policyNode = policy.toNeo4jGraph(policy)
     Neo.findNodeByLabelAndId(Site1.label,siteId).foreach { site => Neo.createRelation(AutoScalingPolicy.relationLable,site,policyNode)}
     val startDelay = Some(1000L)
