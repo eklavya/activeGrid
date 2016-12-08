@@ -1,22 +1,24 @@
 package com.imaginea
 
+import java.io.File
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._ // scalastyle:ignore underscore.import
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.Directives._ // scalastyle:ignore underscore.import
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.{InstanceGroup, _} // scalastyle:ignore underscore.import
+import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
-import spray.json._ // scalastyle:ignore underscore.import
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 import java.util.Date
-import java.io.File
+
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationLong
@@ -324,7 +326,7 @@ object Main extends App {
             AGU.getObjectsFromJson[InstanceGroup](map, "instanceGroups", instanceGroupFormat),
             List.empty[Application],
             AGU.getProperty[String](map, "groupBy").getOrElse(""),
-            AGU.getObjectsFromJson[AutoScalingPolicy](map,"scalingPolicies",autoScalingPolicyJson)
+            AGU.getObjectsFromJson[AutoScalingPolicy](map, "scalingPolicies", autoScalingPolicyJson)
           )
         case _ => logger.debug("Not a JsObject")
           Site1(0L)
@@ -332,6 +334,7 @@ object Main extends App {
     }
 
   }
+
   implicit val apmServerDetailsFormat = jsonFormat(APMServerDetails.apply, "id", "name", "serverUrl", "monitoredSite", "provider", "headers")
 
   implicit val applicationTierFormat = jsonFormat5(ApplicationTier.apply)
@@ -344,7 +347,7 @@ object Main extends App {
   implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
   implicit val autoScalingPolicyJson = jsonFormat5(AutoScalingPolicy.apply)
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups",
-    "groupsList", "applications", "groupBy","scalingPolicies")
+    "groupsList", "applications", "groupBy", "scalingPolicies")
   implicit val pageApplicationFormat = jsonFormat4(Page[Application])
 
   implicit object esQueryTypeFormat extends RootJsonFormat[EsQueryType] {
@@ -721,146 +724,6 @@ object Main extends App {
           }
         }
       }
-    }
-
-    val esServiceRoutes = pathPrefix("es") {
-      path("search") {
-        post {
-          entity(as[EsSearchQuery]) { esQuery =>
-            val response = Future {
-              EsManager.boolQuery(esQuery)
-            }
-            onComplete(response) {
-              case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
-              case Failure(exception) =>
-                logger.error(s"Unable to get the documents ${exception.getMessage}", exception)
-                complete(StatusCodes.BadRequest, "Unable to get the documents")
-            }
-          }
-        }
-      } ~ path("mappings") {
-        post {
-          entity(as[EsSearchQuery]) {
-            esSerachQuery =>
-              val response = Future {
-                if (esSerachQuery.types.nonEmpty) {
-                  EsManager.fieldMappings(esSerachQuery.index, esSerachQuery.types.head)
-                } else {
-                  throw new Exception("Search types should not be empty")
-                }
-              }
-              onComplete(response) {
-                case Success(reponseMessage) => complete(StatusCodes.OK, reponseMessage)
-                case Failure(exception) =>
-                  logger.error(s"Unable to get mappings ${exception.getMessage}", exception)
-                  complete(StatusCodes.OK, "Unable to get mappings")
-              }
-          }
-        }
-      }
-    } ~ path("keypairs" / LongNumber) { siteId =>
-      put {
-        entity(as[Multipart.FormData]) { formData =>
-          val uploadKeyPairsResult = Future {
-            val dataMap = formData.asInstanceOf[FormData.Strict].strictParts.foldLeft(Map[String, String]())((accum, strict) => {
-              val name = strict.getName()
-              val value = strict.entity.getData().decodeString("UTF-8")
-              val mayBeFile = strict.filename
-              logger.debug(s"--- $name  -- $value -- $mayBeFile")
-
-              mayBeFile match {
-                case Some(fileName) => accum + ((name, value))
-                case None =>
-                  if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
-                    accum + ((name, value))
-                  else
-                    accum
-              }
-            })
-            val sshKeyContentInfo = SSHKeyContentInfo(dataMap)
-            val siteNode = Site1.fromNeo4jGraph(siteId)
-            siteNode match {
-              case Some(site) =>
-                val instanceFromSite = site.instances
-                instanceFromSite.foreach {
-                  instance =>
-                    val accessInfo = instance.sshAccessInfo
-                    val persistedKeyName = accessInfo.get.keyPair.keyName
-                    var persistedSshUserName = accessInfo.get.userName
-                    val keyMaterials = sshKeyContentInfo.keyMaterials
-                    if (keyMaterials.nonEmpty) {
-                      val keySetMap = keyMaterials.keySet
-                      keySetMap.foreach { sshKeyMaterialEntry =>
-                        if (!sshKeyMaterialEntry.equals("userName") && !sshKeyMaterialEntry.equals("passPhrase")) {
-                          val sshKeyData = keyMaterials.get(sshKeyMaterialEntry)
-                          if (persistedKeyName.equalsIgnoreCase(sshKeyMaterialEntry)) {
-                            val keyDirPath = "/keys".concat(instance.instanceId.get).concat("/")
-                            sshKeyData match {
-                              case Some(keyData) =>
-                                  val keyFilePath = keyDirPath.concat(sshKeyMaterialEntry).concat(".pem")
-                                  val temporaryFile = new File(keyDirPath)
-                                  temporaryFile.mkdirs()
-                                  val file = new File(keyFilePath)
-                                  FileUtils.saveContentToFile(file.toString, sshKeyData.get)
-                                  //TODO: change file permissions to 600
-                                  val userName = keyMaterials.filterKeys(key => key.equals("username") && !keyMaterials(key).equalsIgnoreCase("undefined")).get("username")
-                                  userName match {
-                                    case Some(userNameValue) =>
-                                      persistedSshUserName = userName
-                                    case None =>
-                                      persistedSshUserName = Some("ubuntu")
-                                  }
-                                  val passPhrase = keyMaterials.filterKeys(key => key.contains("passPhrase")).get("passPhrase")
-                                  val keyPairInfo = accessInfo.get.keyPair
-                                  val KeyPairInfoUpdated = KeyPairInfo(Some(1), sshKeyMaterialEntry, None, sshKeyData.get, Some(keyFilePath), KeyPairStatus.toKeyPairStatus("UPLOADED"), persistedSshUserName, passPhrase)
-                                  val sshAccessInfoNew = SSHAccessInfo(Some(1), KeyPairInfoUpdated, persistedSshUserName, accessInfo.get.port)
-                                  val instanceObj = instance.copy(sshAccessInfo = Some(sshAccessInfoNew))
-                                  instanceObj.toNeo4jGraph(instanceObj)
-                              case None => None
-                            }
-                          } else {
-                              //TODO: createNewSshAccessInfo
-                              val keyDirPath = "/keys".concat(instance.instanceId.get).concat("/")
-                              val userName = keyMaterials.filterKeys(key => key.equals("userName") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("username")
-                              userName match {
-                                case Some(userNameValue) =>
-                                  persistedSshUserName = userName
-                                case None =>
-                                  persistedSshUserName = Some("ubuntu")
-                              }
-                              val keyFilePath = keyDirPath.concat(sshKeyMaterialEntry).concat(".pem")
-                              val temporaryFile = new File(keyDirPath)
-                              temporaryFile.mkdirs()
-                              val file = new File(keyFilePath)
-                              FileUtils.saveContentToFile(file.toString, sshKeyData.get)
-                              //TODO: change file permissions to 600
-                              val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("passPhrase")
-                              val KeyPairInfoUpdated = KeyPairInfo(Some(1), sshKeyMaterialEntry, None, sshKeyData.get, Some(keyFilePath), KeyPairStatus.toKeyPairStatus("UPLOADED"), persistedSshUserName, passPhrase)
-                              val sshAccessInfoNew = SSHAccessInfo(Some(1), KeyPairInfoUpdated, persistedSshUserName, accessInfo.get.port)
-                              val instanceObj = instance.copy(sshAccessInfo = Some(sshAccessInfoNew))
-                              instanceObj.toNeo4jGraph(instanceObj)
-                          }
-                        } else {
-                          None
-                        }
-                      }
-                    } else {
-                      None
-                    }
-                }
-              case None =>
-                throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
-            }
-            Some("Uploaded Key pair Info successfully")
-          }
-          onComplete(uploadKeyPairsResult) {
-            case Success(page) => complete(StatusCodes.OK, page)
-            case Failure(ex) =>
-              logger.error(s"Failed to update Keys, Message: ${ex.getMessage}", ex)
-              complete(StatusCodes.BadRequest, s"Failed to update Keys")
-          }
-        }
-      }
     } ~ path("keypairs" / LongNumber) { siteId =>
       put {
         entity(as[Multipart.FormData]) { formData =>
@@ -888,7 +751,6 @@ object Main extends App {
                 instanceFromSite.foreach {
                   instance =>
                     val accessInfo = instance.sshAccessInfo
-                    //val persistedKeyName = accessInfo.get.keyPair.keyName
                     accessInfo.foreach { info =>
                       val persistedKeyName = info.keyPair.keyName
                       val keyMaterials = sshKeyContentInfo.keyMaterials
@@ -900,15 +762,23 @@ object Main extends App {
                             if (persistedKeyName.equalsIgnoreCase(sshKeyMaterialEntry)) {
                               val keyFilePath = sshKeyData.map(keyData => getSshKeyFilePath(instance, persistedKeyName, sshKeyMaterialEntry, keyData))
                               val user = keyMaterials.filterKeys(key => key.equals("username") && !keyMaterials(key).equalsIgnoreCase("undefined")).get("username")
-                              val userName = user.getOrElse("ubuntu")
-
-                              saveInstance(keyMaterials, userName, keyFilePath, sshKeyMaterialEntry, sshKeyData, accessInfo, instance)
+                              val userName = user.getOrElse("ubuntu") //TODO: check if needed to assign ubuntu or not
+                              val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("passPhrase")
+                              val keyPairInfoUpdated : KeyPairInfo = info.keyPair.copy(keyMaterial = sshKeyData, filePath = keyFilePath, status = KeyPairStatus.toKeyPairStatus("UPLOADED"), defaultUser = Some(userName))
+                              val sSHAccessInfoUpdated : SSHAccessInfo = info.copy(keyPair = keyPairInfoUpdated, userName = Some(userName), port = accessInfo.flatMap(info => info.port))
+                              val instanceObj = instance.copy(sshAccessInfo = Some(sSHAccessInfoUpdated))
+                              instanceObj.toNeo4jGraph(instanceObj)
                             } else {
-                              //TODO: createNewSshAccessInfo
-                              val keyFilePath = sshKeyData.map(keyData => getSshKeyFilePath(instance, persistedKeyName, sshKeyMaterialEntry, keyData))
                               val user = keyMaterials.filterKeys(key => key.equals("userName") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("username")
                               val userName = user.getOrElse("ubuntu")
-                              saveInstance(keyMaterials, userName, keyFilePath, sshKeyMaterialEntry, sshKeyData, accessInfo, instance)
+                              val keyFilePath = sshKeyData.map(keyData => getSshKeyFilePath(instance, persistedKeyName, sshKeyMaterialEntry, keyData))
+                              val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("passPhrase")
+                              val persistedUserName = accessInfo.flatMap(info => info.userName)
+                              val sshUserName = persistedUserName.getOrElse("ubuntu")
+                              val KeyPairInfoUpdated = KeyPairInfo(Some(1), sshKeyMaterialEntry, None, sshKeyData, keyFilePath, KeyPairStatus.toKeyPairStatus("UPLOADED"), Some(userName), passPhrase)
+                              val sSHAccessInfoUpdated : SSHAccessInfo = info.copy(keyPair = KeyPairInfoUpdated, userName = Some(sshUserName))
+                              val instanceObj = instance.copy(sshAccessInfo = Some(sSHAccessInfoUpdated))
+                              instanceObj.toNeo4jGraph(instanceObj)
                             }
                           } else {
                             logger.info("Username and Passphrase not matched")
@@ -935,31 +805,41 @@ object Main extends App {
     }
   }
 
-
-  def getSshKeyFilePath(instance: Instance, storedKeyName: String, sshKeyMaterialEntry: String, sshKeyData: String): String = {
-    val keyDirPath = "/keys".concat(instance.instanceId.get).concat("/")
-    logger.info("Populating ssh key information for key with name [" + storedKeyName + "] to cloud instance [" + instance.instanceId + "]")
-    val keyFilePath = keyDirPath.concat(sshKeyMaterialEntry).concat(".pem")
-    val temporaryFile = new File(keyDirPath)
-    temporaryFile.mkdirs()
-    val file = new File(keyFilePath)
-    FileUtils.saveContentToFile(file.toString, sshKeyData)
-    //TODO: change file permissions to 600
-    keyFilePath
-  }
-
-  def saveInstance(keyMaterials: Map[String,String], persistedSshUserName: String, keyFilePath:Option[String], sshKeyMaterialEntry: String, sshKeyData: Option[String], accessInfo: Option[SSHAccessInfo], instance: Instance): String ={
-    val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("passPhrase")
-    val KeyPairInfoUpdated = KeyPairInfo(Some(1), sshKeyMaterialEntry, None, sshKeyData.get, keyFilePath, KeyPairStatus.toKeyPairStatus("UPLOADED"), Some(persistedSshUserName), passPhrase)
-    val sshAccessInfoNew = SSHAccessInfo(Some(1), KeyPairInfoUpdated, Some(persistedSshUserName), accessInfo.get.port)
-    val instanceObj = instance.copy(sshAccessInfo = Some(sshAccessInfoNew))
-    instanceObj.toNeo4jGraph(instanceObj)
-    "Saved Instance Object Successfully"
-  }
-
-
-  def getSshKeyFilePath(userId: Long): String = {
-
+  val esServiceRoutes = pathPrefix("es") {
+    path("search") {
+      post {
+        entity(as[EsSearchQuery]) { esQuery =>
+          val response = Future {
+            EsManager.boolQuery(esQuery)
+          }
+          onComplete(response) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to get the documents ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get the documents")
+          }
+        }
+      }
+    } ~ path("mappings") {
+      post {
+        entity(as[EsSearchQuery]) {
+          esSerachQuery =>
+            val response = Future {
+              if (esSerachQuery.types.nonEmpty) {
+                EsManager.fieldMappings(esSerachQuery.index, esSerachQuery.types.head)
+              } else {
+                throw new Exception("Search types should not be empty")
+              }
+            }
+            onComplete(response) {
+              case Success(reponseMessage) => complete(StatusCodes.OK, reponseMessage)
+              case Failure(exception) =>
+                logger.error(s"Unable to get mappings ${exception.getMessage}", exception)
+                complete(StatusCodes.OK, "Unable to get mappings")
+            }
+        }
+      }
+    }
   }
 
   val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
@@ -1320,7 +1200,7 @@ object Main extends App {
                 val filePath: String = UserUtils.getKeyFilePath(userId, keyName)
                 FileUtils.saveContentToFile(filePath, keyMaterial)
 
-                val keyPairInfo = KeyPairInfo(keyName, keyMaterial, Some(filePath), UploadedKeyPair)
+                val keyPairInfo = KeyPairInfo(keyName, Some(keyMaterial), Some(filePath), UploadedKeyPair)
                 logger.debug(s" new Key Pair Info $keyPairInfo")
                 UserUtils.addKeyPair(userId, keyPairInfo)
                 keyPairInfo
@@ -1519,9 +1399,9 @@ object Main extends App {
 
     mayBeKeyPair match {
       case Some(keyPairInfo) =>
-        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, keyMaterial, if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status,
+        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, Some(keyMaterial), if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status,
           if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
-      case None => KeyPairInfo(keyName, keyMaterial, keyFilePath, status)
+      case None => KeyPairInfo(keyName, Some(keyMaterial), keyFilePath, status)
     }
   }
 
@@ -1529,7 +1409,7 @@ object Main extends App {
     val filePath = getKeyFilePath(keyPairInfo.keyName)
     try {
       FileUtils.createDirectories(keyFilesDir)
-      FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial)
+      FileUtils.saveContentToFile(filePath, keyPairInfo.keyMaterial.get)
       // TODO: change permissions to 600
     } catch {
       case e: Throwable => logger.error(e.getMessage, e)
@@ -2894,5 +2774,17 @@ object Main extends App {
         }
       case None => throw new RuntimeException("sshKey not uploaded")
     }
+  }
+
+  def getSshKeyFilePath(instance: Instance, storedKeyName: String, sshKeyMaterialEntry: String, sshKeyData: String): String = {
+    val keyDirPath = "/keys".concat(instance.instanceId.getOrElse("")).concat("/")
+    logger.info("Populating ssh key information for key with name [" + storedKeyName + "] to cloud instance [" + instance.instanceId + "]")
+    val keyFilePath = keyDirPath.concat(sshKeyMaterialEntry).concat(".pem")
+    val temporaryFile = new File(keyDirPath)
+    temporaryFile.mkdirs()
+    val file = new File(keyFilePath)
+    FileUtils.saveContentToFile(file.toString, sshKeyData)
+    //TODO: change file permissions to 600
+    keyFilePath
   }
 }
