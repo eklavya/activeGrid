@@ -12,10 +12,10 @@ case class SSHSession1(serverIp: String,
                       keyLocation:String,
                       port: Option[Int],
                       passPhrase: Option[String],
-                      sessionTimeout: Int = SSHSession1.DEFAULT_SESSION_TIMEOUT
+                      sessionTimeout: Int = SSHSession1.DefaultSessionTimeout
                       ) extends Closeable {
 
-  val jsch: JSch = new JSch()
+  val jsch = new JSch()
   val session = jsch.getSession(userName, serverIp)
 
   def executeCommand(command: String): Option[String]={
@@ -46,12 +46,10 @@ case class SSHSession1(serverIp: String,
   }
 
   override def close(): Unit = {
-    if(this.session != null){
       this.session.disconnect()
-    }
   }
 }
 
 object SSHSession1{
-  val DEFAULT_SESSION_TIMEOUT = 15000;
+  val DefaultSessionTimeout = 15000;
 }
