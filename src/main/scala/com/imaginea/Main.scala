@@ -761,21 +761,28 @@ object Main extends App {
                             val sshKeyData = keyMaterials.get(sshKeyMaterialEntry)
                             if (persistedKeyName.equalsIgnoreCase(sshKeyMaterialEntry)) {
                               val keyFilePath = sshKeyData.map(keyData => getSshKeyFilePath(instance, persistedKeyName, sshKeyMaterialEntry, keyData))
-                              val user = keyMaterials.filterKeys(key => key.equals("username") && !keyMaterials(key).equalsIgnoreCase("undefined")).get("username")
+                              val user = keyMaterials.filterKeys(key => key.equals("username") &&
+                                !keyMaterials(key).equalsIgnoreCase("undefined")).get("username")
                               val userName = user.getOrElse("ubuntu") //TODO: check if needed to assign ubuntu or not
-                              val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("passPhrase")
-                              val keyPairInfoUpdated : KeyPairInfo = info.keyPair.copy(keyMaterial = sshKeyData, filePath = keyFilePath, status = KeyPairStatus.toKeyPairStatus("UPLOADED"), defaultUser = Some(userName))
-                              val sSHAccessInfoUpdated : SSHAccessInfo = info.copy(keyPair = keyPairInfoUpdated, userName = Some(userName), port = accessInfo.flatMap(info => info.port))
+                              val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined")
+                                && keyMaterials(key).nonEmpty).get("passPhrase")
+                              val keyPairInfoUpdated : KeyPairInfo = info.keyPair.copy(keyMaterial = sshKeyData, filePath = keyFilePath,
+                                status = KeyPairStatus.toKeyPairStatus("UPLOADED"), defaultUser = Some(userName))
+                              val sSHAccessInfoUpdated : SSHAccessInfo = info.copy(keyPair = keyPairInfoUpdated, userName = Some(userName),
+                                port = accessInfo.flatMap(info => info.port))
                               val instanceObj = instance.copy(sshAccessInfo = Some(sSHAccessInfoUpdated))
                               instanceObj.toNeo4jGraph(instanceObj)
                             } else {
-                              val user = keyMaterials.filterKeys(key => key.equals("userName") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("username")
+                              val user = keyMaterials.filterKeys(key => key.equals("userName") && !keyMaterials(key).equalsIgnoreCase("undefined") &&
+                                keyMaterials(key).nonEmpty).get("username")
                               val userName = user.getOrElse("ubuntu")
                               val keyFilePath = sshKeyData.map(keyData => getSshKeyFilePath(instance, persistedKeyName, sshKeyMaterialEntry, keyData))
-                              val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined") && keyMaterials(key).nonEmpty).get("passPhrase")
+                              val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined") &&
+                                keyMaterials(key).nonEmpty).get("passPhrase")
                               val persistedUserName = accessInfo.flatMap(info => info.userName)
                               val sshUserName = persistedUserName.getOrElse("ubuntu")
-                              val KeyPairInfoUpdated = KeyPairInfo(Some(1), sshKeyMaterialEntry, None, sshKeyData, keyFilePath, KeyPairStatus.toKeyPairStatus("UPLOADED"), Some(userName), passPhrase)
+                              val KeyPairInfoUpdated = KeyPairInfo(Some(1), sshKeyMaterialEntry, None, sshKeyData, keyFilePath,
+                                KeyPairStatus.toKeyPairStatus("UPLOADED"), Some(userName), passPhrase)
                               val sSHAccessInfoUpdated : SSHAccessInfo = info.copy(keyPair = KeyPairInfoUpdated, userName = Some(sshUserName))
                               val instanceObj = instance.copy(sshAccessInfo = Some(sSHAccessInfoUpdated))
                               instanceObj.toNeo4jGraph(instanceObj)
@@ -805,7 +812,7 @@ object Main extends App {
     }
   }
 
-  val esServiceRoutes = pathPrefix("es") {
+  val esServiceRoutes: Route = pathPrefix("es") {
     path("search") {
       post {
         entity(as[EsSearchQuery]) { esQuery =>
@@ -1399,8 +1406,8 @@ object Main extends App {
 
     mayBeKeyPair match {
       case Some(keyPairInfo) =>
-        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, Some(keyMaterial), if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath, status,
-          if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
+        KeyPairInfo(keyPairInfo.id, keyName, keyPairInfo.keyFingerprint, Some(keyMaterial), if (keyFilePath.isEmpty) keyPairInfo.filePath else keyFilePath,
+          status, if (defaultUser.isEmpty) keyPairInfo.defaultUser else defaultUser, if (passPhase.isEmpty) keyPairInfo.passPhrase else passPhase)
       case None => KeyPairInfo(keyName, Some(keyMaterial), keyFilePath, status)
     }
   }
@@ -1425,7 +1432,7 @@ object Main extends App {
   def catalogRoutes: Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
-        val Images: Future[Page[ImageInfo]] = Future {
+        val images: Future[Page[ImageInfo]] = Future {
           val imageLabel: String = "ImageInfo"
           val nodesList = Neo4jRepository.getNodesByLabel(imageLabel)
           val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
@@ -1433,7 +1440,7 @@ object Main extends App {
           Page[ImageInfo](imageInfoList)
         }
 
-        onComplete(Images) {
+        onComplete(images) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
             logger.error(s"Unable to Retrieve ImageInfo List. Failed with : ${exception.getMessage}", exception)
