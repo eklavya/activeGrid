@@ -12,7 +12,7 @@ case class SSHSession1(serverIp: String,
                       keyLocation:String,
                       port: Option[Int],
                       passPhrase: Option[String],
-                      sessionTimeout: Int = SSHSession1.DefaultSessionTimeout
+                      sessionTimeout: Int = SSHSession1.defaultSessionTimeout
                       ) extends Closeable {
 
   val jsch = new JSch()
@@ -51,5 +51,5 @@ case class SSHSession1(serverIp: String,
 }
 
 object SSHSession1{
-  val DefaultSessionTimeout = 15000;
+  val defaultSessionTimeout = 15000;
 }

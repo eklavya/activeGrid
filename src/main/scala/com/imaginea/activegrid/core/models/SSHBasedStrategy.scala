@@ -13,9 +13,9 @@ case class SSHBasedStrategy(topology: Topology,
                              ) {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  val ProcessTag = "process"
-  val RolesTagKey = "roles"
-  val ApplicationTagKey = "stack"
+  val processTag = "process"
+  val rolesTagKey = "roles"
+  val applicationTagKey = "stack"
 
   def getTopology: Topology = {
     val (nodes,apps) = execute match{
@@ -76,7 +76,7 @@ case class SSHBasedStrategy(topology: Topology,
     logger.info("Establishing Ssh connection")
     //resolve OS and clear process tag
     val osInfo = sshSession.executeCommand("uname -ar")
-    val tags = resolveOS(osInfo, instance).filter(tag => !tag.key.equals(ProcessTag))
+    val tags = resolveOS(osInfo, instance).filter(tag => !tag.key.equals(processTag))
 
     //resolve Connections
     val connectionInfoOption = sshSession
@@ -179,7 +179,7 @@ case class SSHBasedStrategy(topology: Topology,
         , residentBytes = None
         , softwareVersion = None
       )
-      val instanceTags = KeyValueInfo(None, ProcessTag, processName) :: instance.tags
+      val instanceTags = KeyValueInfo(None, processTag, processName) :: instance.tags
       val (appTags ,apps) = applicationDetails(instance,sshSession,pId,pName)
       //FixMe: Application and tags need to be added in instance and site
       instance.copy(tags = instanceTags ++ appTags, processes = instance.processes + processes) -> (apps ++ applications)
@@ -197,7 +197,7 @@ case class SSHBasedStrategy(topology: Topology,
       val result =
         if (software.discoverApplications) {
           val apps = resolveApplication(sshSession, pId, pName, software)
-          val appsTagOption = apps.map(app =>  KeyValueInfo(None, ApplicationTagKey, app))
+          val appsTagOption = apps.map(app =>  KeyValueInfo(None, applicationTagKey, app))
           val tags = roleTagOption.map(roleTag => appsTagOption + roleTag).getOrElse(appsTagOption)
 
           val applications = apps.map(app => {
@@ -240,11 +240,11 @@ case class SSHBasedStrategy(topology: Topology,
 
   private def roleTag(instance: Instance, software: Software): Option[KeyValueInfo] = {
     val roleOption = InstanceRole.hasSoftware(software)
-    val tagOption = instance.tags.find(tag => tag.value.equals(RolesTagKey))
+    val tagOption = instance.tags.find(tag => tag.value.equals(rolesTagKey))
     roleOption.map(r => {
       tagOption.map(tag => {
         tag.copy(value = r.name)
-      }).getOrElse(KeyValueInfo(None, RolesTagKey, r.name))
+      }).getOrElse(KeyValueInfo(None, rolesTagKey, r.name))
     })
   }
 

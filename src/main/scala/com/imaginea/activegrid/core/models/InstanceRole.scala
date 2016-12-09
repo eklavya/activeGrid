@@ -1,5 +1,7 @@
 package com.imaginea.activegrid.core.models
 
+import Ports._
+
 /**
  * Created by ranjithrajd on 6/11/16.
  */
@@ -14,28 +16,28 @@ sealed trait InstanceRole {
 }
 
 object InstanceRole {
-  import Ports._
+
   case object LoadBalancer extends InstanceRole {
     override val knownSoftwares: List[KnownSoftware] = List(KnownSoftware.Apache, KnownSoftware.Nginx)
-    override val ports: List[Int] = List(Port80, Port443)
+    override val ports: List[Int] = List(port80, port443)
     override val name: String = "LB"
   }
 
   case object Web extends InstanceRole {
     override val knownSoftwares: List[KnownSoftware] = List(KnownSoftware.Tomcat, KnownSoftware.PServer)
-    override val ports: List[Int] = List(Port8080, Port8008, Port8181, Port8443, Port9080)
+    override val ports: List[Int] = List(port8080, port8008, port8181, port8443, port9080)
     override val name: String = "WEB"
   }
 
   case object Database extends InstanceRole {
     override val knownSoftwares: List[KnownSoftware] = List(KnownSoftware.Mysql)
-    override val ports: List[Int] = List(Port3306, Port1521, Port2483, Port1433, Port5432)
+    override val ports: List[Int] = List(port3306, port1521, port2483, port1433, port5432)
     override val name: String = "DATABASE"
   }
 
   case object Monitoring extends InstanceRole {
     override val knownSoftwares: List[KnownSoftware] = List(KnownSoftware.Graphite)
-    override val ports: List[Int] = List(Port6379)
+    override val ports: List[Int] = List(port6379)
     override val name: String = "MONITORING"
   }
 
@@ -62,21 +64,21 @@ object InstanceRole {
 }
 
 object Ports{
-  val Port80 = 80
-  val Port443 = 443
+  val port80 = 80
+  val port443 = 443
 
-  val Port8080 = 8080
-  val Port8008 = 8008
-  val Port8181 = 8181
-  val Port8443 = 8443
-  val Port9080 = 9080
+  val port8080 = 8080
+  val port8008 = 8008
+  val port8181 = 8181
+  val port8443 = 8443
+  val port9080 = 9080
 
-  val Port3306 = 3306
-  val Port1521 = 1521
-  val Port2483 = 2483
-  val Port1433 = 1433
-  val Port5432 = 5432
+  val port3306 = 3306
+  val port1521 = 1521
+  val port2483 = 2483
+  val port1433 = 1433
+  val port5432 = 5432
 
-  val Port6379 = 6379
+  val port6379 = 6379
 
 }
