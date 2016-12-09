@@ -820,7 +820,7 @@ object Main extends App {
             val softwares = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
             val topology = new Topology(site,Set.empty,site.instances)
             val sshBaseStrategy = new SSHBasedStrategy(topology, softwares, true)
-            //TODO: InstanceGroup & Application save
+            // InstanceGroup & Application save
             val topologyResult = sshBaseStrategy.getTopology
 
             //Saving the Site with collected instance details
