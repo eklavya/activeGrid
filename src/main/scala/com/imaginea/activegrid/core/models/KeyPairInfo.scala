@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 case class KeyPairInfo(override val id: Option[Long]
                        , keyName: String
                        , keyFingerprint: Option[String]
-                       , keyMaterial: String
+                       , keyMaterial: Option[String]
                        , filePath: Option[String]
                        , status: KeyPairStatus
                        , defaultUser: Option[String]
@@ -21,7 +21,7 @@ case class KeyPairInfo(override val id: Option[Long]
 object KeyPairInfo {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def apply(keyName: String, keyMaterial: String, filePath: Option[String], status: KeyPairStatus): KeyPairInfo =
+  def apply(keyName: String, keyMaterial: Option[String], filePath: Option[String], status: KeyPairStatus): KeyPairInfo =
     new KeyPairInfo(None, keyName, None, keyMaterial, filePath, status, None, None)
 
   def fromNeo4jGraph(nodeId: Long): Option[KeyPairInfo] = {
@@ -34,7 +34,7 @@ object KeyPairInfo {
           Some(node.getId),
           map("keyName").toString,
           ActiveGridUtils.getValueFromMapAs[String](map, "keyFingerprint"),
-          map("keyMaterial").toString,
+          ActiveGridUtils.getValueFromMapAs[String](map, "keyMaterial"),
           ActiveGridUtils.getValueFromMapAs[String](map, "filePath"),
           KeyPairStatus.toKeyPairStatus(map("status").toString),
           ActiveGridUtils.getValueFromMapAs[String](map, "defaultUser"),
