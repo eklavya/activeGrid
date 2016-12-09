@@ -18,7 +18,8 @@ object PolicyJob
   def fromNeo4jGraph(id:Long) : Option[PolicyJob] = {
     Neo.findNodeByLabelAndId(PolicyJob.lable,id).map{
       policyJob =>
-        val siteId = Neo.getProperty[Long](policyJob,"siteId") match {case Some(id) => id case _ => 0L}
+        //val siteId = Neo.getProperty[Long](policyJob,"siteId") match {case Some(id) => id case _ => 0L}
+        val siteId = Neo.getProperty[Long](policyJob,"siteId").getOrElse(0L)
         val baseUri = Neo.getProperty[String](policyJob,"baseUri")
         val job = Neo.getChildNodeId(id,Job.relationLable).flatMap{
           id => Job.fromNeo4jGraph(id)

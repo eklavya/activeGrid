@@ -54,14 +54,16 @@ object SiteManagerImpl {
   def  addAutoScalingPolicy(siteId:Long,policy:AutoScalingPolicy) : AutoScalingPolicy =
   {
     val policyNode = policy.toNeo4jGraph(policy)
-    Neo.findNodeByLabelAndId(Site1.label,siteId).foreach { site => Neo.createRelation(AutoScalingPolicy.relationLable,site,policyNode)}
-    val startDelay = Some(1000L)
+    Neo.findNodeByLabelAndId(Site1.label,siteId).foreach { site =>
+      Neo.createRelation(AutoScalingPolicy.relationLable,site,policyNode)}
+    val startDelay  = Some(1000L)
     val reptCount = Some(0)
-    val reptIntrvl = Some(1000L)
+    val reptIntrvl = Some(6000L)
     val jobType = JobType.convert("POLICY")
     val uriInfo = Some(AGU.getUriInfo())
     //TODO 'name' property have to set from  AutoScaling Policy. Bean declaration required
     val name = "DummyName"
+
     val job = Job(Some(0L),"PolicyJob",jobType,Some(""),startDelay,reptCount,reptIntrvl,Some(true))
     val pjob = PolicyJob(Some(policyNode.getId),siteId,uriInfo,Some(job),Some(policy))
     JM.scheduleJob(pjob)
