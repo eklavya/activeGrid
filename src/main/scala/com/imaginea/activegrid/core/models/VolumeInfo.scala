@@ -79,8 +79,8 @@ object VolumeInfo {
           val tagNode = tag.toNeo4jGraph(tag)
           Neo4jRepository.createRelation(volumeInfoTagRelation, node, tagNode)
       }
-      if (entity.currentSnapshot.nonEmpty) {
-        val snapshotInfoNode = entity.currentSnapshot.get.toNeo4jGraph(entity.currentSnapshot.get)
+      entity.currentSnapshot.foreach { snapShotInfo =>
+        val snapshotInfoNode = snapShotInfo.toNeo4jGraph(snapShotInfo)
         Neo4jRepository.createRelation(volumeInfoAndSnapshotInfoRelation, node, snapshotInfoNode)
       }
 

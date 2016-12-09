@@ -6,7 +6,9 @@ import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
+import scala.collection.JavaConversions._
+
+// scalastyle:ignore underscore.import
 
 /**
   * Created by babjik on 23/9/16.

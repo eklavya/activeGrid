@@ -13,6 +13,7 @@ object SiteManagerImpl {
       case None => List.empty[AutoScalingPolicy]
     }
   }
+
   def deleteIntanceFromSite(siteId: Long, instanceId: String): Boolean = {
     val siteNode = Site1.fromNeo4jGraph(siteId)
     siteNode.map { site =>
@@ -44,11 +45,11 @@ object SiteManagerImpl {
   }
 
   // Adding new scaling policies
-  def  addAutoScalingPolicy(siteId:Long,policy:AutoScalingPolicy) : AutoScalingPolicy = {
-    Neo.findNodeByLabelAndId(Site1.label,siteId).foreach{
+  def addAutoScalingPolicy(siteId: Long, policy: AutoScalingPolicy): AutoScalingPolicy = {
+    Neo.findNodeByLabelAndId(Site1.label, siteId).foreach {
       site =>
         val policyNode = policy.toNeo4jGraph(policy)
-        Neo.createRelation(AutoScalingPolicy.relationLable,site,policyNode)
+        Neo.createRelation(AutoScalingPolicy.relationLable, site, policyNode)
     }
     policy
   }
