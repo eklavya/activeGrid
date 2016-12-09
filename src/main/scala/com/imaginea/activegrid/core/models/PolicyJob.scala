@@ -14,7 +14,6 @@ object PolicyJob
 {
   val lable = PolicyJob.getClass.getSimpleName
   val relationLable = AGU.relationLbl(lable)
-
   def fromNeo4jGraph(id:Long) : Option[PolicyJob] = {
     Neo.findNodeByLabelAndId(PolicyJob.lable,id).map{
       policyJob =>
@@ -30,16 +29,14 @@ object PolicyJob
         PolicyJob(Some(id),siteId,baseUri,job,apolicy)
     }
   }
-  implicit class RichPolicyJobImpl(policyJob: PolicyJob) extends Neo4jRep[PolicyJob] {
-
+  implicit class RichPolicyJobImpl(policyJob: PolicyJob) extends Neo4jRep[PolicyJob]
+  {
     override def toNeo4jGraph(entity: PolicyJob): Node = {
       val props = Map("siteId" -> entity.siteId,"baseUri" -> entity.baseUri)
       val policyJobNode = Neo.saveEntity[PolicyJob](PolicyJob.lable,entity.id,props)
-
       entity.job.foreach{
         job => Neo.createRelation(Job.relationLable,policyJobNode,job.toNeo4jGraph(job))
       }
-
       entity.autoScalingPolicy.foreach{
         apolicy=> Neo.createRelation(AutoScalingPolicy.relationLable,policyJobNode,apolicy.toNeo4jGraph(apolicy))
       }

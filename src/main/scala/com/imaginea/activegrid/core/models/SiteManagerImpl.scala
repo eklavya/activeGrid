@@ -8,8 +8,12 @@ import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
 /**
   * Created by sivag on 3/11/16.
   */
-object SiteManagerImpl {
+object SiteManagerImpl
+{
 
+  /**
+    * todo autoscaling policy-evaluation part
+    */
   def setAutoScalingGroupSize(siteId: Long, scalingGroupId: Long, scaleSize: Int) = {
 
   }
@@ -63,7 +67,6 @@ object SiteManagerImpl {
     val uriInfo = Some(AGU.getUriInfo())
     //TODO 'name' property have to set from  AutoScaling Policy. Bean declaration required
     val name = "DummyName"
-
     val job = Job(Some(0L),"PolicyJob",jobType,Some(""),startDelay,reptCount,reptIntrvl,Some(true))
     val pjob = PolicyJob(Some(policyNode.getId),siteId,uriInfo,Some(job),Some(policy))
     JM.scheduleJob(pjob)

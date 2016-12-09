@@ -24,9 +24,8 @@ object JobManager {
   // Delete job
   def deleteJob(job: Job): Boolean = {
     job.id match {
-      case Some(id) =>
-        val mayBeNode = Neo.findNodeByLabelAndId(Job.lable, id)
-        mayBeNode.foreach(node => node.delete())
+      case Some(id) => val mayBeNode = Neo.findNodeByLabelAndId(Job.lable, id)
+        mayBeNode.foreach(_.delete())
         mayBeNode.isDefined
       case _ => false
     }
@@ -36,9 +35,7 @@ object JobManager {
   def updateJob(properties: Map[String, Any]): Boolean = {
     val id = properties("id").toString.toLong
     val mayBeNode = Neo.findNodeByLabelAndId(Job.lable, id)
-    mayBeNode.foreach {
-      jobNode =>
-        for((prop,value) <- properties){
+    mayBeNode.foreach {   jobNode => for((prop,value) <- properties){
           jobNode.setProperty(prop,value)
         }
     }

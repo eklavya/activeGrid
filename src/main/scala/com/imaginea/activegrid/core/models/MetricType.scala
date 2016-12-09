@@ -24,7 +24,7 @@ case object MEMORY extends MetricType {
 }
 
 
-case object RESPONSE extends MetricType {
+case object RESPONSETIME extends MetricType {
   override def metricType: String = "RESPONSE_TIME"
 }
 
@@ -46,7 +46,7 @@ case object MetricType {
       case "CPU_UTILIZATION" => CPUUTILIZATION
       case "DISK_UTILIZATION" => DISK
       case "MEMORY_UTILIZATION" => MEMORY
-      case "RESPONSE_TIME" => RESPONSE
+      case "RESPONSE_TIME" => RESPONSETIME
       case "CALLS_PER_MINUTE" => CALLSPERMINUTE
       case "IO_READS" => IOREADS
       case "IO_WRITES" => IOWRITES
