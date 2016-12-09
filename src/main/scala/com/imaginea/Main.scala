@@ -2502,6 +2502,23 @@ object Main extends App {
     }
   }
 
+  implicit object LineTypeFormat extends RootJsonFormat[LineType] {
+
+    override def write(obj: LineType): JsValue = {
+      JsString(obj.lineType.toString)
+    }
+
+    override def read(json: JsValue): LineType = {
+      json match {
+        case JsString(str) => LineType.toLineType(str)
+        case _ => throw DeserializationException("Unable to deserialize Line Type")
+      }
+    }
+  }
+
+  implicit val lineFormat = jsonFormat(Line.apply, "values", "lineType", "hostIdentifier")
+  implicit val commandResultFormat = jsonFormat(CommandResult.apply, "result", "currentContext")
+
   def commandRoutes: Route = pathPrefix("terminal") {
     path("start") {
       put {
@@ -2535,6 +2552,67 @@ object Main extends App {
           }
         }
       }
+    } ~ path(LongNumber / "execute") { terminalId =>
+      put {
+        entity(as[String]) { commandLine =>
+          val commandResult = Future {
+            val mayBeSession = sessionCache.get(terminalId)
+            val result = mayBeSession match {
+              case Some(session) =>
+                if (commandLine.indexOf('|') != -1) {
+                  val newSession = session.copy(lastUsedAt = new Date)
+                  val executedCommandResult = executeCommand(newSession, commandLine)
+                  Some(executedCommandResult)
+                } else {
+                  logger.warn(s"Not a piped command; commandLine : $commandLine")
+                  None
+                }
+              case None =>
+                // first thing that will hit us when we start running on a cluster
+                throw new IllegalStateException("no session with the given terminal id")
+            }
+            result
+          }
+          onComplete(commandResult) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to execute command ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to execute command")
+          }
+        }
+      }
+    } ~ path(LongNumber / "stop") { terminalId =>
+      put {
+        val stopSession = Future {
+          val mayBeSession = sessionCache.get(terminalId)
+          mayBeSession match {
+            case Some(terminalSession) =>
+              val sessions = terminalSession.sshSessions.flatMap(sshSession => sshSession.session)
+              val ioExceptions = sessions.foldLeft(List.empty[java.io.IOException]) {
+                (list, session) =>
+                  try {
+                    session.disconnect()
+                    list
+                  }
+                  catch {
+                    case e: java.io.IOException => e :: list
+                  }
+              }
+              if(ioExceptions.nonEmpty) {
+                logger.error(s"Failed due to multiple problems: ", ioExceptions)
+                throw new RuntimeException("Multiple problems", ioExceptions(0))
+              }
+            case None => logger.warn("There is no open session with id " + terminalId)
+          }
+          "Successfully stopped session"
+        }
+        onComplete(stopSession) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to stop Terminal Session. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to Stop Terminal Session.")
+        }
+      }
     }
   }
 
@@ -2559,7 +2637,7 @@ object Main extends App {
           val propertyAndSession = if (property == "privateIp") {
             val ip = instance.privateIpAddress
             ip match {
-              case Some(privateIp) => Some((property, privateIp, jsch.getSession(userName, privateIp)))
+              case Some(privateIp) => Some((property, privateIp, Option(jsch.getSession(userName, privateIp))))
               case None =>
                 logger.warn("privateIpAddress not found")
                 None
@@ -2567,18 +2645,20 @@ object Main extends App {
           } else {
             val ip = instance.publicDnsName
             ip match {
-              case Some(publicIp) => Some((property, publicIp, jsch.getSession(userName, publicIp)))
+              case Some(publicIp) => Some((property, publicIp, Option(jsch.getSession(userName, publicIp))))
               case None =>
                 logger.warn("publicDnsName not found")
                 None
             }
           }
           propertyAndSession.map { result =>
-            val (hostProp, serverIp, session) = result
-            session.setTimeout(increasedSessionTimeOut)
-            port.foreach(p => session.setPort(p))
-            session.connect()
-            (hostProp, SSHSession(serverIp, userName, jsch, session, keyLocation, port, passPhrase, increasedSessionTimeOut))
+            val (hostProp, serverIp, mayBeSession) = result
+            mayBeSession.foreach { session =>
+              session.setTimeout(increasedSessionTimeOut)
+              port.foreach(p => session.setPort(p))
+              session.connect()
+            }
+            (hostProp, SSHSession(serverIp, userName, jsch, mayBeSession, keyLocation, port, passPhrase, increasedSessionTimeOut))
           }
         }
         catch {
@@ -2617,5 +2697,38 @@ object Main extends App {
         }
       case None => throw new RuntimeException("sshKey not uploaded")
     }
+  }
+
+  def parseCommandLine(commandLine: String): Map[String, List[String]] = {
+    logger.info("Parsing command line [ " + commandLine + "]")
+    val commands = commandLine.split("\\|")
+    val commandsMap = commands.foldLeft(Map.empty[String, List[String]]) { (map, command) =>
+      val cmd = command.trim
+      val cmdName = cmd.split("\\s+")(0)
+      val argsLine = cmd.substring(cmdName.length).trim
+      logger.info(s"Command to be executed [$cmdName] with args and options: $argsLine")
+      val pattern = "[^\\s\"']+|\"[^\"]*\"|'[^']*'".r
+      val regexMatcher = pattern.findAllMatchIn(argsLine)
+      val matchList = regexMatcher.map(m => m.group(0)).toList
+      map + ((cmdName, matchList))
+    }
+    commandsMap
+  }
+
+  def executeCommand(session: TerminalSession, commadLine: String): CommandResult = {
+    val commandsMap = parseCommandLine(commadLine)
+    val executionContext = session.currentCmdExecContext
+    val (result, currentContext) = commandsMap.foldLeft(List.empty[Line], executionContext) { (inputAndContext, map) =>
+      val (input, context) = inputAndContext
+      val (commandName, argsList) = map
+      val commandResult = commandName match {
+        case Constants.LIST_COMMAND => Command.executeListCommand(context, input, argsList)
+        case Constants.CD_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
+        case Constants.GREP_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
+        case _ => throw new RuntimeException(s"Unsupported command with name [$commandName]")
+      }
+      (commandResult.result, commandResult.currentContext)
+    }
+    CommandResult(result, currentContext)
   }
 }

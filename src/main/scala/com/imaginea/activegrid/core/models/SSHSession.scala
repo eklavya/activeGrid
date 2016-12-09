@@ -8,7 +8,7 @@ import com.jcraft.jsch.{JSch, Session}
 case class SSHSession(serverIp: String,
                       keyLocation: String,
                       jsch: JSch,
-                      session: Session,
+                      session: Option[Session],
                       userName: String,
                       port: Option[Int],
                       passphrase: Option[String],

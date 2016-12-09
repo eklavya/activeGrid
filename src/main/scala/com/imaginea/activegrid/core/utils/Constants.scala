@@ -15,6 +15,9 @@ object Constants {
   val FILE_SEPARATOR = File.separator
   val NAME_TAG_KEY = "Name"
   val DEFAULT_SESSION_TIMEOUT = 1500
+  val LIST_COMMAND = "ls"
+  val CD_COMMAND = "cd"
+  val GREP_COMMAND = "grep"
 
   val tempDirectoryLocation: String = TEMP_DIR_LOC
 }
