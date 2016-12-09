@@ -146,10 +146,10 @@ object AWSComputeAPI {
     val node = Neo4jRepository.getNodeByProperty("KeyPairInfo", "keyName", keyName)
     val keyPairInfo = node.flatMap { node => KeyPairInfo.fromNeo4jGraph(node.getId) }
     keyPairInfo match {
-      case Some(keyPair) => Some(SSHAccessInfo(None, keyPair, None, 0))
+      case Some(keyPair) => Some(SSHAccessInfo(None, keyPair, None, None))
       case None =>
-        val keyPair = KeyPairInfo(keyName, "keymaterial", None, KeyPairStatus.toKeyPairStatus("NOT_YET_UPLOADED"))
-        Some(SSHAccessInfo(None, keyPair, None, 0))
+        val keyPair = KeyPairInfo(keyName, Some("keymaterial"), None, KeyPairStatus.toKeyPairStatus("NOT_YET_UPLOADED"))
+        Some(SSHAccessInfo(None, keyPair, None, None))
     }
   }
 

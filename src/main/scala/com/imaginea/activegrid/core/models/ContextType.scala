@@ -1,28 +1,30 @@
 package com.imaginea.activegrid.core.models
 
 /**
-  * Created by nagulmeeras on 07/12/16.
+  * Created by shareefn on 24/11/16.
   */
 sealed trait ContextType {
-  val contextType: String
+  def contextType: String
+
+  override def toString: String = super.toString
 }
 
 case object USER_HOME extends ContextType {
-  override val contextType: String = "USER_HOME"
+  override def contextType: String = "USER_HOME"
 }
 
 case object SITE extends ContextType {
-  override val contextType: String = "SITE"
+  override def contextType: String = "SITE"
 }
 
 case object INSTANCE extends ContextType {
-  override val contextType: String = "INSTANCE"
+  override def contextType: String = "INSTANCE"
 }
 
 case object ContextType {
-  def toContextType(contextName: String): ContextType = {
-    contextName match {
-      case "USER_HOME" => USER_HOME
+  def toContextType(contextType: String): ContextType = {
+    contextType match {
+      case "USER_HOME" => INSTANCE
       case "SITE" => SITE
       case "INSTANCE" => INSTANCE
     }
