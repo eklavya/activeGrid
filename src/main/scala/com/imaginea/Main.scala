@@ -1607,7 +1607,7 @@ object Main extends App {
       }
     }
   }
-
+  //scalastyle:off method.length
   def siteServiceRoutes: Route = pathPrefix("sites") {
     path("site" / LongNumber) { siteId =>
       get {
@@ -2599,9 +2599,21 @@ object Main extends App {
           }
         }
       }
+    }   ~
+    path("site" / LongNumber / "policies") {
+      (siteId) => {
+        get {
+          val mayBePolicy = Future {
+            SiteManagerImpl.getAutoScalingPolicies(siteId)
+          }
+          onComplete(mayBePolicy) {
+            case Success(policyList) => complete(StatusCodes.OK,policyList)
+            case Failure(ex) => logger.info(s"Error while retrieving policies of $siteId  details", ex)
+              complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
+          }
+        }
+      }
     }
-
-
   implicit object GroupTypeFormat extends RootJsonFormat[GroupType] {
     override def write(obj: GroupType): JsValue = {
       JsString(obj.groupType.toString)

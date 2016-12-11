@@ -10,15 +10,15 @@ sealed trait JobType {
 case object WorkFlow extends JobType{
   override def jobType: String = "WORKFLOW"
 }
-case object Policy extends JobType{
+case object ASPolicy extends JobType{
   override def jobType: String = "POLICY"
 }
 case object JobType {
   def convert(jtype:String) : JobType = {
     jtype match {
       case "WORKFLOW" => WorkFlow
-      case "POILCY" => Policy
-      case _ => Policy
+      case "POILCY" => ASPolicy
+      case _ => ASPolicy
     }
   }
 }
