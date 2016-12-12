@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 
 case class UserGroup(override val id: Option[Long]
                      , name: String
-                     , users:Set[User] = Set.empty
+                     , users: Set[User] = Set.empty
                      , accesses: Set[ResourceACL] = Set.empty) extends BaseEntity
 
 object UserGroup {

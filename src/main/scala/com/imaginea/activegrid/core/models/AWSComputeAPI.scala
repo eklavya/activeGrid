@@ -143,7 +143,7 @@ object AWSComputeAPI {
     keyPairInfo match {
       case Some(keyPair) => Some(SSHAccessInfo(None, keyPair, None, None))
       case None =>
-        val keyPair = KeyPairInfo(keyName, "keymaterial", None, KeyPairStatus.toKeyPairStatus("NOT_YET_UPLOADED"))
+        val keyPair = KeyPairInfo(keyName, Some("keymaterial"), None, KeyPairStatus.toKeyPairStatus("NOT_YET_UPLOADED"))
         Some(SSHAccessInfo(None, keyPair, None, None))
     }
   }
@@ -392,26 +392,28 @@ object AWSComputeAPI {
     val result = describeInstanceResult.getInstanceStatuses.toList
     result.map(insStatus => insStatus.getInstanceId -> insStatus.getInstanceState.getName).toMap
   }
-  def startInstance(amazonEC2: AmazonEC2,instanceIds: List[String]): Map[String,String] = {
+
+  def startInstance(amazonEC2: AmazonEC2, instanceIds: List[String]): Map[String, String] = {
     val startInstanceIdRequest = new StartInstancesRequest(instanceIds)
     val startInstanceResult = amazonEC2.startInstances(startInstanceIdRequest)
-    startInstanceResult.getStartingInstances.map( instance =>
-      (instance.getInstanceId,instance.getCurrentState.getName)).toMap
-  }
-  def stopInstance(amazonEC2: AmazonEC2,instanceIds: List[String]): Map[String,String] = {
-    val stopInstanceIdRequest = new StopInstancesRequest(instanceIds)
-    val startInstanceResult = amazonEC2.stopInstances(stopInstanceIdRequest)
-    startInstanceResult.getStoppingInstances.map( instance =>
-      (instance.getInstanceId,instance.getCurrentState.getName)).toMap
+    startInstanceResult.getStartingInstances.map(instance =>
+      (instance.getInstanceId, instance.getCurrentState.getName)).toMap
   }
 
-  def createSnapshot(amazonEC2: AmazonEC2,volumeId: String): SnapshotInfo = {
-    val createSnapShotRequest = new CreateSnapshotRequest(volumeId,"snapshot created by orchestrator")
+  def stopInstance(amazonEC2: AmazonEC2, instanceIds: List[String]): Map[String, String] = {
+    val stopInstanceIdRequest = new StopInstancesRequest(instanceIds)
+    val startInstanceResult = amazonEC2.stopInstances(stopInstanceIdRequest)
+    startInstanceResult.getStoppingInstances.map(instance =>
+      (instance.getInstanceId, instance.getCurrentState.getName)).toMap
+  }
+
+  def createSnapshot(amazonEC2: AmazonEC2, volumeId: String): SnapshotInfo = {
+    val createSnapShotRequest = new CreateSnapshotRequest(volumeId, "snapshot created by orchestrator")
     val creteSnapShotResponse = amazonEC2.createSnapshot(createSnapShotRequest)
     createSnapshotInfo(creteSnapShotResponse.getSnapshot)
   }
 
-  def createImage(amazonEC2: AmazonEC2,instanceId: String,imageName: String): String = {
+  def createImage(amazonEC2: AmazonEC2, instanceId: String, imageName: String): String = {
     val createImageRequest = new CreateImageRequest(imageName, imageName)
     createImageRequest.setDescription("image created by orchestrator")
     val creteImageResponse = amazonEC2.createImage(createImageRequest)
