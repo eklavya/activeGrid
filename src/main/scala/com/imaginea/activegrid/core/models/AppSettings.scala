@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 
+//scalastyle:ignore underscore.import
+
 
 /**
   * Created by nagulmeeras on 27/09/16.

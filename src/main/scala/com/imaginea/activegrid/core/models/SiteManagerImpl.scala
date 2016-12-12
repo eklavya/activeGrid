@@ -7,6 +7,12 @@ import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
   * Created by sivag on 3/11/16.
   */
 object SiteManagerImpl {
+  def getAutoScalingPolicies(siteId: Long): List[AutoScalingPolicy] = {
+    Site1.fromNeo4jGraph(siteId) match {
+      case Some(site) => site.scalingPolicies
+      case None => List.empty[AutoScalingPolicy]
+    }
+  }
 
   def deleteIntanceFromSite(siteId: Long, instanceId: String): Boolean = {
     val siteNode = Site1.fromNeo4jGraph(siteId)
@@ -36,6 +42,16 @@ object SiteManagerImpl {
     Neo.findNodeByLabelAndId(AutoScalingPolicy.lable, policyId.toLong).flatMap {
       policyNode => AutoScalingPolicy.fromNeo4jGraph(policyNode.getId)
     }
+  }
+
+  // Adding new scaling policies
+  def addAutoScalingPolicy(siteId: Long, policy: AutoScalingPolicy): AutoScalingPolicy = {
+    Neo.findNodeByLabelAndId(Site1.label, siteId).foreach {
+      site =>
+        val policyNode = policy.toNeo4jGraph(policy)
+        Neo.createRelation(AutoScalingPolicy.relationLable, site, policyNode)
+    }
+    policy
   }
 
 }

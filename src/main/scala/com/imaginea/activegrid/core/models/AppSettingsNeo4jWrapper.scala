@@ -5,6 +5,8 @@ import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
+
+//scalastyle:ignore underscore.import
 import scala.collection.immutable.HashMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
