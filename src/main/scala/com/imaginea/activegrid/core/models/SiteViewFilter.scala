@@ -26,9 +26,9 @@ object SiteViewFilter extends ViewFilter[Site1] {
   }
 
   def fetchSite(site1: Site1, viewLevel: ViewLevel): List[String] = {
-    viewLevel.viewLevel match {
-      case SUMMARY.viewLevel => List(site1.siteName)
-      case DETAILED.viewLevel =>
+    viewLevel match {
+      case SUMMARY => List(site1.siteName)
+      case DETAILED =>
         site1.id match {
           case Some(id) => List(site1.siteName, id.toString)
           case None => List(site1.siteName)

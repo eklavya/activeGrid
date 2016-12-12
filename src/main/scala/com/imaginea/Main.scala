@@ -1,6 +1,7 @@
 package com.imaginea
 
 import java.io.File
+import java.util.Date
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -12,18 +13,17 @@ import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
+import com.jcraft.jsch.{JSch, JSchException}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json._
-import java.util.Date
 
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationLong
 import scala.util.{Failure, Random, Success}
-import com.jcraft.jsch.{JSch, JSchException}
 
 object Main extends App {
 
@@ -768,9 +768,9 @@ object Main extends App {
                               val userName = user.getOrElse("ubuntu") //TODO: check if needed to assign ubuntu or not
                               val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined")
                                 && keyMaterials(key).nonEmpty).get("passPhrase")
-                              val keyPairInfoUpdated : KeyPairInfo = info.keyPair.copy(keyMaterial = sshKeyData, filePath = keyFilePath,
+                              val keyPairInfoUpdated: KeyPairInfo = info.keyPair.copy(keyMaterial = sshKeyData, filePath = keyFilePath,
                                 status = KeyPairStatus.toKeyPairStatus("UPLOADED"), defaultUser = Some(userName))
-                              val sSHAccessInfoUpdated : SSHAccessInfo = info.copy(keyPair = keyPairInfoUpdated, userName = Some(userName),
+                              val sSHAccessInfoUpdated: SSHAccessInfo = info.copy(keyPair = keyPairInfoUpdated, userName = Some(userName),
                                 port = accessInfo.flatMap(info => info.port))
                               val instanceObj = instance.copy(sshAccessInfo = Some(sSHAccessInfoUpdated))
                               instanceObj.toNeo4jGraph(instanceObj)
@@ -785,7 +785,7 @@ object Main extends App {
                               val sshUserName = persistedUserName.getOrElse("ubuntu")
                               val KeyPairInfoUpdated = KeyPairInfo(Some(1), sshKeyMaterialEntry, None, sshKeyData, keyFilePath,
                                 KeyPairStatus.toKeyPairStatus("UPLOADED"), Some(userName), passPhrase)
-                              val sSHAccessInfoUpdated : SSHAccessInfo = info.copy(keyPair = KeyPairInfoUpdated, userName = Some(sshUserName))
+                              val sSHAccessInfoUpdated: SSHAccessInfo = info.copy(keyPair = KeyPairInfoUpdated, userName = Some(sshUserName))
                               val instanceObj = instance.copy(sshAccessInfo = Some(sSHAccessInfoUpdated))
                               instanceObj.toNeo4jGraph(instanceObj)
                             }
@@ -1550,9 +1550,15 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
-                  val memInfo = instance.memoryInfo match { case Some(info) => info.total case _ => 0 }
-                  val dskInfo = instance.rootDiskInfo match { case Some(info) => info.total case _ => 0 }
-                  InstanceFlavor(instance.instanceType.getOrElse(""),None,memInfo,dskInfo)
+                  val memInfo = instance.memoryInfo match {
+                    case Some(info) => info.total
+                    case _ => 0
+                  }
+                  val dskInfo = instance.rootDiskInfo match {
+                    case Some(info) => info.total
+                    case _ => 0
+                  }
+                  InstanceFlavor(instance.instanceType.getOrElse(""), None, memInfo, dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)
 
@@ -2669,14 +2675,20 @@ object Main extends App {
   implicit object commandExecutionContextFormat extends RootJsonFormat[CommandExecutionContext] {
     override def write(i: CommandExecutionContext): JsValue = {
       val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
+      val contextObject = i.contextObject match {
+        case Some(ctx) if ctx.isInstanceOf[Site1] => AGU.objectToJsValue[Site1](fieldNames(3), Some(i.contextObject.asInstanceOf[Site1]), site1Format)
+        case Some(ctx) if ctx.isInstanceOf[Instance] => AGU.objectToJsValue[Instance](fieldNames(3), Some(i.contextObject.asInstanceOf[Instance]), instanceFormat)
+        case _ => throw new Exception("fffff")
+      }
       // scalastyle:off magic.number
-      val fields = List((fieldNames(0), JsString(i.contextName))) ++
+      val fields = List((fieldNames.head, JsString(i.contextName))) ++
         List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
-        List((fieldNames(2), site1Format.write(i.contextObject))) ++
-        AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat) ++
-        i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
+        contextObject
+      AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat)
+      i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
         List((fieldNames(5), JsNumber(i.siteId))) ++
-        List((fieldNames(6), JsString(i.user)))
+        AGU.stringToJsField(fieldNames(6), i.user)
+      //List((fieldNames(6), JsString(i.user))
       // scalastyle:on magic.number
       JsObject(fields: _*)
     }
@@ -2775,7 +2787,9 @@ object Main extends App {
         val session = startSession(Some("privateIp"), instance, userName, keyLocation, port, passPhrase, sessionTimeout)
         if (session.isEmpty) {
           startSession(Some("publicDns"), instance, userName, keyLocation, port, passPhrase, -1)
-        } else { session }
+        } else {
+          session
+        }
     }
   }
 

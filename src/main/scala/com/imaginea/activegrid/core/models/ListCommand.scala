@@ -26,13 +26,13 @@ class ListCommand {
           case true => DETAILED
           case false => SUMMARY
         }
-        context.contextType.contextType match {
-          case USER_HOME.contextType =>
+        context.contextType match {
+          case USER_HOME =>
             val sites = Neo4jRepository.getNodesByLabel(Site1.label).flatMap(node => Site1.fromNeo4jGraph(node.getId))
             sites.flatMap { site =>
               SiteViewFilter.fetchSite(site, viewLevel)
             }
-          case SITE.contextType =>
+          case SITE =>
             val mayBeSite = CmdExecUtils.getSiteByName(context.contextName)
             mayBeSite match {
               case Some(site) =>

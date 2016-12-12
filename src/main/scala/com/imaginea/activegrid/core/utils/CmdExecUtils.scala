@@ -35,14 +35,14 @@ object CmdExecUtils {
         cmdExecutionContext.parentContext,
         Array(), 1L, None))
     }
-    paths.map { path =>
+    paths.foreach { path =>
       path match {
         case p if p.isEmpty || p.equals("/") || p.equals(".") =>
         case p if p.equals("..") =>
           excontext = excontext.flatMap(_.parentContext)
           if (excontext.isEmpty) throw new Exception("No such context to navigate")
         case _ =>
-          excontext.map { ctx =>
+          excontext.foreach { ctx =>
             val contextType = getContextType(ctx)
             val contextObject = getContextObject(ctx)
             excontext = Some(CommandExecutionContext.apply(path, contextType, contextObject, excontext))
@@ -54,18 +54,18 @@ object CmdExecUtils {
 
   def getContextType(cmdExecContext: CommandExecutionContext): ContextType = {
     val contextType = cmdExecContext.contextType
-    contextType.contextType match {
-      case USER_HOME.contextType => SITE
-      case SITE.contextType => INSTANCE
+    contextType match {
+      case USER_HOME => SITE
+      case SITE => INSTANCE
       case _ => contextType
     }
   }
 
   def getContextObject(context: CommandExecutionContext): Option[BaseEntity] = {
-    context.contextType.contextType match {
-      case USER_HOME.contextType => None
-      case SITE.contextType => getSiteByName(context.contextName)
-      case INSTANCE.contextType => getInstanceByName(context.contextName)
+    context.contextType match {
+      case USER_HOME => None
+      case SITE => getSiteByName(context.contextName)
+      case INSTANCE => getInstanceByName(context.contextName)
     }
   }
 

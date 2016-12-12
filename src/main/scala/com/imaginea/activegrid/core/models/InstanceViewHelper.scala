@@ -5,8 +5,8 @@ package com.imaginea.activegrid.core.models
   */
 object InstanceViewHelper {
   def fetchInstance(instance: Instance, viewLevel: ViewLevel): List[String] = {
-    viewLevel.viewLevel match {
-      case DETAILED.viewLevel =>
+    viewLevel match {
+      case DETAILED =>
         List(Some(instance.name), instance.instanceId, instance.publicDnsName, instance.id.map(id => id.toString)).flatten
       case _ => List(instance.name)
     }
