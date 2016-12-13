@@ -7,6 +7,6 @@ package com.imaginea.activegrid.core.models
 object Command {
   def executeListCommand(context: CommandExecutionContext, input: List[Line], newContext: List[String]): CommandResult = {
     //TODO
-    CommandResult(List.empty[Line], context)
+    CommandResult(List.empty[Line], Some(context))
   }
 }

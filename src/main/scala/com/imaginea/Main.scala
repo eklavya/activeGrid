@@ -18,11 +18,12 @@ import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
 import spray.json._ // scalastyle:ignore underscore.import
 import java.util.Date
+import java.util.concurrent.TimeUnit
 import scala.collection.mutable
-import scala.concurrent.Future
-import scala.concurrent.duration.DurationLong
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.{Duration, DurationLong}
 import scala.util.{Failure, Random, Success}
-import com.jcraft.jsch.{JSch, JSchException}
+import com.jcraft.jsch.{JSch, JSchException, ChannelExec, Session}
 
 object Main extends App {
 
@@ -2720,21 +2721,25 @@ object Main extends App {
         entity(as[String]) { commandLine =>
           val commandResult = Future {
             val mayBeSession = sessionCache.get(terminalId)
+            val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
             val result = mayBeSession match {
               case Some(session) =>
+                val newSession = session.copy(lastUsedAt = new Date)
                 if (commandLine.indexOf('|') != -1) {
-                  val newSession = session.copy(lastUsedAt = new Date)
-                  val executedCommandResult = executeCommand(newSession, commandLine)
+                  val executedCommandResult = executePipedCommand(newSession, commandLine)
+                  Some(executedCommandResult)
+                } else if (session.currentCmdExecContext.instances.length > 0) {
+                  val executedCommandResult = executeSSHCommand(newSession, commandLine)
                   Some(executedCommandResult)
                 } else {
-                  logger.warn(s"Not a piped command; commandLine : $commandLine")
+                  logger.warn(s"Not a valid command; commandLine : $commandLine")
                   None
                 }
               case None =>
                 // first thing that will hit us when we start running on a cluster
                 throw new IllegalStateException("no session with the given terminal id")
             }
-            result
+            result.getOrElse(CommandResult(List.empty[Line], currentCmdExecContext))
           }
           onComplete(commandResult) {
             case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
@@ -2878,7 +2883,7 @@ object Main extends App {
     commandsMap
   }
 
-  def executeCommand(session: TerminalSession, commadLine: String): CommandResult = {
+  def executePipedCommand(session: TerminalSession, commadLine: String): CommandResult = {
     val commandsMap = parseCommandLine(commadLine)
     val executionContext = session.currentCmdExecContext
     val (result, currentContext) = commandsMap.foldLeft(List.empty[Line], executionContext) { (inputAndContext, map) =>
@@ -2890,9 +2895,58 @@ object Main extends App {
         case Constants.GREP_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
         case _ => throw new RuntimeException(s"Unsupported command with name [$commandName]")
       }
-      (commandResult.result, commandResult.currentContext)
+      commandResult.currentContext match {
+        case Some(execContext) => (commandResult.result, execContext)
+        case None => throw new Exception(s"did not get execution context after executing Command with name [$commandName]")
+      }
     }
-    CommandResult(result, currentContext)
+    CommandResult(result, Some(currentContext))
+  }
+
+  def executeSSHCommand(session: TerminalSession, command: String): CommandResult = {
+    val sshSessions = session.sshSessions
+    val result = sshSessions.map { sshSession =>
+      val mayBeSession = sshSession.session
+      Future {
+        val mayBeOutput = mayBeSession.map { session =>
+          val channel = session.openChannel("exec").asInstanceOf[ChannelExec]
+          channel.setPty(true)
+          channel.setCommand(command)
+          getOutputFromChannel(channel)
+        }
+        mayBeOutput match {
+          case Some(output) => Line(List(output), LineType.toLineType("RESULT"), sshSession.serverIp)
+          case None => throw new Exception("Session not found")
+        }
+      }
+    }
+    val futureList = Future.sequence(result)
+    val lines = Await.result(futureList, Duration(Long.MaxValue, TimeUnit.NANOSECONDS))
+    CommandResult(lines, None)
+  }
+
+  def getOutputFromChannel(channel: ChannelExec): String = {
+    val results = new StringBuilder
+    val sleepTimeInMilliSeconds = 1000L
+    val inputStream = channel.getInputStream
+    try {
+      channel.connect()
+      val buffer = new Array[Byte](1024 * 4)
+      // read output till the channel is closed with polling
+      while (channel.isConnected) {
+        Thread.sleep(sleepTimeInMilliSeconds)
+        if (inputStream.available > 0) {
+          val readCount = inputStream.read(buffer, 0, buffer.length)
+          if (readCount > 0) {
+            results.append(new java.lang.String(buffer, 0, readCount))
+          }
+        }
+      }
+      results.toString
+    }
+    finally {
+      inputStream.close()
+    }
   }
 
   def getSshKeyFilePath(instance: Instance, storedKeyName: String, sshKeyMaterialEntry: String, sshKeyData: String): String = {
