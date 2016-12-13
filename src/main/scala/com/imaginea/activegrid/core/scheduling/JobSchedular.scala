@@ -26,8 +26,10 @@ object JobSchedular
     implicit val executionContext = Main.executionContext
     policyJob.job.foreach {
       jobDetails =>
-        val strtDelay: Long = jobDetails.startDelay.getOrElse(1000)
-        val intrvl: Long = jobDetails.reptIntrvl.getOrElse(60000)
+        //scalastyle:off magic.number
+        val strtDelay: Long = jobDetails.startDelay.getOrElse(1000L)
+        val intrvl: Long = jobDetails.reptIntrvl.getOrElse(60000L)
+        //scalastyle:on magic.number
         val scalingPolicyHandler = new Runnable {
           override def run(): Unit = {
             logger.info(s"Evaluating job")

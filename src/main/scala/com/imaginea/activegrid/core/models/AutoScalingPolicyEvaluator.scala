@@ -7,11 +7,12 @@ package com.imaginea.activegrid.core.models
 /** TODO  application list referes to all running applications in aws account,
   * Realized when APMManager implemented
   * fetchApplicationMetrics() fucntion. */
+
 object AutoScalingPolicyEvaluator {
 
   /**
-    * Execises given policy criteria against running stage of application/instances
-    * under given AWS account and implement policy accordingly
+    * Execises given policy criteria against running state of application/instances
+    * under given AWS account and applies policy accordingly
     *
     * @param policyJob
     */
@@ -61,7 +62,7 @@ object AutoScalingPolicyEvaluator {
     }
   }
 
-  def triggerAutoScaling(siteId: Long, scalingGroupId: Long, scaleSize: Int) = {
+  def triggerAutoScaling(siteId: Long, scalingGroupId: Long, scaleSize: Int) : Unit = {
     SiteManagerImpl.setAutoScalingGroupSize(siteId, scalingGroupId, scaleSize)
   }
 }
