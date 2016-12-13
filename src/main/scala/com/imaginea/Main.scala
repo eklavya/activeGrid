@@ -737,10 +737,12 @@ object Main extends App {
               mayBeFile match {
                 case Some(fileName) => accum + ((name, value))
                 case None =>
-                  if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
+                  if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase")) {
                     accum + ((name, value))
-                  else
+                  }
+                  else {
                     accum
+                  }
               }
             })
             val sshKeyContentInfo = SSHKeyContentInfo(dataMap)
