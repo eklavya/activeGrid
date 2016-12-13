@@ -143,7 +143,7 @@ object AWSComputeAPI {
     keyPairInfo match {
       case Some(keyPair) => Some(SSHAccessInfo(None, keyPair, None, None))
       case None =>
-        val keyPair = KeyPairInfo(keyName, "keymaterial", None, KeyPairStatus.toKeyPairStatus("NOT_YET_UPLOADED"))
+        val keyPair = KeyPairInfo(keyName, Some("keymaterial"), None, KeyPairStatus.toKeyPairStatus("NOT_YET_UPLOADED"))
         Some(SSHAccessInfo(None, keyPair, None, None))
     }
   }
