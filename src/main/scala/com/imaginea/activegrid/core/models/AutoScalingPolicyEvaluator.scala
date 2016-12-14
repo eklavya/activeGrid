@@ -29,14 +29,13 @@ object AutoScalingPolicyEvaluator {
         if (evaluatePrimaryConditions(application, policy.primaryConditions)) {
           policy.secondaryConditions.foreach { policyCondition =>
             if (evaluateSecondaryConditions(policyCondition, policyJob.siteId, baseUri)) {
-              val scaleType = policyCondition.scaleType match {
-                case Some(stype) => stype
-                case _ => ScaleType.toScaleType("")
-              }
-              //scalastyle:off magic.number
-              val scaleSize = scaleType match {
-                case SCALEUP => 1
-                case SCALEDOWN => -1
+              //scalingUnit indicate increment/decremental operation in scaling.
+              val scalingUnit = policyCondition.scaleType match {
+                case Some(stype) => stype match {
+                  case SCALEDOWN => -1
+                  case SCALEUP => 1
+                  case _ => 0
+                }
                 case _ => 0
               }
               val scalingGroupId = policyCondition.scalingGroup match {
@@ -44,7 +43,7 @@ object AutoScalingPolicyEvaluator {
                 case _ => 0L
               }
               //scalastyle:on magic.number
-              triggerAutoScaling(policyJob.siteId, scalingGroupId, scaleSize)
+              triggerAutoScaling(policyJob.siteId, scalingGroupId,scalingUnit)
             }
           }
         }
