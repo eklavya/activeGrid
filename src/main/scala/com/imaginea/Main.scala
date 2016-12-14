@@ -818,7 +818,7 @@ object Main extends App {
             val softwareLabel: String = "SoftwaresTest2"
             val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
             val softwares = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
-            val topology = new Topology(site,Set.empty,site.instances)
+            val topology = new Topology(site)
             val sshBaseStrategy = new SSHBasedStrategy(topology, softwares, true)
             //TODO: InstanceGroup & Application save
             val topologyResult = sshBaseStrategy.getTopology

@@ -132,7 +132,8 @@ case class SSHBasedStrategy(topology: Topology,
         // vsz=MEMORY
         processInfo.filter(process => {
           KnownSoftware.getStartUpClazzMap.contains(process)
-        }).head
+        }).headOption
+          .getOrElse(pName)
       }
       case PythonProcess => {
         val procInfo = sshSession.executeCommand("ps -p " + pid
@@ -140,8 +141,8 @@ case class SSHBasedStrategy(topology: Topology,
         val result = if (procInfo.contains("carbon-cache")) {
           val chkLb = "sudo netstat -apnt |grep LISTEN|grep :80|awk 'BEGIN {OFS=\",\";ORS=\";\"} NR > 0 {print $4}'"
           val netStatInfo = sshSession.executeCommand(chkLb)
-          netStatInfo.map(netStat => {
-            netStat.split(";").filter(host => host.endsWith(":80")).map(tmp => KnownSoftware.Graphite.name).head
+          netStatInfo.flatMap(netStat => {
+            netStat.split(";").filter(host => host.endsWith(":80")).map(tmp => KnownSoftware.Graphite.name).headOption
           }).getOrElse(pName)
         } else {
           pName
