@@ -37,7 +37,7 @@ object CmdExecUtils {
     }
     paths.foreach { path =>
       path match {
-        case p if p.isEmpty || p.equals("/") || p.equals(".") =>
+        case p if p.isEmpty || p.equals("/") || p.equals(".") =>  //continue with next path
         case p if p.equals("..") =>
           excontext = excontext.flatMap(_.parentContext)
           if (excontext.isEmpty) throw new Exception("No such context to navigate")

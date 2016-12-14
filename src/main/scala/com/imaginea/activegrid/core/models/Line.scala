@@ -5,4 +5,4 @@ package com.imaginea.activegrid.core.models
   */
 case class Line(values: List[String],
                 lineType: LineType,
-                hostIdentifier: String)
+                hostIdentifier: Option[String])
