@@ -1,7 +1,6 @@
 package com.imaginea.activegrid.core.utils
 
 import com.amazonaws.regions.RegionUtils
-import com.imaginea.Main
 import com.imaginea.activegrid.core.models._
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
