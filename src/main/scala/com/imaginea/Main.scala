@@ -2204,7 +2204,7 @@ object Main extends App {
         }
       }
     } ~
-    path("site" / LongNumber / "policies") {
+      path("site" / LongNumber / "policies") {
         (siteId) => {
           get {
             val mayBePolicy = Future {
@@ -2700,12 +2700,11 @@ object Main extends App {
       // scalastyle:off magic.number
       val fields = List((fieldNames(0), JsString(i.contextName))) ++
         List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
-        contextObject
-      AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat)
-      i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
+        contextObject ++
+        AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat) ++
+        i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
         List((fieldNames(5), JsNumber(i.siteId))) ++
         AGU.stringToJsField(fieldNames(6), i.user)
-      //List((fieldNames(6), JsString(i.user))
       // scalastyle:on magic.number
       JsObject(fields: _*)
     }

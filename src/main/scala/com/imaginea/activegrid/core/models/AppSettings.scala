@@ -3,9 +3,7 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
-//scalastyle:ignore underscore.import
+import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 
 
 /**
