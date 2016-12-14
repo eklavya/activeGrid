@@ -2905,9 +2905,9 @@ object Main extends App {
 
   def executeSSHCommand(session: TerminalSession, command: String): CommandResult = {
     val sshSessions = session.sshSessions
-    val result = sshSessions.map { sshSession =>
+    val lines = sshSessions.map { sshSession =>
       val mayBeSession = sshSession.session
-      Future {
+      val futureLine = Future {
         val mayBeOutput = mayBeSession.map { session =>
           val channel = session.openChannel("exec").asInstanceOf[ChannelExec]
           channel.setPty(true)
@@ -2919,22 +2919,19 @@ object Main extends App {
           case None => throw new Exception("Session not found")
         }
       }
+    Await.result(futureLine, Duration(3L, TimeUnit.SECONDS))
     }
-    val futureList = Future.sequence(result)
-    val lines = Await.result(futureList, Duration(Long.MaxValue, TimeUnit.NANOSECONDS))
     CommandResult(lines, None)
   }
 
   def getOutputFromChannel(channel: ChannelExec): String = {
     val results = new StringBuilder
-    val sleepTimeInMilliSeconds = 1000L
     val inputStream = channel.getInputStream
     try {
       channel.connect()
       val buffer = new Array[Byte](1024 * 4)
       // read output till the channel is closed with polling
       while (channel.isConnected) {
-        Thread.sleep(sleepTimeInMilliSeconds)
         if (inputStream.available > 0) {
           val readCount = inputStream.read(buffer, 0, buffer.length)
           if (readCount > 0) {
