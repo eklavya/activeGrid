@@ -49,7 +49,7 @@ object AutoScalingPolicyEvaluator {
           }
         }
       }
-     }
+    }
     }
   }
 
@@ -66,13 +66,13 @@ object AutoScalingPolicyEvaluator {
   def evaluateSecondaryConditions(condition: PolicyCondition, siteId: Long, baseUri: String): Boolean = {
     condition.conditionType match {
       case Some(ctype) if (ctype.conditionType.equals(CPUUTILIZATION)) =>
-        condition.appTier.map { appTier => appTier.instances.exists {
-          instance =>
+        condition.appTier.exists {
+          appTier => appTier.instances.exists { instance =>
             // todo instance usuage and resouce utilization will realized when APManager's 'fetchMetricData' completed.
             val metrics = new ResouceUtilization("", List.empty[DataPoint])
-            metrics.dataPoints.indexWhere(dp => dp.value > condition.thresHold) > -1
+            metrics.dataPoints.exists(dp => dp.value > condition.thresHold)
+          }
         }
-        }.isDefined
       case _ => false
     }
   }
