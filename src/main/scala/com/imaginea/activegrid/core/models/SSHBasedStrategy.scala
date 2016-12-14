@@ -115,12 +115,12 @@ case class SSHBasedStrategy(topology: Topology,
    * filter with know software process
    */
   private def toProcessMap(processList: String) = {
-    processList.split(";").map(process => {
+    processList.split(";").flatMap(process => {
       val index = process.indexOf("/")
       val pid = process.substring(0, index)
       val pName = process.substring(index + 1)
-      (pid -> pName)
-    }).filter(process => SoftwareProcess.isKnownProcess(process._2)).toMap
+      if(SoftwareProcess.isKnownProcess(pName)) Some((pid -> pName)) else None
+    }).toMap
   }
 
   /* Find process name for JavaProcess and Python Process */

@@ -828,7 +828,10 @@ object Main extends App {
           }
         }
         onComplete(siteTopology) {
-          case Success(successResponse) => complete(StatusCodes.OK, "Saved the site topology")
+          case Success(successResponse) => successResponse match {
+            case Some(resp) => complete(StatusCodes.OK, "Saved the site topology")
+            case None => complete(StatusCodes.BadRequest, "Unable to find topology for the Site")
+          }
           case Failure(ex) =>
             logger.error(s"Unable to find topology; Failed with ${ex.getMessage}", ex)
             complete(StatusCodes.BadRequest, "Unable to find topology for the Site")
