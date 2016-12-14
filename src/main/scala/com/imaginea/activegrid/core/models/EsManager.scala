@@ -1,6 +1,9 @@
 package com.imaginea.activegrid.core.models
 
 import com.typesafe.scalalogging.Logger
+import org.elasticsearch.common.settings.ImmutableSettings
+import org.elasticsearch.index.query.{BoolQueryBuilder, QueryBuilders}
+import org.elasticsearch.node.NodeBuilder
 import org.slf4j.LoggerFactory
 import spray.json.RootJsonFormat
 
