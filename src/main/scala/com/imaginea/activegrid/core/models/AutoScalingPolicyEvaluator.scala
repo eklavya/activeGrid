@@ -43,7 +43,7 @@ object AutoScalingPolicyEvaluator {
                 case _ => 0L
               }
               //scalastyle:on magic.number
-              triggerAutoScaling(policyJob.siteId, scalingGroupId,scalingUnit)
+              triggerAutoScaling(policyJob.siteId, scalingGroupId, scalingUnit)
             }
           }
         }

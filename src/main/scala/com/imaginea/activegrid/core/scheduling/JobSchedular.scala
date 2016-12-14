@@ -9,17 +9,18 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
+
 /**
   * Created by sivag on 2/12/16.
   */
-object JobSchedular
-{
+object JobSchedular {
   val logger = LoggerFactory.getLogger(JobSchedular.getClass)
-  def schedule(): Unit =
-  {
+
+  def schedule(): Unit = {
     val jobs = JM.getJobs()
     //    TODO job specific handling requried.
   }
+
   def schedulePolicyJob(policyJob: PolicyJob): Unit = {
     implicit val system = Main.system
     implicit val materializer = Main.materializer
@@ -33,7 +34,7 @@ object JobSchedular
         val scalingPolicyHandler = new Runnable {
           override def run(): Unit = {
             logger.info(s"Evaluating job")
-            val policyAplied =  Future {
+            val policyAplied = Future {
               /**
                 * 'blocking' used to ensure that  threads which are available under current
                 * execution context shouldn't be blocked  by synchronized block present in call heirarchy or
