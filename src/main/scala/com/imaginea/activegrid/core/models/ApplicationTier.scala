@@ -71,7 +71,6 @@ object ApplicationTier {
     override def fromNeo4jGraph(nodeId: Long): Option[AppTier] = {
       AppTier.fromNeo4jGraph(nodeId)
     }
-
   }
 
 }

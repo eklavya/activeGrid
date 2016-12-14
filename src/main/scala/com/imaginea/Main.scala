@@ -2175,7 +2175,22 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to apply action on the instances.")
         }
       }
-    }
+    } ~
+    path("site" / LongNumber / "policies") {
+        (siteId) => {
+          get {
+            val mayBePolicy = Future {
+              SiteManagerImpl.getAutoScalingPolicies(siteId)
+            }
+            onComplete(mayBePolicy) {
+              case Success(policyList) => complete(StatusCodes.OK, policyList)
+              case Failure(ex) => logger.info(s"Error while retrieving policies of $siteId  details", ex)
+                complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
+            }
+          }
+        }
+      }
+
   }
 
   def filterInstanceViewList(instance: Instance, viewLevel: ViewLevel): Instance = {
