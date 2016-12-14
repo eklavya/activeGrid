@@ -2676,12 +2676,14 @@ object Main extends App {
     override def write(i: CommandExecutionContext): JsValue = {
       val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
       val contextObject = i.contextObject match {
-        case Some(ctx) if ctx.isInstanceOf[Site1] => AGU.objectToJsValue[Site1](fieldNames(3), Some(i.contextObject.asInstanceOf[Site1]), site1Format)
-        case Some(ctx) if ctx.isInstanceOf[Instance] => AGU.objectToJsValue[Instance](fieldNames(3), Some(i.contextObject.asInstanceOf[Instance]), instanceFormat)
+        case Some(ctx) if ctx.isInstanceOf[Site1] =>
+          AGU.objectToJsValue[Site1](fieldNames(3), Some(i.contextObject.asInstanceOf[Site1]), site1Format)
+        case Some(ctx) if ctx.isInstanceOf[Instance] =>
+          AGU.objectToJsValue[Instance](fieldNames(3), Some(i.contextObject.asInstanceOf[Instance]), instanceFormat)
         case _ => throw new Exception("fffff")
       }
       // scalastyle:off magic.number
-      val fields = List((fieldNames.head, JsString(i.contextName))) ++
+      val fields = List((fieldNames(0), JsString(i.contextName))) ++
         List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
         contextObject
       AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat)
