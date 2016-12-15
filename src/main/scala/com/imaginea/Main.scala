@@ -1550,15 +1550,9 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
-                  val memInfo = instance.memoryInfo match {
-                    case Some(info) => info.total
-                    case _ => 0
-                  }
-                  val dskInfo = instance.rootDiskInfo match {
-                    case Some(info) => info.total
-                    case _ => 0
-                  }
-                  InstanceFlavor(instance.instanceType.getOrElse(""), None, memInfo, dskInfo)
+                  val memInfo = instance.memoryInfo match { case Some(info) => info.total case _ => 0 }
+                  val dskInfo = instance.rootDiskInfo match { case Some(info) => info.total case _ => 0 }
+                  InstanceFlavor(instance.instanceType.getOrElse(""),None,memInfo,dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)
 

@@ -1,24 +1,35 @@
 package com.imaginea.activegrid.core.models
 
+import com.beust.jcommander.Parameter
 import com.imaginea.activegrid.core.utils.CmdExecUtils
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
+
+import scala.collection.JavaConversions._
 
 /**
   * Created by nagulmeeras on 07/12/16.
   */
-class ListCommand {
+object ListCommand {
 
-  var list: Boolean = false
-  var newContext: List[String] = List()
+  @Parameter(names = Array("-l"), description = "use long listing format")
+  val list: Boolean = false
+
+  @Parameter(description = "the current context to execute command on")
+  var newContext: java.util.List[String] = new java.util.ArrayList()
+
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def execute(commandExecutionContext: CommandExecutionContext): List[String] = {
-    val targetContext = newContext match {
-      case ctx if ctx.nonEmpty && ctx.size == 1 =>
-        val derivedCtx = newContext.head
-        CmdExecUtils.getDervivedContext(derivedCtx, commandExecutionContext)
-      case _ => Some(CommandExecutionContext(commandExecutionContext.contextName,
-        commandExecutionContext.contextType,
-        commandExecutionContext.contextObject,
-        commandExecutionContext.parentContext))
+    val targetContext = newContext.toList match {
+      case context if context.nonEmpty && context.size == 1 =>
+        val derivedContext = newContext.head
+        CmdExecUtils.getDervivedContext(derivedContext, commandExecutionContext)
+      case _ =>
+        Some(CommandExecutionContext(commandExecutionContext.contextName,
+          commandExecutionContext.contextType,
+          commandExecutionContext.contextObject,
+          commandExecutionContext.parentContext))
     }
     targetContext match {
       case Some(context) =>
@@ -40,10 +51,14 @@ class ListCommand {
                 instances.flatMap { instance =>
                   InstanceViewHelper.fetchInstance(instance, viewLevel)
                 }
-              case None => List.empty[String]
+              case None =>
+                logger.debug(s"No Site entity found with name : ${context.contextName}")
+                List.empty[String]
             }
         }
-      case None => throw new Exception("No context Found")
+      case None =>
+        logger.warn("No target context is found")
+        throw new Exception("No context Found")
     }
   }
 }
