@@ -13,6 +13,11 @@ import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
   * Created by babjik on 13/10/16.
   */
 object ActiveGridUtils {
+
+  def getUriInfo(): String = {
+    "http" + "://" + HOST + ":" + PORT + "/"
+  }
+
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val config = ConfigFactory.load
   val HOST = config.getString("http.host")

@@ -10,7 +10,8 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sivag on 24/11/16.
   */
-case class AutoScalingPolicy(override val id: Option[Long], application: Option[Application],
+case class AutoScalingPolicy(override val id: Option[Long],
+                             application: Option[Application],
                              primaryConditions: List[PolicyCondition],
                              secondaryConditions: List[PolicyCondition],
                              lastAppliedAt: String) extends BaseEntity
