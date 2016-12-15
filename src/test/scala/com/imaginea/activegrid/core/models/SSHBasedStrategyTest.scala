@@ -1,12 +1,11 @@
 package com.imaginea.activegrid.core.models
 
-import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Suite, FlatSpec, PrivateMethodTester}
+import com.amazonaws.services.devicefarm.model.Suite
 
 /**
  * Created by ranjithrajd on 18/11/16.
  */
-class SSHBasedStrategyTest extends FlatSpec with PrivateMethodTester with MockFactory with Suite{
+class SSHBasedStrategyTest extends FlatSpec with PrivateMethodTester with MockFactory with Suite {
 
   "resolveOS " should "return osinfo tag" in {
     val strategy = SSHBasedStrategy(Builder.topology,List.empty,false)

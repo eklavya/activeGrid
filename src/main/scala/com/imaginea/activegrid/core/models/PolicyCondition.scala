@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sivag on 23/11/16.
   */
-case class PolicyCondition(override val id: Option[Long],
+case class  PolicyCondition(override val id: Option[Long],
                            appTier: Option[ApplicationTier],
                            metricType: Option[MetricType],
                            thresHold: Double,

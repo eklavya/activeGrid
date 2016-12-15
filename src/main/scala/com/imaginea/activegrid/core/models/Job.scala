@@ -34,7 +34,8 @@ object Job
 
     }
   }
-  implicit class RichJob(job: Job) extends Neo4jRep[Job]{
+  implicit class RichJobImpl(job: Job) extends Neo4jRep[Job]
+  {
     override def toNeo4jGraph(entity: Job): Node = {
       val props = Map("name" -> entity.name,"jobType" -> entity.jobType.toString,
       "cronExpr" -> entity.cronExpr,"startDelay" -> entity.startDelay,

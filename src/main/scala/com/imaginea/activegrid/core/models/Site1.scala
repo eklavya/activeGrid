@@ -35,7 +35,7 @@ object Site1 {
   def apply(id: Long): Site1 = {
     Site1(Some(id), "test", List.empty[Instance], List.empty[ReservedInstanceDetails],
       List.empty[SiteFilter], List.empty[LoadBalancer], List.empty[ScalingGroup],
-      List.empty[InstanceGroup], List.empty[Application],"test",List.empty[AutoScalingPolicy])
+      List.empty[InstanceGroup], List.empty[Application], "test", List.empty[AutoScalingPolicy])
   }
 
 
@@ -49,6 +49,7 @@ object Site1 {
     }
     maybeNode.isDefined
   }
+
   // scalastyle:off method.length
   def fromNeo4jGraph(nodeId: Long): Option[Site1] = {
     val mayBeNode = Neo4jRepository.findNodeById(nodeId)
@@ -103,7 +104,7 @@ object Site1 {
         }
 
         Some(Site1(Some(nodeId), siteName, instances, reservedInstance, siteFilters, loadBalancers,
-          scalingGroups, instanceGroups, applications,groupBy, policies))
+          scalingGroups, instanceGroups, applications, groupBy, policies))
       case None =>
         logger.warn(s"could not find node for Site with nodeId $nodeId")
         None
@@ -147,6 +148,10 @@ object Site1 {
       entity.groupsList.foreach { ig =>
         val instanceGroupNode = ig.toNeo4jGraph(ig)
         Neo4jRepository.setGraphRelationship(node, instanceGroupNode, siteIGRelation)
+      }
+      entity.scalingPolicies.foreach { policy =>
+        val policyNode = policy.toNeo4jGraph(policy)
+        Neo4jRepository.setGraphRelationship(node, policyNode, AutoScalingPolicy.relationLable)
       }
       entity.scalingPolicies.foreach { policy =>
         val policyNode = policy.toNeo4jGraph(policy)
