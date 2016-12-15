@@ -145,10 +145,9 @@ object Builder{
     scalingGroups = List.empty,
     applications = List.empty,
     groupsList = List.empty,
-    applications = List.empty,
     groupBy = "groupBy",
     scalingPolicies = List.empty
   )
-  val topology = new Topology(site1)
+  val topology = new Topology(site1,Set.empty,site1.instances)
 }
-class SSHSessionWrapper extends SSHSession("127.0.0.0","aws","/tmp",None,None)
+//class SSHSessionWrapper extends SSHSession("127.0.0.0","aws","/tmp",None,None)
