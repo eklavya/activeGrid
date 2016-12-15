@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.models
 
-import com.amazonaws.services.devicefarm.model.Suite
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.{Suite, PrivateMethodTester, FlatSpec}
 
 /**
  * Created by ranjithrajd on 18/11/16.
@@ -147,6 +148,6 @@ object Builder{
     groupBy = "groupBy",
     scalingPolicies = List.empty
   )
-  val topology = new Topology(site1,Set.empty,site1.instances)
+  val topology = new Topology(site1)
 }
 //class SSHSessionWrapper extends SSHSession("127.0.0.0","aws","/tmp",None,None)
