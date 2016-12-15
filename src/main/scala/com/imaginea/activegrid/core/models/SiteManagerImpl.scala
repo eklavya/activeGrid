@@ -15,23 +15,23 @@ object SiteManagerImpl
   /**
     * todo autoscaling policy-evaluation part
     */
-  def setAutoScalingGroupSize(siteId: Long, scalingGroupId: Long, scaleSize: Int) : Unit = {
-    Site1.fromNeo4jGraph(siteId).foreach{
+  def setAutoScalingGroupSize(siteId: Long, scalingGroupId: Long, scaleSize: Int): Unit = {
+    Site1.fromNeo4jGraph(siteId).foreach {
       site =>
         val targetScalingGroups = site.scalingGroups.filter(sgroup => sgroup.id.getOrElse(0L) == scalingGroupId)
-        targetScalingGroups.foreach{ sgroup =>
-          val desiredSize =  sgroup.desiredCapacity + scaleSize
-          if(sgroup.minCapacity <= desiredSize && desiredSize <= sgroup.maxCapacity) {
-          site.filters.foreach { f =>
-            val accountInfo = f.accountInfo
-            val regionName = accountInfo.regionName.getOrElse("")
-            val credentials = AWSComputeAPI.getCredentials(accountInfo,regionName)
-            val region = RegionUtils.getRegion(regionName)
-            val awsScalingClinet = AWSComputeAPI.getAWSAutoScalingPolicyClient(credentials,region)
-            AWSComputeAPI.applyScalingSize(awsScalingClinet,sgroup.name,desiredSize)
+        targetScalingGroups.foreach { sgroup =>
+          val desiredSize = sgroup.desiredCapacity + scaleSize
+          if (sgroup.minCapacity <= desiredSize && desiredSize <= sgroup.maxCapacity) {
+            site.filters.foreach { f =>
+              val accountInfo = f.accountInfo
+              val regionName = accountInfo.regionName.getOrElse("")
+              val credentials = AWSComputeAPI.getCredentials(accountInfo, regionName)
+              val region = RegionUtils.getRegion(regionName)
+              val awsScalingClinet = AWSComputeAPI.getAWSAutoScalingPolicyClient(credentials, region)
+              AWSComputeAPI.applyScalingSize(awsScalingClinet, sgroup.name, desiredSize)
+            }
           }
         }
-      }
     }
   }
 
@@ -41,6 +41,7 @@ object SiteManagerImpl
       case None => List.empty[AutoScalingPolicy]
     }
   }
+
   def deleteIntanceFromSite(siteId: Long, instanceId: String): Boolean = {
     val siteNode = Site1.fromNeo4jGraph(siteId)
     siteNode.map { site =>

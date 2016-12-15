@@ -9,17 +9,18 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
+
 /**
   * Created by sivag on 2/12/16.
   */
-object JobSchedular
-{
+object JobSchedular {
   val logger = LoggerFactory.getLogger(JobSchedular.getClass)
-  def schedule(): Unit =
-  {
+
+  def schedule(): Unit = {
     val jobs = JM.getJobs()
     //    TODO job specific handling requried.
   }
+
   def schedulePolicyJob(policyJob: PolicyJob): Unit = {
     implicit val system = Main.system
     implicit val materializer = Main.materializer
