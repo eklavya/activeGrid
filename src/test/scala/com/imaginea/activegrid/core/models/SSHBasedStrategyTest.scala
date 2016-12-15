@@ -1,12 +1,12 @@
 package com.imaginea.activegrid.core.models
 
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Suite, FlatSpec, PrivateMethodTester}
+import org.scalatest.{Suite, PrivateMethodTester, FlatSpec}
 
 /**
  * Created by ranjithrajd on 18/11/16.
  */
-class SSHBasedStrategyTest extends FlatSpec with PrivateMethodTester with MockFactory with Suite{
+class SSHBasedStrategyTest extends FlatSpec with PrivateMethodTester with MockFactory with Suite {
 
   "resolveOS " should "return osinfo tag" in {
     val strategy = SSHBasedStrategy(Builder.topology,List.empty,false)
@@ -145,10 +145,9 @@ object Builder{
     scalingGroups = List.empty,
     applications = List.empty,
     groupsList = List.empty,
-    applications = List.empty,
     groupBy = "groupBy",
     scalingPolicies = List.empty
   )
   val topology = new Topology(site1)
 }
-class SSHSessionWrapper extends SSHSession("127.0.0.0","aws","/tmp",None,None)
+//class SSHSessionWrapper extends SSHSession("127.0.0.0","aws","/tmp",None,None)

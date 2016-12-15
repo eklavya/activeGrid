@@ -153,6 +153,10 @@ object Site1 {
         val policyNode = policy.toNeo4jGraph(policy)
         Neo4jRepository.setGraphRelationship(node, policyNode, AutoScalingPolicy.relationLable)
       }
+      entity.scalingPolicies.foreach { policy =>
+        val policyNode = policy.toNeo4jGraph(policy)
+        Neo4jRepository.setGraphRelationship(node, policyNode, AutoScalingPolicy.relationLable)
+      }
 
       entity.applications.foreach { application =>
         val applicationsNode = application.toNeo4jGraph(application)

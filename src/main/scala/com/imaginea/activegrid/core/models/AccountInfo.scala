@@ -20,7 +20,7 @@ case class AccountInfo(override val id: Option[Long],
 object AccountInfo {
   val accountInfoLabel = "AccountInfo"
   val logger = LoggerFactory.getLogger(getClass)
-
+  
   def apply(id: Long): AccountInfo = {
     AccountInfo(Some(id), None, InstanceProvider.toInstanceProvider("AWS"), None, None, None, None, List.empty[String], None)
   }

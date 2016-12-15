@@ -5,10 +5,11 @@ version := "1.0"
 scalaVersion := "2.11.8"
 
 resolvers ++= Seq("Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
-  Resolver.bintrayRepo("hseeberger", "maven"), "AWS" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-ec2", "AWS3" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-s3")
+  Resolver.bintrayRepo("hseeberger", "maven"),"AWS" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-ec2",
+  "AWS3" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-s3")
 
 libraryDependencies ++= {
-  val AkkaVersion = "2.4.10"
+  val AkkaVersion       = "2.4.10"
   val scalaLoggingVersion = "3.4.0"
   val neo4jScalaVersion = "0.3.3"
   Seq(
@@ -21,7 +22,6 @@ libraryDependencies ++= {
     "org.apache.jclouds.provider" % "aws-s3" % "1.6.3",
     "com.amazonaws" % "aws-java-sdk" % "1.11.46",
     "org.scalastyle" %% "scalastyle" % "0.8.0",
-
     "com.jcraft" % "jsch" % "0.1.50",
     "org.scalatest" %% "scalatest" % "3.0.0" % "test",
     "org.scalamock" %% "scalamock-scalatest-support" % "3.3.0" % "test",

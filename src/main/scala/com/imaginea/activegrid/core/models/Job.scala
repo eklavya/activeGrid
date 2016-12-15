@@ -1,17 +1,17 @@
 package com.imaginea.activegrid.core.models
-
-import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
 import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
+import com.imaginea.activegrid.core.models.{Neo4jRepository => Neo}
 import org.neo4j.graphdb.Node
 
 /**
   * Created by sivag on 29/11/16.
   */
-case class Job(override val id: Option[Long], name: String, jobType: JobType, cronExpr: Option[String],
-               startDelay: Option[Long], reptCount: Option[Int], reptIntrvl: Option[Long], acive: Option[Boolean])
+case class Job(override val id:Option[Long],name:String,jobType: JobType,cronExpr:Option[String],
+               startDelay:Option[Long], reptCount:Option[Int],reptIntrvl:Option[Long],acive:Option[Boolean])
   extends BaseEntity
 
-object Job {
+object Job
+{
   val lable = Job.getClass.getSimpleName
   val relationLable = AGU.relationLbl(lable)
 
@@ -34,20 +34,19 @@ object Job {
 
     }
   }
-
-  implicit class RichJob(job: Job) extends Neo4jRep[Job] {
+  implicit class RichJobImpl(job: Job) extends Neo4jRep[Job]
+  {
     override def toNeo4jGraph(entity: Job): Node = {
-      val props = Map("name" -> entity.name, "jobType" -> entity.jobType.toString,
-        "cronExpr" -> entity.cronExpr, "startDelay" -> entity.startDelay,
-        "repeatCount" -> entity.reptCount, "repeatIntrvl" -> entity.reptIntrvl,
-        "active" -> entity.acive)
-      Neo.saveEntity[Job](Job.lable, job.id, props)
+      val props = Map("name" -> entity.name,"jobType" -> entity.jobType.toString,
+      "cronExpr" -> entity.cronExpr,"startDelay" -> entity.startDelay,
+      "repeatCount" -> entity.reptCount,"repeatIntrvl" -> entity.reptIntrvl,
+      "active" -> entity.acive)
+      Neo.saveEntity[Job](Job.lable,job.id,props)
     }
 
     override def fromNeo4jGraph(id: Long): Option[Job] = {
       Job.fromNeo4jGraph(id)
     }
   }
-
 }
 
