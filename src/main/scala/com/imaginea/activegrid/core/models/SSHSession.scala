@@ -3,8 +3,8 @@ package com.imaginea.activegrid.core.models
 import com.jcraft.jsch.{JSch, Session}
 
 /**
-  * Created by shareefn on 24/11/16.
-  */
+ * Created by ranjithrajd on 7/12/16.
+ */
 case class SSHSession(serverIp: String,
                       keyLocation: String,
                       jsch: JSch,
@@ -13,6 +13,4 @@ case class SSHSession(serverIp: String,
                       port: Option[Int],
                       passphrase: Option[String],
                       sessionTimeOut: Long
-                     )
-
-
+                       )

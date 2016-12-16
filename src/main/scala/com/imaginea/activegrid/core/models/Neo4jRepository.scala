@@ -6,7 +6,9 @@ import eu.fakod.neo4jscala.{EmbeddedGraphDatabaseServiceProvider, Neo4jWrapper}
 import org.neo4j.graphdb._
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
+import scala.collection.JavaConversions._
+
+// scalastyle:ignore underscore.import
 
 /**
   * Created by babjik on 23/9/16.
@@ -36,6 +38,12 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     val nodesIterator = findNodesByLabelAndProperty(label, propertyKey, propertyValue)
     nodesIterator.headOption
   }
+  def getNodesByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any): List[Node] = withTx { implicit neo =>
+    logger.debug(s"finding $label's with property $propertyKey and value $propertyValue")
+    findNodesByLabelAndProperty(label, propertyKey, propertyValue).toList
+
+  }
+
 
   def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Node = withTx { implicit neo =>
     val node = getOrSaveEntity(label, id)
@@ -111,16 +119,6 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
 
   }
 
-  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
-    try {
-      Some(getNodeById(id))
-    } catch {
-      case e: NotFoundException =>
-        logger.warn(s"node with Id $id is not found", e)
-        None
-    }
-  }
-
   def getRelationships(node: Node, direction: Direction): List[Relationship] = withTx { implicit neo =>
     logger.debug(s"fetching realtions of $node in the direction $direction")
     node.getRelationships(direction).toList
@@ -153,6 +151,14 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     mayBeNode match {
       case Some(node) => if (node.hasLabel(label)) mayBeNode else None
       case None => None
+    }
+  }
+  def updateNodeByLabelAndId[T<:BaseEntity](label: String, id: Long,props:Map[String,Any]): Unit =
+    withTx
+    {
+      implicit neo => findNodeById(id).foreach {
+      node =>
+        for ((prop,value) <- props) { node.setProperty(prop,value) }
     }
   }
 
@@ -227,6 +233,16 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
           }
         case None => false
       }
+    }
+  }
+
+  def findNodeById(id: Long): Option[Node] = withTx { implicit neo =>
+    try {
+      Some(getNodeById(id))
+    } catch {
+      case e: NotFoundException =>
+        logger.warn(s"node with Id $id is not found", e)
+        None
     }
   }
 

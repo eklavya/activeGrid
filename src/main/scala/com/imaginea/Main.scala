@@ -737,10 +737,12 @@ object Main extends App {
               mayBeFile match {
                 case Some(fileName) => accum + ((name, value))
                 case None =>
-                  if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
+                  if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase")) {
                     accum + ((name, value))
-                  else
+                  }
+                  else {
                     accum
+                  }
               }
             })
             val sshKeyContentInfo = SSHKeyContentInfo(dataMap)
@@ -765,7 +767,7 @@ object Main extends App {
                                 !keyMaterials(key).equalsIgnoreCase("undefined")).get("username")
                               val userName = user.getOrElse("ubuntu") //TODO: check if needed to assign ubuntu or not
                               val passPhrase = keyMaterials.filterKeys(key => key.equals("passPhrase") && !keyMaterials(key).equalsIgnoreCase("undefined")
-                                && keyMaterials(key).nonEmpty).get("passPhrase")
+                                  && keyMaterials(key).nonEmpty).get("passPhrase")
                               val keyPairInfoUpdated : KeyPairInfo = info.keyPair.copy(keyMaterial = sshKeyData, filePath = keyFilePath,
                                 status = KeyPairStatus.toKeyPairStatus("UPLOADED"), defaultUser = Some(userName))
                               val sSHAccessInfoUpdated : SSHAccessInfo = info.copy(keyPair = keyPairInfoUpdated, userName = Some(userName),
@@ -807,6 +809,34 @@ object Main extends App {
               logger.error(s"Failed to update Keys, Message: ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Failed to update Keys")
           }
+        }
+      }
+    } ~path("sites" / LongNumber / "topology") { siteId =>
+      post {
+        val siteTopology = Future {
+          val siteOption = Site1.fromNeo4jGraph(siteId)
+          siteOption.map { site =>
+
+            val softwareLabel: String = "SoftwaresTest2"
+            val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
+            val softwares = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
+            val topology = new Topology(site)
+            val sshBaseStrategy = new SSHBasedStrategy(topology, softwares, true)
+            //TODO: InstanceGroup & Application save
+            val topologyResult = sshBaseStrategy.getTopology
+
+            //Saving the Site with collected instance details
+            site.toNeo4jGraph(topologyResult.site)
+          }
+        }
+        onComplete(siteTopology) {
+          case Success(successResponse) => successResponse match {
+            case Some(resp) => complete(StatusCodes.OK, "Saved the site topology")
+            case None => complete(StatusCodes.BadRequest, "Unable to find topology for the Site")
+          }
+          case Failure(ex) =>
+            logger.error(s"Unable to find topology; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to find topology for the Site")
         }
       }
     }
@@ -2175,7 +2205,22 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to apply action on the instances.")
         }
       }
-    }
+    } ~
+    path("site" / LongNumber / "policies") {
+        (siteId) => {
+          get {
+            val mayBePolicy = Future {
+              SiteManagerImpl.getAutoScalingPolicies(siteId)
+            }
+            onComplete(mayBePolicy) {
+              case Success(policyList) => complete(StatusCodes.OK, policyList)
+              case Failure(ex) => logger.info(s"Error while retrieving policies of $siteId  details", ex)
+                complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
+            }
+          }
+        }
+      }
+
   }
 
   def filterInstanceViewList(instance: Instance, viewLevel: ViewLevel): Instance = {
