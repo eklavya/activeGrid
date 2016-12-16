@@ -1,12 +1,8 @@
 package com.imaginea.activegrid.core.models
 
 /**
-  * Created by shareefn on 8/12/16.
+  * Created by nagulmeeras on 09/12/16.
   */
-
-object Command {
-  def executeListCommand(context: CommandExecutionContext, input: List[Line], newContext: List[String]): CommandResult = {
-    //TODO
-    CommandResult(List.empty[Line], Some(context))
-  }
+trait Command {
+  def execute(commandExecutionContext: CommandExecutionContext, lines: List[Line]): CommandResult
 }

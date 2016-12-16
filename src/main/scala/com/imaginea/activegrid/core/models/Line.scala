@@ -1,6 +1,8 @@
 package com.imaginea.activegrid.core.models
 
 /**
-  * Created by shareefn on 8/12/16.
+  * Created by nagulmeeras on 09/12/16.
   */
-case class Line(values: List[String], lineType: LineType, hostIdentifier: String)
+case class Line(values: List[String],
+                lineType: LineType,
+                hostIdentifier: Option[String])
