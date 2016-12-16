@@ -20,6 +20,7 @@ import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
 import spray.json._ // scalastyle:ignore underscore.import
+import com.beust.jcommander.JCommander
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationLong}
@@ -2952,10 +2953,12 @@ object Main extends App {
     }
   }
 
-  def parseCommandLine(commandLine: String): Map[String, List[String]] = {
+  def parseCommandLine(commandLine: String): List[Command] = {
+    val commandMap = Map(Constants.LIST_COMMAND -> new ListCommand,
+      Constants.CD_COMMAND -> new ChangeDirectoryCommand)
     logger.info("Parsing command line [ " + commandLine + "]")
     val commands = commandLine.split("\\|")
-    val commandsMap = commands.foldLeft(Map.empty[String, List[String]]) { (map, command) =>
+    val commandsList = commands.map { command =>
       val cmd = command.trim
       val cmdName = cmd.split("\\s+")(0)
       val argsLine = cmd.substring(cmdName.length).trim
@@ -2963,27 +2966,22 @@ object Main extends App {
       val pattern = "[^\\s\"']+|\"[^\"]*\"|'[^']*'".r
       val regexMatcher = pattern.findAllMatchIn(argsLine)
       val matchList = regexMatcher.map(m => m.group(0)).toList
-      map + ((cmdName, matchList))
-    }
-    commandsMap
+      val instanceOfCommand = commandMap(cmdName)
+      val jCommander = new JCommander(instanceOfCommand, matchList.toArray: _*)
+      instanceOfCommand
+    }.toList
+    commandsList
   }
 
   def executePipedCommand(session: TerminalSession, commadLine: String): CommandResult = {
-    val commandsMap = parseCommandLine(commadLine)
+    val commandsList = parseCommandLine(commadLine)
     val executionContext = session.currentCmdExecContext
-    val (result, currentContext) = commandsMap.foldLeft(List.empty[Line], executionContext) { (inputAndContext, map) =>
+    val (result, currentContext) = commandsList.foldLeft(List.empty[Line], executionContext) { (inputAndContext, command) =>
       val (input, context) = inputAndContext
-      val (commandName, argsList) = map
-      val commandResult: CommandResult = commandName match {
-        //TODO changes to be made by naveed
-        case Constants.LIST_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
-        case Constants.CD_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
-        case Constants.GREP_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
-        case _ => throw new RuntimeException(s"Unsupported command with name [$commandName]")
-      }
+      val commandResult = command.execute(context, input)
       commandResult.currentContext match {
         case Some(execContext) => (commandResult.result, execContext)
-        case None => throw new Exception(s"did not get execution context after executing Command with name [$commandName]")
+        case None => throw new Exception(s"did not get execution context while executing the piped command")
       }
     }
     CommandResult(result, Some(currentContext))
