@@ -31,7 +31,7 @@ class ListCommand extends Command {
           commandExecutionContext.contextObject,
           commandExecutionContext.parentContext))
     }
-    val lines: List[Line] = targetContext match {
+    val lines = targetContext match {
       case Some(context) =>
         val viewLevel = list match {
           case true => DETAILED
