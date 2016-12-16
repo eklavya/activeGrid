@@ -9,7 +9,8 @@ import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
 /**
   * Created by sivag on 3/11/16.
   */
-object SiteManagerImpl {
+object SiteManagerImpl
+{
 
   /**
     * todo autoscaling policy-evaluation part
@@ -72,13 +73,13 @@ object SiteManagerImpl {
   }
 
   // Adding new scaling policy
-  def addAutoScalingPolicy(siteId: Long, policy: AutoScalingPolicy): AutoScalingPolicy = {
+  def  addAutoScalingPolicy(siteId:Long,policy:AutoScalingPolicy) : AutoScalingPolicy =
+  {
     val policyNode = policy.toNeo4jGraph(policy)
-    Neo.findNodeByLabelAndId(Site1.label, siteId).foreach { site =>
-      Neo.createRelation(AutoScalingPolicy.relationLable, site, policyNode)
-    }
+    Neo.findNodeByLabelAndId(Site1.label,siteId).foreach { site =>
+      Neo.createRelation(AutoScalingPolicy.relationLable,site,policyNode)}
     //scalastyle:off magic.number
-    val startDelay = Some(1000L)
+    val startDelay  = Some(1000L)
     val reptCount = Some(0)
     val reptIntrvl = Some(6000L)
     //scalastyle:on magic.number
@@ -86,8 +87,8 @@ object SiteManagerImpl {
     val uriInfo = Some(AGU.getUriInfo())
     //TODO 'name' property have to set from  AutoScaling Policy. Bean declaration required
     val name = "DummyName"
-    val job = Job(Some(0L), "PolicyJob", jobType, Some(""), startDelay, reptCount, reptIntrvl, Some(true))
-    val pjob = PolicyJob(Some(policyNode.getId), siteId, uriInfo, Some(job), Some(policy))
+    val job = Job(Some(0L),"PolicyJob",jobType,Some(""),startDelay,reptCount,reptIntrvl,Some(true))
+    val pjob = PolicyJob(Some(policyNode.getId),siteId,uriInfo,Some(job),Some(policy))
     JM.scheduleJob(pjob)
     policy
   }

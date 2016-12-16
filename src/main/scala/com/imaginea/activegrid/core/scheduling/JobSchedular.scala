@@ -34,7 +34,7 @@ object JobSchedular {
         val scalingPolicyHandler = new Runnable {
           override def run(): Unit = {
             logger.info(s"Evaluating job")
-            val policyAplied = Future {
+            val policyAplied =  Future {
               /**
                 * 'blocking' used to ensure that  threads which are available under current
                 * execution context shouldn't be blocked  by synchronized block present in call heirarchy or

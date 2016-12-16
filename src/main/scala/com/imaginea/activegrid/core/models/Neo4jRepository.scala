@@ -38,12 +38,12 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
     val nodesIterator = findNodesByLabelAndProperty(label, propertyKey, propertyValue)
     nodesIterator.headOption
   }
-
   def getNodesByLabelAndProperty(label: String, propertyKey: String, propertyValue: Any): List[Node] = withTx { implicit neo =>
     logger.debug(s"finding $label's with property $propertyKey and value $propertyValue")
     findNodesByLabelAndProperty(label, propertyKey, propertyValue).toList
 
   }
+
 
   def saveEntity[T <: BaseEntity](label: String, id: Option[Long], map: Map[String, Any]): Node = withTx { implicit neo =>
     val node = getOrSaveEntity(label, id)
@@ -153,16 +153,14 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       case None => None
     }
   }
-
-  def updateNodeByLabelAndId[T <: BaseEntity](label: String, id: Long, props: Map[String, Any]): Unit =
-    withTx {
+  def updateNodeByLabelAndId[T<:BaseEntity](label: String, id: Long,props:Map[String,Any]): Unit =
+    withTx
+    {
       implicit neo => findNodeById(id).foreach {
-        node =>
-          for ((prop, value) <- props) {
-            node.setProperty(prop, value)
-          }
-      }
+      node =>
+        for ((prop,value) <- props) { node.setProperty(prop,value) }
     }
+  }
 
   def createRelation(label: String, fromNode: Node, toNode: Node): Relationship = withTx { neo =>
     logger.info(s"Relation:  ($fromNode) --> $label --> ($toNode) <")
