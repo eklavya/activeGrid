@@ -1353,10 +1353,7 @@ object Main extends App {
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
     User.fromNeo4jGraph(userId).flatMap { user =>
       user.publicKeys.find { keyPair =>
-        keyPair.id match {
-          case Some(id) => id == keyId
-          case None => false
-        }
+        keyPair.id.contains(keyId)
       }
     }
   }
@@ -2720,7 +2717,9 @@ object Main extends App {
           AGU.objectToJsValue[Site1](fieldNames(3), Some(i.contextObject.asInstanceOf[Site1]), site1Format)
         case Some(ctx) if ctx.isInstanceOf[Instance] =>
           AGU.objectToJsValue[Instance](fieldNames(3), Some(i.contextObject.asInstanceOf[Instance]), instanceFormat)
-        case _ => throw new Exception("fffff")
+        case _ =>
+          logger.warn("Unkown type found other than Site and Instance")
+          throw new Exception("Unkown type found other than Site and Instance. Base entity should have Site or instance types")
       }
       // scalastyle:off magic.number
       val fields = List((fieldNames(0), JsString(i.contextName))) ++
