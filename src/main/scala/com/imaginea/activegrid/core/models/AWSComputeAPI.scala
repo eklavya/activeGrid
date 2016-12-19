@@ -7,10 +7,8 @@ package com.imaginea.activegrid.core.models
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.regions.{Region, RegionUtils}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
-import com.amazonaws.services.autoscaling.model.AutoScalingGroup
+import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
 import com.amazonaws.services.ec2.model._
-
-//scalastyle:ignore underscore.import
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2Client, model}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.LoadBalancerDescription
@@ -19,8 +17,6 @@ import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
-
-//scalastyle:ignore underscore.import
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
@@ -308,6 +304,13 @@ object AWSComputeAPI {
     val aWSCredentials1 = getAWSCredentials(aWSContextBuilder)
     awsInstanceHelper(aWSCredentials1, region)
   }
+  //Write method to return credentials and use it.
+  def getCredentials(accountInfo: AccountInfo,regionName:String) : AWSCredentials = {
+    val region = RegionUtils.getRegion(regionName)
+    val aWSContextBuilder = AWSContextBuilder(accountInfo.accessKey.getOrElse(""),
+      accountInfo.secretKey.getOrElse(""),regionName)
+   getAWSCredentials(aWSContextBuilder)
+  }
 
   private def getAWSCredentials(builder: AWSContextBuilder): AWSCredentials = {
     new AWSCredentials() {
@@ -325,6 +328,12 @@ object AWSComputeAPI {
     val amazonEC2: AmazonEC2 = new AmazonEC2Client(credentials)
     amazonEC2.setRegion(region)
     amazonEC2
+  }
+  def getAWSAutoScalingPolicyClient(credentials: AWSCredentials,region: Region) : AmazonAutoScalingClient = {
+    val amazonClient = new AmazonAutoScalingClient(credentials)
+    amazonClient.setRegion(region)
+    amazonClient
+
   }
 
   def getReservedInstances(amazonEC2: AmazonEC2): List[ReservedInstanceDetails] = {
@@ -423,5 +432,12 @@ object AWSComputeAPI {
     createImageRequest.setDescription("image created by orchestrator")
     val creteImageResponse = amazonEC2.createImage(createImageRequest)
     creteImageResponse.getImageId
+  }
+  def applyScalingSize(awsClinent : AmazonAutoScalingClient,groupName:String,size:Int) : Int =  {
+    val scalingRq = new SetDesiredCapacityRequest()
+    scalingRq.setDesiredCapacity(size)
+    scalingRq.setAutoScalingGroupName(groupName)
+    awsClinent.setDesiredCapacity(scalingRq)
+    size
   }
 }

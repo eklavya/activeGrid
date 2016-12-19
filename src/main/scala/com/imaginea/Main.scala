@@ -2,27 +2,28 @@ package com.imaginea
 
 import java.io.File
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._ // scalastyle:ignore underscore.import
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives._ // scalastyle:ignore underscore.import
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
+import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _} // scalastyle:ignore underscore.import
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
-import com.jcraft.jsch.{JSch, JSchException}
+import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol._
-import spray.json._
+import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
+import spray.json._ // scalastyle:ignore underscore.import
 
 import scala.collection.mutable
-import scala.concurrent.Future
-import scala.concurrent.duration.DurationLong
+import scala.concurrent.duration.{Duration, DurationLong}
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Random, Success}
 
 object Main extends App {
@@ -739,10 +740,12 @@ object Main extends App {
               mayBeFile match {
                 case Some(fileName) => accum + ((name, value))
                 case None =>
-                  if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase"))
+                  if (name.equalsIgnoreCase("userName") || name.equalsIgnoreCase("passPhase")) {
                     accum + ((name, value))
-                  else
+                  }
+                  else {
                     accum
+                  }
               }
             })
             val sshKeyContentInfo = SSHKeyContentInfo(dataMap)
@@ -809,6 +812,34 @@ object Main extends App {
               logger.error(s"Failed to update Keys, Message: ${ex.getMessage}", ex)
               complete(StatusCodes.BadRequest, s"Failed to update Keys")
           }
+        }
+      }
+    } ~ path("sites" / LongNumber / "topology") { siteId =>
+      post {
+        val siteTopology = Future {
+          val siteOption = Site1.fromNeo4jGraph(siteId)
+          siteOption.map { site =>
+
+            val softwareLabel: String = "SoftwaresTest2"
+            val nodesList = Neo4jRepository.getNodesByLabel(softwareLabel)
+            val softwares = nodesList.flatMap(node => Software.fromNeo4jGraph(node.getId))
+            val topology = new Topology(site)
+            val sshBaseStrategy = new SSHBasedStrategy(topology, softwares, true)
+            //TODO: InstanceGroup & Application save
+            val topologyResult = sshBaseStrategy.getTopology
+
+            //Saving the Site with collected instance details
+            site.toNeo4jGraph(topologyResult.site)
+          }
+        }
+        onComplete(siteTopology) {
+          case Success(successResponse) => successResponse match {
+            case Some(resp) => complete(StatusCodes.OK, "Saved the site topology")
+            case None => complete(StatusCodes.BadRequest, "Unable to find topology for the Site")
+          }
+          case Failure(ex) =>
+            logger.error(s"Unable to find topology; Failed with ${ex.getMessage}", ex)
+            complete(StatusCodes.BadRequest, "Unable to find topology for the Site")
         }
       }
     }
@@ -1322,10 +1353,7 @@ object Main extends App {
   def getKeyById(userId: Long, keyId: Long): Option[KeyPairInfo] = {
     User.fromNeo4jGraph(userId).flatMap { user =>
       user.publicKeys.find { keyPair =>
-        keyPair.id match {
-          case Some(id) => id == keyId
-          case None => false
-        }
+        keyPair.id.contains(keyId)
       }
     }
   }
@@ -1550,14 +1578,8 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
-                  val memInfo = instance.memoryInfo match {
-                    case Some(info) => info.total
-                    case _ => 0
-                  }
-                  val dskInfo = instance.rootDiskInfo match {
-                    case Some(info) => info.total
-                    case _ => 0
-                  }
+                  val memInfo = instance.memoryInfo match { case Some(info) => info.total case _ => 0 }
+                  val dskInfo = instance.rootDiskInfo match { case Some(info) => info.total case _ => 0 }
                   InstanceFlavor(instance.instanceType.getOrElse(""), None, memInfo, dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)
@@ -2203,7 +2225,22 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to apply action on the instances.")
         }
       }
-    }
+    } ~
+      path("site" / LongNumber / "policies") {
+        (siteId) => {
+          get {
+            val mayBePolicy = Future {
+              SiteManagerImpl.getAutoScalingPolicies(siteId)
+            }
+            onComplete(mayBePolicy) {
+              case Success(policyList) => complete(StatusCodes.OK, policyList)
+              case Failure(ex) => logger.info(s"Error while retrieving policies of $siteId  details", ex)
+                complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
+            }
+          }
+        }
+      }
+
   }
 
   def filterInstanceViewList(instance: Instance, viewLevel: ViewLevel): Instance = {
@@ -2676,19 +2713,22 @@ object Main extends App {
     override def write(i: CommandExecutionContext): JsValue = {
       val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
       val contextObject = i.contextObject match {
-        case Some(ctx) if ctx.isInstanceOf[Site1] => AGU.objectToJsValue[Site1](fieldNames(3), Some(i.contextObject.asInstanceOf[Site1]), site1Format)
-        case Some(ctx) if ctx.isInstanceOf[Instance] => AGU.objectToJsValue[Instance](fieldNames(3), Some(i.contextObject.asInstanceOf[Instance]), instanceFormat)
-        case _ => throw new Exception("fffff")
+        case Some(ctx) if ctx.isInstanceOf[Site1] =>
+          AGU.objectToJsValue[Site1](fieldNames(3), Some(i.contextObject.asInstanceOf[Site1]), site1Format)
+        case Some(ctx) if ctx.isInstanceOf[Instance] =>
+          AGU.objectToJsValue[Instance](fieldNames(3), Some(i.contextObject.asInstanceOf[Instance]), instanceFormat)
+        case _ =>
+          logger.warn("Unkown type found other than Site and Instance")
+          throw new Exception("Unkown type found other than Site and Instance. Base entity should have Site or instance types")
       }
       // scalastyle:off magic.number
-      val fields = List((fieldNames.head, JsString(i.contextName))) ++
+      val fields = List((fieldNames(0), JsString(i.contextName))) ++
         List((fieldNames(1), ContextTypeFormat.write(i.contextType))) ++
-        contextObject
-      AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat)
-      i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
+        contextObject ++
+        AGU.objectToJsValue[CommandExecutionContext](fieldNames(3), i.parentContext, commandExecutionContextFormat) ++
+        i.instances.map(instance => (fieldNames(4), JsString(instance))) ++
         List((fieldNames(5), JsNumber(i.siteId))) ++
         AGU.stringToJsField(fieldNames(6), i.user)
-      //List((fieldNames(6), JsString(i.user))
       // scalastyle:on magic.number
       JsObject(fields: _*)
     }
@@ -2698,6 +2738,23 @@ object Main extends App {
       throw new Exception("read not implemented yet")
     }
   }
+
+  implicit object LineTypeFormat extends RootJsonFormat[LineType] {
+
+    override def write(obj: LineType): JsValue = {
+      JsString(obj.lineType.toString)
+    }
+
+    override def read(json: JsValue): LineType = {
+      json match {
+        case JsString(str) => LineType.toLineType(str)
+        case _ => throw DeserializationException("Unable to deserialize Line Type")
+      }
+    }
+  }
+
+  implicit val lineFormat = jsonFormat(Line.apply, "values", "lineType", "hostIdentifier")
+  implicit val commandResultFormat = jsonFormat(CommandResult.apply, "result", "currentContext")
 
   def commandRoutes: Route = pathPrefix("terminal") {
     path("start") {
@@ -2732,6 +2789,71 @@ object Main extends App {
           }
         }
       }
+    } ~ path(LongNumber / "execute") { terminalId =>
+      put {
+        entity(as[String]) { commandLine =>
+          val commandResult = Future {
+            val mayBeSession = sessionCache.get(terminalId)
+            val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
+            val result = mayBeSession match {
+              case Some(session) =>
+                val newSession = session.copy(lastUsedAt = new Date)
+                if (commandLine.indexOf('|') != -1) {
+                  val executedCommandResult = executePipedCommand(newSession, commandLine)
+                  Some(executedCommandResult)
+                } else if (session.currentCmdExecContext.instances.length > 0) {
+                  val executedCommandResult = executeSSHCommand(newSession, commandLine)
+                  Some(executedCommandResult)
+                } else {
+                  logger.warn(s"Not a valid command; commandLine : $commandLine")
+                  None
+                }
+              case None =>
+                // first thing that will hit us when we start running on a cluster
+                throw new IllegalStateException("no session with the given terminal id")
+            }
+            result.getOrElse(CommandResult(List.empty[Line], currentCmdExecContext))
+          }
+          onComplete(commandResult) {
+            case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
+            case Failure(exception) =>
+              logger.error(s"Unable to execute command ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to execute command")
+          }
+        }
+      }
+    } ~ path(LongNumber / "stop") { terminalId =>
+      put {
+        val stopSession = Future {
+          val mayBeSession = sessionCache.get(terminalId)
+          mayBeSession match {
+            case Some(terminalSession) =>
+              val sessions = terminalSession.sshSessions.flatMap(sshSession => sshSession.session)
+              val ioExceptions = sessions.foldLeft(List.empty[java.io.IOException]) {
+                (list, session) =>
+                  try {
+                    session.disconnect()
+                    list
+                  }
+                  catch {
+                    case e: java.io.IOException => e :: list
+                  }
+              }
+              if (ioExceptions.nonEmpty) {
+                logger.error(s"Failed due to multiple problems: ", ioExceptions)
+                throw new RuntimeException("Multiple problems", ioExceptions(0))
+              }
+            case None => logger.warn("There is no open session with id " + terminalId)
+          }
+          "Successfully stopped session"
+        }
+        onComplete(stopSession) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to stop Terminal Session. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to Stop Terminal Session.")
+        }
+      }
     }
   }
 
@@ -2756,7 +2878,7 @@ object Main extends App {
           val propertyAndSession = if (property == "privateIp") {
             val ip = instance.privateIpAddress
             ip match {
-              case Some(privateIp) => Some((property, privateIp, jsch.getSession(userName, privateIp)))
+              case Some(privateIp) => Some((property, privateIp, Option(jsch.getSession(userName, privateIp))))
               case None =>
                 logger.warn("privateIpAddress not found")
                 None
@@ -2764,18 +2886,20 @@ object Main extends App {
           } else {
             val ip = instance.publicDnsName
             ip match {
-              case Some(publicIp) => Some((property, publicIp, jsch.getSession(userName, publicIp)))
+              case Some(publicIp) => Some((property, publicIp, Option(jsch.getSession(userName, publicIp))))
               case None =>
                 logger.warn("publicDnsName not found")
                 None
             }
           }
           propertyAndSession.map { result =>
-            val (hostProp, serverIp, session) = result
-            session.setTimeout(increasedSessionTimeOut)
-            port.foreach(p => session.setPort(p))
-            session.connect()
-            (hostProp, SSHSession(serverIp, userName, jsch, session, keyLocation, port, passPhrase, increasedSessionTimeOut))
+            val (hostProp, serverIp, mayBeSession) = result
+            mayBeSession.foreach { session =>
+              session.setTimeout(increasedSessionTimeOut)
+              port.foreach(p => session.setPort(p))
+              session.connect()
+            }
+            (hostProp, SSHSession(serverIp, userName, jsch, mayBeSession, keyLocation, port, passPhrase, increasedSessionTimeOut))
           }
         }
         catch {
@@ -2815,6 +2939,86 @@ object Main extends App {
           case None => throw new Exception("userName not found")
         }
       case None => throw new RuntimeException("sshKey not uploaded")
+    }
+  }
+
+  def parseCommandLine(commandLine: String): Map[String, List[String]] = {
+    logger.info("Parsing command line [ " + commandLine + "]")
+    val commands = commandLine.split("\\|")
+    val commandsMap = commands.foldLeft(Map.empty[String, List[String]]) { (map, command) =>
+      val cmd = command.trim
+      val cmdName = cmd.split("\\s+")(0)
+      val argsLine = cmd.substring(cmdName.length).trim
+      logger.info(s"Command to be executed [$cmdName] with args and options: $argsLine")
+      val pattern = "[^\\s\"']+|\"[^\"]*\"|'[^']*'".r
+      val regexMatcher = pattern.findAllMatchIn(argsLine)
+      val matchList = regexMatcher.map(m => m.group(0)).toList
+      map + ((cmdName, matchList))
+    }
+    commandsMap
+  }
+
+  def executePipedCommand(session: TerminalSession, commadLine: String): CommandResult = {
+    val commandsMap = parseCommandLine(commadLine)
+    val executionContext = session.currentCmdExecContext
+    val (result, currentContext) = commandsMap.foldLeft(List.empty[Line], executionContext) { (inputAndContext, map) =>
+      val (input, context) = inputAndContext
+      val (commandName, argsList) = map
+      val commandResult: CommandResult = commandName match {
+        //TODO changes to be made by naveed
+        case Constants.LIST_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
+        case Constants.CD_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
+        case Constants.GREP_COMMAND => throw new RuntimeException(s"Functionality yet to be implemented for [$commandName]")
+        case _ => throw new RuntimeException(s"Unsupported command with name [$commandName]")
+      }
+      commandResult.currentContext match {
+        case Some(execContext) => (commandResult.result, execContext)
+        case None => throw new Exception(s"did not get execution context after executing Command with name [$commandName]")
+      }
+    }
+    CommandResult(result, Some(currentContext))
+  }
+
+  def executeSSHCommand(session: TerminalSession, command: String): CommandResult = {
+    val sshSessions = session.sshSessions
+    val lines = sshSessions.map { sshSession =>
+      val mayBeSession = sshSession.session
+      val futureLine = Future {
+        val mayBeOutput = mayBeSession.map { session =>
+          val channel = session.openChannel("exec").asInstanceOf[ChannelExec]
+          channel.setPty(true)
+          channel.setCommand(command)
+          getOutputFromChannel(channel)
+        }
+        mayBeOutput match {
+          case Some(output) => Line(List(output), LineType.toLineType("RESULT"), Some(sshSession.serverIp))
+          case None => throw new Exception("Session not found")
+        }
+      }
+      Await.result(futureLine, Duration(3L, TimeUnit.SECONDS))
+    }
+    CommandResult(lines, None)
+  }
+
+  def getOutputFromChannel(channel: ChannelExec): String = {
+    val results = new StringBuilder
+    val inputStream = channel.getInputStream
+    try {
+      channel.connect()
+      val buffer = new Array[Byte](1024 * 4)
+      // read output till the channel is closed with polling
+      while (channel.isConnected) {
+        if (inputStream.available > 0) {
+          val readCount = inputStream.read(buffer, 0, buffer.length)
+          if (readCount > 0) {
+            results.append(new java.lang.String(buffer, 0, readCount))
+          }
+        }
+      }
+      results.toString
+    }
+    finally {
+      inputStream.close()
     }
   }
 

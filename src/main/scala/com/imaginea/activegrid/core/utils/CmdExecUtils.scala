@@ -2,8 +2,6 @@ package com.imaginea.activegrid.core.utils
 
 import com.imaginea.activegrid.core.models._
 
-import scala.util.control.Breaks
-
 /**
   * Created by nagulmeeras on 07/12/16.
   */
@@ -12,44 +10,25 @@ object CmdExecUtils {
     val targetContext = context.trim.replaceAll("\\\\", "/")
     val paths = targetContext.split("/")
 
-    var excontext = targetContext.startsWith("/") match {
-      case true =>
-        if (cmdExecutionContext.contextType.contextType.equals(USER_HOME.contextType)) {
-          Some(cmdExecutionContext)
-        } else {
-          var context = cmdExecutionContext.parentContext
-          val br = new Breaks
-          while (context.nonEmpty) {
-            if (context.exists(cts => cts.contextType.contextType.equals(USER_HOME.contextType))) {
-              br.break()
-            } else {
-              context = context.flatMap(ctx => ctx.parentContext)
-            }
-          }
-          context
-        }
-
-      case false => Some(CommandExecutionContext(cmdExecutionContext.contextName,
-        cmdExecutionContext.contextType,
-        cmdExecutionContext.contextObject,
-        cmdExecutionContext.parentContext,
-        Array(), 1L, None))
+    val execContext = targetContext.startsWith("/") match {
+      case true => getExecContext(cmdExecutionContext)
+      case false => Some(cmdExecutionContext)
     }
-    paths.foreach { path =>
-      path match {
-        case p if p.isEmpty || p.equals("/") || p.equals(".") =>  //continue with next path
-        case p if p.equals("..") =>
-          excontext = excontext.flatMap(_.parentContext)
-          if (excontext.isEmpty) throw new Exception("No such context to navigate")
-        case _ =>
-          excontext.foreach { ctx =>
-            val contextType = getContextType(ctx)
-            val contextObject = getContextObject(ctx)
-            excontext = Some(CommandExecutionContext.apply(path, contextType, contextObject, excontext))
-          }
+    paths.foldLeft(execContext) { (execContext, contextPath) =>
+      if (contextPath.isEmpty || contextPath.equals("/") || contextPath.equals(".")) {
+        execContext
+      } else if (contextPath.equals("..")) {
+        val parentContext = execContext.flatMap(_.parentContext)
+        if (parentContext.isEmpty) throw new Exception("No such context to navigate")
+        parentContext
+      } else {
+        execContext.map { context =>
+          val contextType = getContextType(context)
+          val contextObject = getContextObject(context)
+          CommandExecutionContext.apply(contextPath, contextType, contextObject, execContext)
+        }
       }
     }
-    excontext
   }
 
   def getContextType(cmdExecContext: CommandExecutionContext): ContextType = {
@@ -79,5 +58,13 @@ object CmdExecUtils {
     val instnaceNodes = Neo4jRepository.getNodesByLabel(Instance.label)
     val instances = instnaceNodes.flatMap(node => Instance.fromNeo4jGraph(node.getId))
     instances.find(instance => instance.name.equals(instanceName))
+  }
+
+  def getExecContext(cmdExecutionContext: CommandExecutionContext): Option[CommandExecutionContext] = {
+    if (cmdExecutionContext.contextType.contextType.equals(USER_HOME.contextType)) {
+      Some(cmdExecutionContext)
+    } else {
+      cmdExecutionContext.parentContext.flatMap(ctx => getExecContext(ctx))
+    }
   }
 }
