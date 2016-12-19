@@ -10,7 +10,7 @@ class GrepCommand {
   val recursive: Boolean = false
   val inputs = List.empty[String]
 
-  def execute(commandExecutionContext: CommandExecutionContext, inputContexts : List[Line]): List[Line] = {
+  def execute(commandExecutionContext: CommandExecutionContext, inputContexts: List[Line]): List[Line] = {
     if (inputs.nonEmpty) {
       val pattern = inputs.head
       val providerContext = inputs.size match {
@@ -25,11 +25,12 @@ class GrepCommand {
               val contextObj = ctx.contextObject
               val contextType = ctx.contextType
               contextType match {
-                case USER_HOME => if (recursive) {
-                  searchAllSitesAndInstances(pattern)
-                } else {
-                  searchSites(pattern)
-                }
+                case USER_HOME =>
+                  if (recursive) {
+                    searchAllSitesAndInstances(pattern)
+                  } else {
+                    searchSites(pattern)
+                  }
                 case SITE =>
                   val site = contextObj.asInstanceOf[Site1]
                   if (recursive) {
@@ -42,14 +43,10 @@ class GrepCommand {
                   searchInstance(site, pattern)
               }
           }
-        case None => inputContexts.flatMap { line =>
-          line.values.flatMap { lineValue =>
-            lineValue match {
-              case value if value.contains(pattern) || value.matches(pattern) => Some(line)
-              case _ => None
-            }
-          }
+        case None => inputContexts.filter { line =>
+          line.values.exists(lineValue => lineValue.contains(pattern) || lineValue.matches(pattern))
         }
+        case None => List.empty[Line]
       }
     } else {
       throw new Exception("Command execution exception")
