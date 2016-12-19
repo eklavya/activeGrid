@@ -10,6 +10,7 @@ sealed trait AWSInstanceType {
 
   def rootPartitionSize: Double
 }
+
 // scalastyle:off cyclomatic.complexity method.length
 case object AWSInstanceType {
 
