@@ -11,40 +11,24 @@ object CmdExecUtils {
     val paths = targetContext.split("/")
 
     val execContext = targetContext.startsWith("/") match {
-      case true =>
-        if (cmdExecutionContext.contextType.contextType.equals(USER_HOME.contextType)) {
-          Some(cmdExecutionContext)
-        } else {
-          val context = cmdExecutionContext.parentContext
-          context.foldLeft(context) { (currentCtx, initCtx) =>
-            currentCtx.flatMap { currCtx =>
-              if (currCtx.contextType.contextType.equals(USER_HOME.contextType)) {
-                currentCtx
-              } else {
-                currCtx.parentContext
-              }
-            }
-          }
-        }
-
+      case true => getExecContext(cmdExecutionContext)
       case false => Some(cmdExecutionContext)
     }
     paths.foldLeft(execContext) { (execContext, contextPath) =>
-      contextPath match {
-        case path if path.isEmpty || path.equals("/") || path.equals(".") => execContext
-        case path if path.equals("..") =>
-          val parentContext = execContext.flatMap(_.parentContext)
-          if (parentContext.isEmpty) throw new Exception("No such context to navigate")
-          parentContext
-        case _ =>
-          execContext.map { context =>
-            val contextType = getContextType(context)
-            val contextObject = getContextObject(context)
-            CommandExecutionContext.apply(contextPath, contextType, contextObject, execContext)
-          }
+      if (contextPath.isEmpty || contextPath.equals("/") || contextPath.equals(".")) {
+        execContext
+      } else if (contextPath.equals("..")) {
+        val parentContext = execContext.flatMap(_.parentContext)
+        if (parentContext.isEmpty) throw new Exception("No such context to navigate")
+        parentContext
+      } else {
+        execContext.map { context =>
+          val contextType = getContextType(context)
+          val contextObject = getContextObject(context)
+          CommandExecutionContext.apply(contextPath, contextType, contextObject, execContext)
+        }
       }
     }
-    execContext
   }
 
   def getContextType(cmdExecContext: CommandExecutionContext): ContextType = {
@@ -74,5 +58,13 @@ object CmdExecUtils {
     val instnaceNodes = Neo4jRepository.getNodesByLabel(Instance.label)
     val instances = instnaceNodes.flatMap(node => Instance.fromNeo4jGraph(node.getId))
     instances.find(instance => instance.name.equals(instanceName))
+  }
+
+  def getExecContext(cmdExecutionContext: CommandExecutionContext): Option[CommandExecutionContext] = {
+    if (cmdExecutionContext.contextType.contextType.equals(USER_HOME.contextType)) {
+      Some(cmdExecutionContext)
+    } else {
+      cmdExecutionContext.parentContext.flatMap(ctx => getExecContext(ctx))
+    }
   }
 }

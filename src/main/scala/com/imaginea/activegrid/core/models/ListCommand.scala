@@ -21,17 +21,16 @@ class ListCommand extends Command {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   override def execute(commandExecutionContext: CommandExecutionContext, lines: List[Line]): CommandResult = {
-    val targetContext = newContext.toList match {
-      case contexts if contexts.size == 1 =>
-        val derivedContext = newContext(0)
-        CmdExecUtils.getDervivedContext(derivedContext, commandExecutionContext)
-      case _ =>
-        Some(CommandExecutionContext(commandExecutionContext.contextName,
-          commandExecutionContext.contextType,
-          commandExecutionContext.contextObject,
-          commandExecutionContext.parentContext))
+    val targetContext = if (newContext.toList.size == 1) {
+      val derivedContext = newContext(0)
+      CmdExecUtils.getDervivedContext(derivedContext, commandExecutionContext)
+    } else {
+      Some(CommandExecutionContext(commandExecutionContext.contextName,
+        commandExecutionContext.contextType,
+        commandExecutionContext.contextObject,
+        commandExecutionContext.parentContext))
     }
-    val lines: List[Line] = targetContext match {
+    val lines = targetContext match {
       case Some(context) =>
         val viewLevel = list match {
           case true => DETAILED
