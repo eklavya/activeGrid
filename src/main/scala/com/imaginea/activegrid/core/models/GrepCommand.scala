@@ -5,12 +5,12 @@ import com.imaginea.activegrid.core.utils.CmdExecUtils
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 
 /**
   * Created by nagulmeeras on 12/12/16.
   */
-class GrepCommand extends Command{
+class GrepCommand extends Command {
   @Parameter(names = Array("-i"), description = "is the pattern match case insensitive")
   var caseInsensitive: Boolean = false
 
@@ -22,7 +22,7 @@ class GrepCommand extends Command{
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def execute(commandExecutionContext: CommandExecutionContext, inputContexts: List[Line]): List[Line] = {
+  override def execute(commandExecutionContext: CommandExecutionContext, inputContexts: List[Line]): List[Line] = {
     if (inputs.nonEmpty) {
       val pattern = inputs.head
       val providerContext = if (inputs.size > 1) {
