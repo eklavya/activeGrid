@@ -2955,7 +2955,8 @@ object Main extends App {
 
   def parseCommandLine(commandLine: String): List[Command] = {
     val commandMap = Map(Constants.LIST_COMMAND -> new ListCommand,
-      Constants.CD_COMMAND -> new ChangeDirectoryCommand)
+      Constants.CD_COMMAND -> new ChangeDirectoryCommand,
+      Constants.GREP_COMMAND -> new GrepCommand)
     logger.info("Parsing command line [ " + commandLine + "]")
     val commands = commandLine.split("\\|")
     val commandsList = commands.map { command =>
