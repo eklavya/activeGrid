@@ -7,7 +7,7 @@ sealed trait WorkflowExecutionStrategy {
   val executionStrategy: String
 }
 
-case object WorkflowExecutionStrategy {
+object WorkflowExecutionStrategy {
 
   case object STOP_ON_STEP_FAILURE extends WorkflowExecutionStrategy {
     override val executionStrategy: String = "STOP_ON_STEP_FAILURE"

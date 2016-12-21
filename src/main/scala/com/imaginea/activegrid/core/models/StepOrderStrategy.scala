@@ -7,7 +7,7 @@ sealed trait StepOrderStrategy {
   val orderStrategy: String
 }
 
-case object StepOrderStrategy {
+object StepOrderStrategy {
 
   case object SEQUENTIAL extends StepOrderStrategy {
     override val orderStrategy: String = "SEQUENTIAL"
