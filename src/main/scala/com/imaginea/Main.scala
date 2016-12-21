@@ -1591,7 +1591,7 @@ object Main extends App {
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
                   val memInfo = instance.memoryInfo match { case Some(info) => info.total case _ => 0 }
                   val dskInfo = instance.rootDiskInfo match { case Some(info) => info.total case _ => 0 }
-                  InstanceFlavor(instance.instanceType.getOrElse(""),None,memInfo,dskInfo)
+                  InstanceFlavor(instance.instanceType.getOrElse(""), None, memInfo, dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)
 
@@ -2955,7 +2955,8 @@ object Main extends App {
 
   def parseCommandLine(commandLine: String): List[Command] = {
     val commandMap = Map(Constants.LIST_COMMAND -> new ListCommand,
-      Constants.CD_COMMAND -> new ChangeDirectoryCommand)
+      Constants.CD_COMMAND -> new ChangeDirectoryCommand,
+      Constants.GREP_COMMAND -> new GrepCommand)
     logger.info("Parsing command line [ " + commandLine + "]")
     val commands = commandLine.split("\\|")
     val commandsList = commands.map { command =>
