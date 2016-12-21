@@ -22,7 +22,7 @@ class GrepCommand extends Command {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  override def execute(commandExecutionContext: CommandExecutionContext, inputContexts: List[Line]): List[Line] = {
+  override def execute(commandExecutionContext: CommandExecutionContext, inputContexts: List[Line]): CommandResult = {
     if (inputs.nonEmpty) {
       val pattern = inputs.head
       val providerContext = if (inputs.size > 1) {
@@ -31,7 +31,7 @@ class GrepCommand extends Command {
         logger.debug("More number of inputs found for Grep command")
         None
       }
-      providerContext match {
+      val lines = providerContext match {
         case Some(providerCtx) =>
           val targetContext = CmdExecUtils.getDervivedContext(providerCtx, commandExecutionContext)
           targetContext match {
@@ -61,6 +61,7 @@ class GrepCommand extends Command {
           line.values.exists(lineValue => lineValue.contains(pattern) || lineValue.matches(pattern))
         }
       }
+      CommandResult(lines, Some(commandExecutionContext))
     } else {
       logger.warn("No input parameter found")
       throw new Exception("No input options found for command like File or Directory")
