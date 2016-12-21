@@ -9,7 +9,7 @@ sealed trait CumulativeStepExecutionStatus {
   override def toString: String = super.toString
 }
 
-case object CumulativeStepExecutionStatus {
+object CumulativeStepExecutionStatus {
 
   case object NOT_STARTED extends CumulativeStepExecutionStatus {
     override val cumulativeStepExecutionStatus: String = "Not Started"

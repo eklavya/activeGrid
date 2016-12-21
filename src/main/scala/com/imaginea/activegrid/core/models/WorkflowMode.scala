@@ -17,7 +17,7 @@ case object AGENT_LESS extends WorkflowMode {
   override val workflowMode: String = "AGENT_LESS"
 }
 
-case object WorkflowMode {
+object WorkflowMode {
   def toWorkFlowMode(workflowMode: String): WorkflowMode = {
     workflowMode match {
       case "AGENT" => AGENT
