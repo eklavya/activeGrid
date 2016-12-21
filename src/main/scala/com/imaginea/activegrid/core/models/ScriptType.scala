@@ -38,10 +38,6 @@ case object Play extends ScriptType {
   override val scriptType: String = "Play"
 }
 
-case object Task extends ScriptType {
-  override val scriptType: String = "Task"
-}
-
 case object File extends ScriptType {
   override val scriptType: String = "File"
 }
@@ -60,7 +56,6 @@ case object ScriptType {
       case "Ansible" => Ansible
       case "Yaml" => Yaml
       case "Play" => Play
-      case "Task" => Task
       case "File" => File
       case "Script" => Script
     }
