@@ -3,7 +3,9 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
+import scala.collection.JavaConversions._
+
+//scalastyle:ignore underscore.import
 
 
 /**
@@ -14,7 +16,7 @@ case class
 AppSettings(override val id: Option[Long], settings: Map[String, String], authSettings: Map[String, String]) extends BaseEntity
 
 object AppSettings {
-  def getAuthSettingsFor(settingName: String) : String = {
+  def getAuthSettingsFor(settingName: String): String = {
     "anonymous"
   }
 

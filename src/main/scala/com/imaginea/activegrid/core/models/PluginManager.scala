@@ -1,7 +1,5 @@
 package com.imaginea.activegrid.core.models
 
-import akka.http.scaladsl.common.StrictForm
-
 /**
   * Created by sivag on 22/12/16.
   */
@@ -11,7 +9,7 @@ object PluginManager {
     *
     * @param pluginName
     * @return
-    *        Fetches and return the plugin with given name
+    * Fetches and return the plugin with given name
     *
     */
   def getPlugin(pluginName: String): Option[PlugIn] = {

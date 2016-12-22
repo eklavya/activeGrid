@@ -3,7 +3,6 @@ package com.imaginea.activegrid.core.models
 import java.util.Base64
 
 
-
 /**
   * Created by sivag on 22/12/16.
   */
@@ -34,12 +33,12 @@ class AdminManagerImpl {
     * @param siteId
     * @param instanceId
     * @param resouce
-    * @return  ResouceUtilization
+    * @return ResouceUtilization
     *
     */
   //scalastyle:off cyclomatic.complexity method.length
   def fetchMetricData(baseUri: String, siteId: Long, instanceId: String, resouce: String): Option[ResouceUtilization] = {
-    val fakeReturnValue = ResouceUtilization("target",List.empty[DataPoint])
+    val fakeReturnValue = ResouceUtilization("target", List.empty[DataPoint])
     // Getting application management server.
     val serverDetails = getAPMServerByInstance(siteId, instanceId)
     serverDetails.map {
@@ -59,15 +58,15 @@ class AdminManagerImpl {
                 authStrategy match {
                   case "anonymous" =>
                     val apps = "apiuser:password"
-                    val ciper : String = "Basic" + Base64.getEncoder.encode(apps.getBytes()).toString
-                    val headers = Map("Authorization" ->  ciper)
+                    val ciper: String = "Basic" + Base64.getEncoder.encode(apps.getBytes()).toString
+                    val headers = Map("Authorization" -> ciper)
                     //todo getData implementation
-                    val queryParams = Map.empty[String,String]
+                    val queryParams = Map.empty[String, String]
                     val merticData = HttpClient.getData(url, headers, queryParams)
                     merticData match {
-                      case x:String if(x.length > 0) =>
+                      case x: String if (x.length > 0) =>
                         //todo extract properties to make ResourceUtilization bean.
-                        val valueFromJson =  fakeReturnValue
+                        val valueFromJson = fakeReturnValue
                         valueFromJson // dummy properties
                       case _ =>
                         fakeReturnValue
@@ -84,13 +83,13 @@ class AdminManagerImpl {
                 val query: APMQuery = APMQuery("carbon.agents.ip-10-191-186-149-a.cpuUsage", "-1h", "until", "json", sdetails.serverUrl)
                 // json format data
                 //todo sendDataAsJson implementation
-                val headers = Map.empty[String,String]
-                val queryParams = Map.empty[String,String]
+                val headers = Map.empty[String, String]
+                val queryParams = Map.empty[String, String]
                 val metricData2 = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
                 metricData2 match {
-                  case x:String if(x.length > 0) =>
+                  case x: String if (x.length > 0) =>
                     //todo extract properties to make ResourceUtilization bean.
-                    val valueFromJson =  fakeReturnValue
+                    val valueFromJson = fakeReturnValue
                     valueFromJson // dummy properties
                   case _ =>
                     fakeReturnValue
