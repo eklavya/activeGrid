@@ -10,9 +10,14 @@ import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
   * Created by nagulmeeras on 27/09/16.
   */
 
-case class AppSettings(override val id: Option[Long], settings: Map[String, String], authSettings: Map[String, String]) extends BaseEntity
+case class
+AppSettings(override val id: Option[Long], settings: Map[String, String], authSettings: Map[String, String]) extends BaseEntity
 
 object AppSettings {
+  def getAuthSettingsFor(settingName: String) : String = {
+    "anonymous"
+  }
+
   val repo = Neo4jRepository
   val labelName = "AppSettings"
   val settingsLableName = "Settings"

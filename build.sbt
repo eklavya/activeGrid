@@ -25,6 +25,7 @@ libraryDependencies ++= {
     "com.jcraft" % "jsch" % "0.1.50",
     "org.scalatest" %% "scalatest" % "3.0.0" % "test",
     "org.scalamock" %% "scalamock-scalatest-support" % "3.3.0" % "test",
-    "org.elasticsearch" % "elasticsearch" % "0.19.0"
+    "org.elasticsearch" % "elasticsearch" % "0.19.0",
+    "com.beust" % "jcommander" % "1.32"
   )
 }

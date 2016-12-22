@@ -16,7 +16,7 @@ import com.imaginea.activegrid.core.utils.Constants
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
 import scala.collection.immutable.List
 
 object AWSComputeAPI {
@@ -94,6 +94,7 @@ object AWSComputeAPI {
     }
     instances
   }
+
   //scalastyle:on method.length
 
   def getAWSInstances(amazonEC2: AmazonEC2): List[model.Instance] = {
