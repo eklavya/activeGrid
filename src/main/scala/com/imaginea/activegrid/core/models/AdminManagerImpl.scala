@@ -38,8 +38,8 @@ class AdminManagerImpl {
     *
     */
   //scalastyle:off cyclomatic.complexity method.length
-  def fetchMetricData(baseUri: String, siteId: Long, instanceId: String, resouce: String): ResouceUtilization = {
-    val resourceUtilization = ResouceUtilization("target",List.empty[DataPoint])
+  def fetchMetricData(baseUri: String, siteId: Long, instanceId: String, resouce: String): Option[ResouceUtilization] = {
+    val fakeReturnValue = ResouceUtilization("target",List.empty[DataPoint])
     // Getting application management server.
     val serverDetails = getAPMServerByInstance(siteId, instanceId)
     serverDetails.map {
@@ -62,11 +62,14 @@ class AdminManagerImpl {
                     val ciper : String = "Basic" + Base64.getEncoder.encode(apps.getBytes()).toString
                     val headers = Map("Authorization" ->  ciper)
                     //todo getData implementation
-                    val merticData = HttpClient.getData(url, headers, Map.empty[String,String])
-                    if (merticData != null && merticData.length > 0) {
-                      //new ObjectMapper().readValue(metricData, ResouceUtilization.getClass)
-                      //todo simulate above code and extract properties to make ResourceUtilization bean.
-                      resourceUtilization
+                    val queryParams = Map.empty[String,String]
+                    val merticData = HttpClient.getData(url, headers, queryParams)
+                    merticData match {
+                      case x:String if(x.length > 0) =>
+                        //todo extract properties to make ResourceUtilization bean.
+                        fakeReturnValue // dummy properties
+                      case _ =>
+                        fakeReturnValue
                     }
                 }
             }
@@ -80,17 +83,20 @@ class AdminManagerImpl {
                 val query: APMQuery = APMQuery("carbon.agents.ip-10-191-186-149-a.cpuUsage", "-1h", "until", "json", sdetails.serverUrl)
                 // json format data
                 //todo sendDataAsJson implementation
-                val metricData2 = HttpClient.sendDataAsJson("put", url, Map.empty, Map.empty, query)
-                if (metricData2 != null && metricData2.length > 0) {
-                  //todo extract properties to make ResourceUtilization bean.
-                  resourceUtilization // dummy properties
+                val headers = Map.empty[String,String]
+                val queryParams = Map.empty[String,String]
+                val metricData2 = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
+                metricData2 match {
+                  case x:String if(x.length > 0) =>
+                    //todo extract properties to make ResourceUtilization bean.
+                    fakeReturnValue // dummy properties
+                  case _ =>
+                    fakeReturnValue
                 }
-
             }
 
-          case _ => resourceUtilization
+          case _ => fakeReturnValue
         }
     }
-    resourceUtilization
   }
 }
