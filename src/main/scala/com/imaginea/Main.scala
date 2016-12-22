@@ -345,7 +345,7 @@ object Main extends App {
   implicit val conditionTypeJson = ConditionTypeJson
   implicit val scaleTypeJson = ScaleTypeJson
   implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
-  implicit val autoScalingPolicyJson = jsonFormat5(AutoScalingPolicy.apply)
+  implicit val autoScalingPolicyJson = jsonFormat8(AutoScalingPolicy.apply)
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups",
     "groupsList", "applications", "groupBy", "scalingPolicies")
   implicit val pageApplicationFormat = jsonFormat4(Page[Application])

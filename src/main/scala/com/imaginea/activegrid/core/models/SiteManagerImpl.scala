@@ -11,10 +11,16 @@ import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
   */
 object SiteManagerImpl
 {
+  def getAuthSettingsFor(authMechanizm: String) : String = {
+    // Get auth settings and return the respective fields that requred for "authMechanizm"
+    "dummyResponse"
+  }
 
-  /**
-    * todo autoscaling policy-evaluation part
-    */
+  def getInstance(siteId: Long, instanceId: String) : APMProvider = {
+    //todo implementation required.
+    APMProvider.toProvider("")
+  }
+
   def setAutoScalingGroupSize(siteId: Long, scalingGroupId: Long, scaleSize: Int): Unit = {
     Site1.fromNeo4jGraph(siteId).foreach {
       site =>
@@ -85,9 +91,9 @@ object SiteManagerImpl
     //scalastyle:on magic.number
     val jobType = JobType.convert("POLICY")
     val uriInfo = Some(AGU.getUriInfo())
-    //TODO 'name' property have to set from  AutoScaling Policy. Bean declaration required
-    val name = "DummyName"
-    val job = Job(Some(0L),"PolicyJob",jobType,Some(""),startDelay,reptCount,reptIntrvl,Some(true))
+    // refer https://github.com/eklavya/activeGrid/issues/64
+    val name = policy.name
+    val job = Job(Some(0L),name,jobType,Some(""),startDelay,reptCount,reptIntrvl,Some(true))
     val pjob = PolicyJob(Some(policyNode.getId),siteId,uriInfo,Some(job),Some(policy))
     JM.scheduleJob(pjob)
     policy
