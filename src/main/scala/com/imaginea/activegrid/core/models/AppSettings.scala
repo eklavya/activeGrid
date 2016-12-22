@@ -16,8 +16,9 @@ case class
 AppSettings(override val id: Option[Long], settings: Map[String, String], authSettings: Map[String, String]) extends BaseEntity
 
 object AppSettings {
+  //todo implementation pending,
   def getAuthSettingsFor(settingName: String): String = {
-    "anonymous"
+    "anonymous" // dummy response
   }
 
   val repo = Neo4jRepository
