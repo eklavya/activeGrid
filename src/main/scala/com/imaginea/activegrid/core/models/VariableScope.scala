@@ -25,7 +25,7 @@ case object EXTRA extends VariableScope {
   override val variableScope: String = "EXTRA"
 }
 
-case object VariableScope {
+object VariableScope {
   def toVariableScope(variableScope: String): VariableScope = {
     variableScope match {
       case "GROUP" => GROUP

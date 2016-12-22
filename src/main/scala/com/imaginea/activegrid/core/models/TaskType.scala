@@ -17,7 +17,7 @@ case object HANDLER_TASK extends TaskType {
   override val taskType: String = "HANDLER_TASK"
 }
 
-case object TaskType {
+object TaskType {
   def toTaskType(taskType: String): TaskType = {
     taskType match {
       case "TASK" => TASK
