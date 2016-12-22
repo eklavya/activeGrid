@@ -67,7 +67,8 @@ class AdminManagerImpl {
                     merticData match {
                       case x:String if(x.length > 0) =>
                         //todo extract properties to make ResourceUtilization bean.
-                        fakeReturnValue // dummy properties
+                        val valueFromJson =  fakeReturnValue
+                        valueFromJson // dummy properties
                       case _ =>
                         fakeReturnValue
                     }
@@ -89,7 +90,8 @@ class AdminManagerImpl {
                 metricData2 match {
                   case x:String if(x.length > 0) =>
                     //todo extract properties to make ResourceUtilization bean.
-                    fakeReturnValue // dummy properties
+                    val valueFromJson =  fakeReturnValue
+                    valueFromJson // dummy properties
                   case _ =>
                     fakeReturnValue
                 }
