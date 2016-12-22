@@ -15,7 +15,7 @@ object PluginManager {
   def getPlugin(pluginName: String): Option[PlugIn] = {
     //todo implementation pending
     // Dummy response
-    PlugIn.fromNeo4jGraph(0l)
+    PlugIn.fromNeo4jGraph(0L)
   }
 
 }

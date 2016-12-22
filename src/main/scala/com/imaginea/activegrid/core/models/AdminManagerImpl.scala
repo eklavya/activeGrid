@@ -17,7 +17,7 @@ class AdminManagerImpl {
   def getAPMServerByInstance(siteId: Long, instanceId: String): Option[APMServerDetails] = {
 
     //todo implementation required.
-    APMServerDetails.fromNeo4jGraph(0l) // Fake response
+    APMServerDetails.fromNeo4jGraph(0L) // Fake response
   }
 
   /**
