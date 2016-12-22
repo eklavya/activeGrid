@@ -14,7 +14,10 @@ case class AutoScalingPolicy(override val id: Option[Long],
                              application: Option[Application],
                              primaryConditions: List[PolicyCondition],
                              secondaryConditions: List[PolicyCondition],
-                             lastAppliedAt: String) extends BaseEntity
+                             lastAppliedAt: String,
+                             name:String,
+                             descritpion:String,
+                             policyType:PolicyType) extends BaseEntity
 
 object AutoScalingPolicy {
 
@@ -47,8 +50,12 @@ object AutoScalingPolicy {
           ""
         }
 
+        val name = Neo.getProperty[String](policy,"name").getOrElse("")
+        val desciption = Neo.getProperty[String](policy,"desciption").getOrElse("")
+        val policyType = PolicyType.toType(Neo.getProperty[String](policy,"plcyType").getOrElse(""))
+
         //AutoScalingPolicy(Some(id),primeConditions,secondConditins,application,lastAppliedAt)
-        AutoScalingPolicy(Some(id), application, primeConditions, secondConditions, lastAppliedAt)
+        AutoScalingPolicy(Some(id), application, primeConditions, secondConditions, lastAppliedAt,name,desciption,policyType)
 
     }
   }
@@ -59,7 +66,8 @@ object AutoScalingPolicy {
 
     override def toNeo4jGraph(entity: AutoScalingPolicy): Node = {
 
-      val properties = Map("appliedTime" -> entity.lastAppliedAt);
+      val properties = Map("appliedTime" -> entity.lastAppliedAt,"name" -> entity.name,
+        "description" -> entity.descritpion,"polcyType" -> entity.policyType.toString);
       val policyNode = Neo.saveEntity[AutoScalingPolicy](AutoScalingPolicy.lable, entity.id, properties)
 
       //Mapping applications
