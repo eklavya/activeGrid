@@ -55,7 +55,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
                 val merticData = HttpClient.getData(url, headers, queryParams)
-                convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass)
+                convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass).headOption
             }.getOrElse(fakeReturnValue)
           case GRAPHITE =>
             val plugIn = PluginManager.getPlugin("apm-graphite")
@@ -70,7 +70,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
                 val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
-                convertResposneToType[ResouceUtilization](metricData,ResouceUtilization.getClass)
+                convertResposneToType[ResouceUtilization](metricData,ResouceUtilization.getClass).headOption
             }.getOrElse(fakeReturnValue)
           case _ => fakeReturnValue
         }
@@ -84,7 +84,7 @@ object AdminManagerImpl {
     *         Parse response to make list of  objects of T type.
     *
     */
-  def convertResposneToType[T:Manifest](response:String, clsType:Class[_]) : Option[T] = {
+  def convertResposneToType[T:Manifest](response:String, clsType:Class[_]) : List[T] = {
     val emptyResponse = List.empty[T]
     if(response.nonEmpty){
       // logic to parse response and populate values into T's properties.
