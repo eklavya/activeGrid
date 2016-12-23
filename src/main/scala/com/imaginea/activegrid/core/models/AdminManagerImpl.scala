@@ -55,7 +55,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
                 val merticData = HttpClient.getData(url, headers, queryParams)
-                responseAsOfType[ResouceUtilization](merticData,ResouceUtilization.getClass).last
+                convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass).last
             }.getOrElse(fakeReturnValue)
           case GRAPHITE =>
             val plugIn = PluginManager.getPlugin("apm-graphite")
@@ -70,7 +70,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
                 val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
-                responseAsOfType[ResouceUtilization](metricData,ResouceUtilization.getClass).last
+                convertResposneToType[ResouceUtilization](metricData,ResouceUtilization.getClass).last
             }.getOrElse(fakeReturnValue)
           case _ => fakeReturnValue
         }
@@ -94,14 +94,14 @@ object AdminManagerImpl {
               Map[String, String]("Authorization" -> ciper)
             case _ => Map.empty[String, String]
           }
-          val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}", plugIn.name.replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString())))
+          val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}",plugIn.name).replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString()))
           val response = HttpClient.getData(url, headers, queryParams)
           //todo logic that extract data from response and covnert data into application beans.
-          dummyResponse
-
+          convertResposneToType[Application](response,Application.getClass)
       }
       case GRAPHITE => // No procedure implemented.
-        dummyResponse
+        val response = "sample"
+        convertResposneToType[Application](response,Application.getClass)
       case _ =>
         dummyResponse
     }
@@ -116,9 +116,9 @@ object AdminManagerImpl {
     *         Parse response to make list of  objects of T type.
     *
     */
-  def responseAsOfType[T:Manifest](response:String, clsType:Class[_]) : List[T] = {
+  def convertResposneToType[T:Manifest](response:String, clsType:Class[_]) : List[T] = {
     val emptyResponse = List.empty[T]
-    if(response != null && response.length > 0){
+    if(response.length > 0){
       // logic to parse response and populate values into T's properties.
       emptyResponse
     }
