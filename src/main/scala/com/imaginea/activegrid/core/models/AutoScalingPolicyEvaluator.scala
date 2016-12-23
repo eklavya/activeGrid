@@ -68,8 +68,10 @@ object AutoScalingPolicyEvaluator {
         condition.appTier.exists {
           appTier => appTier.instances.exists { instance =>
             // todo instance usuage and resouce utilization will realized when APManager's 'fetchMetricData' completed.
-            val metrics = new ResouceUtilization("", List.empty[DataPoint])
-            metrics.dataPoints.exists(dp => dp.value > condition.thresHold)
+            val metrics = AdminManagerImpl.fetchMetricData(baseUri,siteId,instance.id.getOrElse(0L).toString,"cpu")
+            metrics.map {
+              mtrics => mtrics.dataPoints.exists(dp=>dp.value > condition.thresHold)
+            }.getOrElse(false)
           }
         }
       case _ => false
