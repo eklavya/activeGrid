@@ -10,6 +10,7 @@ import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
   * Created by sivag on 3/11/16.
   */
 object SiteManagerImpl {
+
   def getAuthSettingsFor(authMechanizm: String): String = {
     // Get auth settings and return the respective fields that requred for "authMechanizm"
     "dummyResponse"

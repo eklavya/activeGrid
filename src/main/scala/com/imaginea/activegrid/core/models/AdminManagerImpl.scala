@@ -6,8 +6,7 @@ import java.util.Base64
 /**
   * Created by sivag on 22/12/16.
   */
-class AdminManagerImpl {
-
+object AdminManagerImpl {
   /**
     *
     * @param siteId
@@ -99,5 +98,28 @@ class AdminManagerImpl {
           case _ => fakeReturnValue
         }
     }
+  }
+  def fetchApplicationMetrics(baseUri:String,aPMServerDetails: APMServerDetails) : List[Application] = {
+    val dummyResponse = List.empty[Application]
+    aPMServerDetails.provider match {
+      case NEWRELIC => PluginManager.getPlugin("apm-newrilic").map {
+        plugIn =>
+          val queryParams = Map.empty[String,String]
+          val headers = AppSettings.getAuthSettingsFor("auth.strategy") match {
+            case "anonymous" => val apps = "apiuser:password"
+                val ciper = "Basic" + Base64.getEncoder.encode(apps.getBytes).toString
+              Map[String,String]("Authorization" -> ciper)
+            case _ => Map.empty[String,String]
+          }
+          val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}", plugIn.name.replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString())))
+          val response = HttpClient.getData(url,headers,queryParams)
+          //todo logic that extract data from response and covnert data into application beans.
+            
+          dummyResponse
+
+
+      }
+      }
+    dummyResponse
   }
 }
