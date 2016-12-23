@@ -45,7 +45,7 @@ object AdminManagerImpl {
         providerType match {
           case NEWRELIC =>
             val plugIn = PluginManager.getPlugin("apm-newrlic")
-            plugIn.map {
+            plugIn.flatMap {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/metrics".replace("{plugin}",
                   pi.name.replace("{serverId}", sdetails.id.toString())))
@@ -55,11 +55,11 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
                 val merticData = HttpClient.getData(url, headers, queryParams)
-                convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass).last
+                convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass)
             }.getOrElse(fakeReturnValue)
           case GRAPHITE =>
             val plugIn = PluginManager.getPlugin("apm-graphite")
-            plugIn.map {
+            plugIn.flatMap {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/metrics".replace("{plugin}", pi.name))
                 //todo setAuthStrategy implementation
@@ -70,7 +70,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
                 val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
-                convertResposneToType[ResouceUtilization](metricData,ResouceUtilization.getClass).last
+                convertResposneToType[ResouceUtilization](metricData,ResouceUtilization.getClass)
             }.getOrElse(fakeReturnValue)
           case _ => fakeReturnValue
         }
@@ -84,9 +84,9 @@ object AdminManagerImpl {
     *         Parse response to make list of  objects of T type.
     *
     */
-  def convertResposneToType[T:Manifest](response:String, clsType:Class[_]) : List[T] = {
+  def convertResposneToType[T:Manifest](response:String, clsType:Class[_]) : Option[T] = {
     val emptyResponse = List.empty[T]
-    if(response != null && response.length > 0){
+    if(response.nonEmpty){
       // logic to parse response and populate values into T's properties.
       emptyResponse
     }
