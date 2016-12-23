@@ -8,7 +8,6 @@ import java.util.Base64
   */
 object AdminManagerImpl {
   /**
-    *
     * @param siteId
     * @param instanceId
     * @return APM Server details with given site and instance id
@@ -27,7 +26,6 @@ object AdminManagerImpl {
   }
 
   /**
-    *
     * @param baseUri
     * @param siteId
     * @param instanceId
@@ -47,79 +45,106 @@ object AdminManagerImpl {
         providerType match {
           case NEWRELIC =>
             val plugIn = PluginManager.getPlugin("apm-newrlic")
-            plugIn match {
-              case Some(pi) =>
+            plugIn.map {
+              pi =>
                 val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/metrics".replace("{plugin}",
                   pi.name.replace("{serverId}", sdetails.id.toString())))
                 val prop = Map("resouce" -> resouce, "instance" -> instance)
                 //todo "getAuthSettingsFor" implementation
                 val authStrategy = AppSettings.getAuthSettingsFor("auth.strategy")
-                authStrategy match {
-                  case "anonymous" =>
-                    val apps = "apiuser:password"
-                    val ciper: String = "Basic" + Base64.getEncoder.encode(apps.getBytes()).toString
-                    val headers = Map("Authorization" -> ciper)
-                    //todo getData implementation
-                    val queryParams = Map.empty[String, String]
-                    val merticData = HttpClient.getData(url, headers, queryParams)
-                    merticData match {
-                      case x: String if (x.length > 0) =>
-                        //todo extract properties to make ResourceUtilization bean.
-                        val valueFromJson = fakeReturnValue
-                        valueFromJson // dummy properties
-                      case _ =>
-                        fakeReturnValue
-                    }
-                }
-            }
+                val headers = getHeadersAsPerAuthStrategy(authStrategy)
+                val queryParams = Map.empty[String, String]
+                val merticData = HttpClient.getData(url, headers, queryParams)
+                responseAsOfType[ResouceUtilization](merticData,ResouceUtilization.getClass).last
+            }.getOrElse(fakeReturnValue)
           case GRAPHITE =>
             val plugIn = PluginManager.getPlugin("apm-graphite")
-            plugIn match {
-              case Some(pi) =>
+            plugIn.map {
+              pi =>
                 val url = baseUri.concat("/plugins/{plugin}/metrics".replace("{plugin}", pi.name))
                 //todo setAuthStrategy implementation
                 setAuthStrategy()
                 val query: APMQuery = APMQuery("carbon.agents.ip-10-191-186-149-a.cpuUsage", "-1h", "until", "json", sdetails.serverUrl)
                 // json format data
                 //todo sendDataAsJson implementation
-                val headers = Map.empty[String, String]
+                val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
-                val metricData2 = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
-                metricData2 match {
-                  case x: String if (x.length > 0) =>
-                    //todo extract properties to make ResourceUtilization bean.
-                    val valueFromJson = fakeReturnValue
-                    valueFromJson // dummy properties
-                  case _ =>
-                    fakeReturnValue
-                }
-            }
-
+                val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
+                responseAsOfType[ResouceUtilization](metricData,ResouceUtilization.getClass).last
+            }.getOrElse(fakeReturnValue)
           case _ => fakeReturnValue
         }
     }
   }
-  def fetchApplicationMetrics(baseUri:String,aPMServerDetails: APMServerDetails) : List[Application] = {
+
+  /**
+    * @param baseUri
+    * @param aPMServerDetails
+    * @return
+    */
+  def fetchApplicationMetrics(baseUri: String, aPMServerDetails: APMServerDetails): List[Application] = {
     val dummyResponse = List.empty[Application]
     aPMServerDetails.provider match {
       case NEWRELIC => PluginManager.getPlugin("apm-newrilic").map {
         plugIn =>
-          val queryParams = Map.empty[String,String]
+          val queryParams = Map.empty[String, String]
           val headers = AppSettings.getAuthSettingsFor("auth.strategy") match {
             case "anonymous" => val apps = "apiuser:password"
-                val ciper = "Basic" + Base64.getEncoder.encode(apps.getBytes).toString
-              Map[String,String]("Authorization" -> ciper)
-            case _ => Map.empty[String,String]
+              val ciper = "Basic" + Base64.getEncoder.encode(apps.getBytes).toString
+              Map[String, String]("Authorization" -> ciper)
+            case _ => Map.empty[String, String]
           }
           val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}", plugIn.name.replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString())))
-          val response = HttpClient.getData(url,headers,queryParams)
+          val response = HttpClient.getData(url, headers, queryParams)
           //todo logic that extract data from response and covnert data into application beans.
-            
           dummyResponse
 
-
       }
-      }
+      case GRAPHITE => // No procedure implemented.
+        dummyResponse
+      case _ =>
+        dummyResponse
+    }
     dummyResponse
+  }
+
+  /**
+    * @param response
+    * @param clsType
+    * @tparam T
+    * @return
+    *         Parse response to make list of  objects of T type.
+    *
+    */
+  def responseAsOfType[T:Manifest](response:String, clsType:Class[_]) : List[T] = {
+    val emptyResponse = List.empty[T]
+    if(response != null && response.length > 0){
+      // logic to parse response and populate values into T's properties.
+      emptyResponse
+    }
+    else {
+      emptyResponse
+    }
+  }
+
+  /**
+    * @param authStrategy
+    * @return
+    */
+
+  def getHeadersAsPerAuthStrategy(authStrategy:String) : Map[String,String] = {
+    val emptyHeaders = Map.empty[String,String]
+    authStrategy match {
+      case "anonymous" =>
+        val apps = "apiuser:password"
+        val ciper: String = "Basic" + Base64.getEncoder.encode(apps.getBytes()).toString
+        val headers = Map("Authorization" -> ciper)
+        headers
+      case "someotherstrategy" =>
+        // configuring headers
+        emptyHeaders
+      case _ =>
+        emptyHeaders
+    }
   }
 }
