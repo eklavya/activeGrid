@@ -7,27 +7,6 @@ import java.util.Base64
   * Created by sivag on 22/12/16.
   */
 object AdminManagerImpl {
-  /**
-    * @param siteId
-    * @param instanceId
-    * @return APM Server details with given site and instance id
-    */
-  def getAPMServerByInstance(siteId: Long, instanceId: String): Option[APMServerDetails] = {
-    Site1.fromNeo4jGraph(siteId).flatMap {
-      site => site.applications.flatMap{
-        app => app.tiers.filter {
-          tier =>  tier.instances.exists(instance =>  instance.id.getOrElse(0L).toString.equals(instanceId))
-        }.flatMap(_.apmServer)
-      }.headOption
-    }
-  }
-
-  /**
-    * Set basic authentication headers in request.
-    */
-  def setAuthStrategy(): Unit = {
-    //todo implementation required
-  }
 
   /**
     * @param baseUri
@@ -41,7 +20,7 @@ object AdminManagerImpl {
   def fetchMetricData(baseUri: String, siteId: Long, instanceId: String, resouce: String): Option[ResouceUtilization] = {
     val fakeReturnValue = ResouceUtilization("target", List.empty[DataPoint])
     // Getting application management server.
-    val serverDetails = getAPMServerByInstance(siteId, instanceId)
+    val serverDetails = APMServerDetails.getAPMServerByInstance(siteId, instanceId)
     serverDetails.map {
       sdetails =>
         val instancenName = Instance.getInstance(siteId, instanceId).map(i => i.name).getOrElse("NOT PROVIDED")
@@ -65,8 +44,6 @@ object AdminManagerImpl {
             plugIn.map {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/metrics".replace("{plugin}", pi.name))
-                //todo setAuthStrategy implementation
-                setAuthStrategy()
                 val query: APMQuery = APMQuery("carbon.agents.ip-10-191-186-149-a.cpuUsage", "-1h", "until", "json", sdetails.serverUrl)
                 // json format data
                 //todo sendDataAsJson implementation
