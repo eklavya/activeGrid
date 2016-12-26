@@ -17,6 +17,7 @@ object AdminManagerImpl {
     *
     */
   //scalastyle:off cyclomatic.complexity method.length
+  //todo 'sendDataAsJson' implementation
   def fetchMetricData(baseUri: String, siteId: Long, instanceId: String, resouce: String): Option[ResouceUtilization] = {
     val fakeReturnValue = ResouceUtilization("target", List.empty[DataPoint])
     // Getting application management server.
@@ -32,7 +33,6 @@ object AdminManagerImpl {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/metrics".replace("{plugin}", pi.name).replace("{serverId}", sdetails.id.toString()))
                 val prop = Map("resouce" -> resouce, "instance" -> instancenName)
-                //todo "getAuthSettingsFor" implementation
                 val authStrategy = AppSettings.getAuthSettingsFor("auth.strategy")
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
@@ -45,8 +45,6 @@ object AdminManagerImpl {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/metrics".replace("{plugin}", pi.name))
                 val query: APMQuery = APMQuery("carbon.agents.ip-10-191-186-149-a.cpuUsage", "-1h", "until", "json", sdetails.serverUrl)
-                // json format data
-                //todo sendDataAsJson implementation
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
                 val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
@@ -62,7 +60,9 @@ object AdminManagerImpl {
     * @param baseUri
     * @param aPMServerDetails
     * @return
+    *
     */
+  //todo getData and convertResposneToType methods implementation
   def fetchApplicationMetrics(baseUri: String, aPMServerDetails: APMServerDetails): List[Application] = {
     val dummyResponse = List.empty[Application]
     aPMServerDetails.provider match {
