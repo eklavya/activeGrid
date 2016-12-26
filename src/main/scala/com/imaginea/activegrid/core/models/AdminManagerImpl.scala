@@ -58,6 +58,7 @@ object AdminManagerImpl {
   }
 
   /**
+    * Application metrics will describe the running status of application.
     * @param baseUri
     * @param aPMServerDetails
     * @return
@@ -84,6 +85,8 @@ object AdminManagerImpl {
   }
 
   /**
+    * This method will read the response and convert it to specific type.
+    * Default implementation would be fasterxml jaxb which converts json to objects of specific types
     * @param response
     * @param clsType
     * @tparam T
@@ -103,6 +106,7 @@ object AdminManagerImpl {
   }
 
   /**
+    * Connfigure the headers required for basic authorization.
     * @param authStrategy
     * @return
     */

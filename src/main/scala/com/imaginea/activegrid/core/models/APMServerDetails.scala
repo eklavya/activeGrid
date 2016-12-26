@@ -31,7 +31,6 @@ object APMServerDetails {
     Site1.fromNeo4jGraph(siteId).flatMap {
       site => site.applications.flatMap{
         app => app.tiers.filter {
-
           tier =>  tier.instances.exists(instance =>  instance.id.getOrElse(0L).toString.equals(instanceId))
         }.flatMap(_.apmServer)
       }.headOption
