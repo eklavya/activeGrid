@@ -16,7 +16,7 @@ object AdminManagerImpl {
     Site1.fromNeo4jGraph(siteId).flatMap {
       site => site.applications.flatMap{
         app => app.tiers.filter {
-          tier => tier.instances.exists(instance => instance.id.getOrElse(0L).toString.equals(instanceId))
+          tier =>  tier.instances.exists(instance =>  instance.id.getOrElse(0L).toString.equals(instanceId))
         }.flatMap(_.apmServer)
       }.headOption
     }
@@ -44,15 +44,15 @@ object AdminManagerImpl {
     val serverDetails = getAPMServerByInstance(siteId, instanceId)
     serverDetails.map {
       sdetails =>
-        val instance = SiteManagerImpl.getInstance(siteId, instanceId)
-        val providerType = APMProvider.toProvider(instance.provider)
+        val instancenName = Instance.getInstance(siteId, instanceId).map(i => i.name).getOrElse("NOT PROVIDED")
+        val providerType = sdetails.provider
         providerType match {
           case NEWRELIC =>
             val plugIn = PluginManager.getPlugin("apm-newrlic")
             plugIn.map {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/metrics".replace("{plugin}", pi.name).replace("{serverId}", sdetails.id.toString()))
-                val prop = Map("resouce" -> resouce, "instance" -> instance)
+                val prop = Map("resouce" -> resouce, "instance" -> instancenName)
                 //todo "getAuthSettingsFor" implementation
                 val authStrategy = AppSettings.getAuthSettingsFor("auth.strategy")
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
@@ -91,13 +91,7 @@ object AdminManagerImpl {
       case NEWRELIC => PluginManager.getPlugin("apm-newrilic").map {
         plugIn =>
           val queryParams = Map.empty[String, String]
-          val headers = AppSettings.getAuthSettingsFor("auth.strategy") match {
-            case "anonymous" =>
-              val apps = "apiuser:password"
-              val ciper = "Basic" + Base64.getEncoder.encode(apps.getBytes).toString
-              Map[String, String]("Authorization" -> ciper)
-            case _ => Map.empty[String, String]
-          }
+          val headers = getHeadersAsPerAuthStrategy("anonymous")
           val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}",plugIn.name).replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString()))
           val response = HttpClient.getData(url, headers, queryParams)
           //todo logic that extract data from response and covnert data into application beans.

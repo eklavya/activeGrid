@@ -27,6 +27,22 @@ object APMServerDetails {
   val label = APMServerDetails.getClass.getName
   val relationLabel = ActiveGridUtils.relationLbl(label)
 
+  def getAPMServerByInstance(siteId: Long, instanceId: String): Option[APMServerDetails] = {
+    Site1.fromNeo4jGraph(siteId).flatMap {
+      site => site.applications.flatMap{
+        app => app.tiers.filter {
+
+          tier =>  tier.instances.exists(instance =>  instance.id.getOrElse(0L).toString.equals(instanceId))
+        }.flatMap(_.apmServer)
+      }.headOption
+    }
+  }
+  def getAPMProvider(siteId:Long,instanceId:String): APMProvider = {
+      getAPMServerByInstance(siteId,instanceId).map {
+        server => server.provider
+      }.getOrElse(APMProvider.toProvider(""))
+  }
+
   def fromNeo4jGraph(nodeId: Long): Option[APMServerDetails] = {
     logger.debug(s"Executing $getClass ::fromNeo4jGraph ")
     neo4JRepository.withTx {
