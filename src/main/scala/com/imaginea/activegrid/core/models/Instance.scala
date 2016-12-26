@@ -282,7 +282,7 @@ object Instance {
     }
   }
 
-  def getInstance(siteId: Long, instanceId: String): Option[Instance] = {
+  def instanceBySiteAndInstanceID(siteId: Long, instanceId: String): Option[Instance] = {
     Site1.fromNeo4jGraph(siteId).flatMap {
       site => site.applications.flatMap {
         app => app.instances.filter {

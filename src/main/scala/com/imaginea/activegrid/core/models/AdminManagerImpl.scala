@@ -24,7 +24,7 @@ object AdminManagerImpl {
     val serverDetails = APMServerDetails.getAPMServerByInstance(siteId, instanceId)
     serverDetails.map {
       sdetails =>
-        val instancenName = Instance.getInstance(siteId, instanceId).map(i => i.name).getOrElse("NOT PROVIDED")
+        val instancenName = Instance.instanceBySiteAndInstanceID(siteId, instanceId).map(i => i.name).getOrElse("NOT PROVIDED")
         val providerType = sdetails.provider
         providerType match {
           case NEWRELIC =>
