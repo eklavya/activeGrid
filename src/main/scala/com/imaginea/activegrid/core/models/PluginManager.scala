@@ -12,11 +12,13 @@ object PluginManager {
     * Fetches and return the plugin with given name
     *
     */
-  def getPlugin(pluginName: String): Option[PlugIn] = {
-    //todo implementation pending
-    // Dummy response
-    PlugIn.fromNeo4jGraph(0L)
-  }
+    def getPlugin(pluginName:String) : Option[PlugIn] = {
+      Neo4jRepository.getNodesByLabel(PlugIn.labelName).filter {
+        plugin =>   plugin.hasProperty("name") && plugin.getProperty("name").toString.equals(pluginName)
+      }.flatMap {
+        plgnNode => PlugIn.fromNeo4jGraph(plgnNode.getId)
+      }.headOption
+    }
 
 }
 

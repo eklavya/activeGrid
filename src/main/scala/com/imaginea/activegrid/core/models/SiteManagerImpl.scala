@@ -11,16 +11,21 @@ import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
   */
 object SiteManagerImpl {
 
+  /**
+    *
+    * @param authMechanizm
+    * @return
+    */
   def getAuthSettingsFor(authMechanizm: String): String = {
-    // Get auth settings and return the respective fields that requred for "authMechanizm"
-    "dummyResponse"
+   AppSettings.getAuthSettingsFor(authMechanizm)
   }
 
-  def getInstance(siteId: Long, instanceId: String): APMProvider = {
-    //todo implementation required.
-    APMProvider.toProvider("")
-  }
-
+  /**
+    *
+    * @param siteId
+    * @param scalingGroupId
+    * @param scaleSize
+    */
   def setAutoScalingGroupSize(siteId: Long, scalingGroupId: Long, scaleSize: Int): Unit = {
     Site1.fromNeo4jGraph(siteId).foreach {
       site =>
@@ -41,6 +46,11 @@ object SiteManagerImpl {
     }
   }
 
+  /**
+    *
+    * @param siteId
+    * @return
+    */
   def getAutoScalingPolicies(siteId: Long): List[AutoScalingPolicy] = {
     Site1.fromNeo4jGraph(siteId) match {
       case Some(site) => site.scalingPolicies
@@ -48,6 +58,12 @@ object SiteManagerImpl {
     }
   }
 
+  /**
+    *
+    * @param siteId
+    * @param instanceId
+    * @return
+    */
   def deleteIntanceFromSite(siteId: Long, instanceId: String): Boolean = {
     val siteNode = Site1.fromNeo4jGraph(siteId)
     siteNode.map { site =>
@@ -72,12 +88,24 @@ object SiteManagerImpl {
     mayBePolicy.isDefined
   }
 
+  /**
+    *
+    * @param siteId
+    * @param policyId
+    * @return
+    */
   def getAutoScalingPolicy(siteId: Long, policyId: String): Option[AutoScalingPolicy] = {
     Neo.findNodeByLabelAndId(AutoScalingPolicy.lable, policyId.toLong).flatMap {
       policyNode => AutoScalingPolicy.fromNeo4jGraph(policyNode.getId)
     }
   }
 
+  /**
+    *
+    * @param siteId
+    * @param policy
+    * @return
+    */
   // Adding new scaling policy
   def addAutoScalingPolicy(siteId: Long, policy: AutoScalingPolicy): AutoScalingPolicy = {
     val policyNode = policy.toNeo4jGraph(policy)
