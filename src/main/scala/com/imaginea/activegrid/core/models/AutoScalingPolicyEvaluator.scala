@@ -17,7 +17,7 @@ object AutoScalingPolicyEvaluator {
     * @param policyJob
     */
   def evaluate(policyJob: PolicyJob): Unit =
-  this.synchronized {                     
+  this.synchronized {
     val scalingPolicy = policyJob.autoScalingPolicy
     val baseUri = policyJob.baseUri.getOrElse("")
     scalingPolicy.foreach { policy => policy.application.foreach { app =>
