@@ -13,9 +13,13 @@ object AdminManagerImpl {
     * @return APM Server details with given site and instance id
     */
   def getAPMServerByInstance(siteId: Long, instanceId: String): Option[APMServerDetails] = {
-
-    //todo implementation required.
-    APMServerDetails.fromNeo4jGraph(0L) // Fake response
+    Site1.fromNeo4jGraph(siteId).flatMap {
+      site => site.applications.flatMap{
+        app => app.tiers.filter {
+          tier => tier.instances.exists(instance => instance.id.getOrElse(0L).toString.equals(instanceId))
+        }.flatMap(_.apmServer)
+      }.headOption
+    }
   }
 
   /**
@@ -45,21 +49,20 @@ object AdminManagerImpl {
         providerType match {
           case NEWRELIC =>
             val plugIn = PluginManager.getPlugin("apm-newrlic")
-            plugIn.flatMap {
+            plugIn.map {
               pi =>
-                val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/metrics".replace("{plugin}",
-                  pi.name.replace("{serverId}", sdetails.id.toString())))
+                val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/metrics".replace("{plugin}", pi.name).replace("{serverId}", sdetails.id.toString()))
                 val prop = Map("resouce" -> resouce, "instance" -> instance)
                 //todo "getAuthSettingsFor" implementation
                 val authStrategy = AppSettings.getAuthSettingsFor("auth.strategy")
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
                 val merticData = HttpClient.getData(url, headers, queryParams)
-                convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass).headOption
+                convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass).last
             }.getOrElse(fakeReturnValue)
           case GRAPHITE =>
             val plugIn = PluginManager.getPlugin("apm-graphite")
-            plugIn.flatMap {
+            plugIn.map {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/metrics".replace("{plugin}", pi.name))
                 //todo setAuthStrategy implementation
@@ -70,12 +73,45 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
                 val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
-                convertResposneToType[ResouceUtilization](metricData,ResouceUtilization.getClass).headOption
+                convertResposneToType[ResouceUtilization](metricData,ResouceUtilization.getClass).last
             }.getOrElse(fakeReturnValue)
           case _ => fakeReturnValue
         }
     }
   }
+
+  /**
+    * @param baseUri
+    * @param aPMServerDetails
+    * @return
+    */
+  def fetchApplicationMetrics(baseUri: String, aPMServerDetails: APMServerDetails): List[Application] = {
+    val dummyResponse = List.empty[Application]
+    aPMServerDetails.provider match {
+      case NEWRELIC => PluginManager.getPlugin("apm-newrilic").map {
+        plugIn =>
+          val queryParams = Map.empty[String, String]
+          val headers = AppSettings.getAuthSettingsFor("auth.strategy") match {
+            case "anonymous" =>
+              val apps = "apiuser:password"
+              val ciper = "Basic" + Base64.getEncoder.encode(apps.getBytes).toString
+              Map[String, String]("Authorization" -> ciper)
+            case _ => Map.empty[String, String]
+          }
+          val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}",plugIn.name).replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString()))
+          val response = HttpClient.getData(url, headers, queryParams)
+          //todo logic that extract data from response and covnert data into application beans.
+          convertResposneToType[Application](response,Application.getClass)
+      }
+      case GRAPHITE => // No procedure implemented.
+        val response = "PROCEDURE NOT YET DEFINED"
+        convertResposneToType[Application](response,Application.getClass)
+      case _ =>
+        dummyResponse
+    }
+    dummyResponse
+  }
+
   /**
     * @param response
     * @param clsType
@@ -86,7 +122,7 @@ object AdminManagerImpl {
     */
   def convertResposneToType[T:Manifest](response:String, clsType:Class[_]) : List[T] = {
     val emptyResponse = List.empty[T]
-    if(response.nonEmpty){
+    if(response.length > 0){
       // logic to parse response and populate values into T's properties.
       emptyResponse
     }
