@@ -26,14 +26,9 @@ object AppSettings {
     */
   def getAuthSettingsFor(settingName: String): String = {
    val emptyValue = ""
-   val settingsList = Neo4jRepository.getNodesByLabel(authSettingsLableName).flatMap {
+   Neo4jRepository.getNodesByLabel(authSettingsLableName).flatMap {
       node => Neo4jRepository.getProperty[String](node,settingName)
-    }
-    if(settingsList.isDefinedAt(0)) {
-      settingsList.get(0)
-    } else {
-      emptyValue
-    }
+    }.headOption.getOrElse(emptyValue)
   }
 
   val repo = Neo4jRepository
