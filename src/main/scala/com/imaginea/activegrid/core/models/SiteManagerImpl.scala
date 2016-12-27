@@ -9,12 +9,18 @@ import com.imaginea.activegrid.core.utils.{ActiveGridUtils => AGU}
 /**
   * Created by sivag on 3/11/16.
   */
-object SiteManagerImpl
-{
+object SiteManagerImpl {
 
-  /**
-    * todo autoscaling policy-evaluation part
-    */
+  def getAuthSettingsFor(authMechanizm: String): String = {
+    // Get auth settings and return the respective fields that requred for "authMechanizm"
+    "dummyResponse"
+  }
+
+  def getInstance(siteId: Long, instanceId: String): APMProvider = {
+    //todo implementation required.
+    APMProvider.toProvider("")
+  }
+
   def setAutoScalingGroupSize(siteId: Long, scalingGroupId: Long, scaleSize: Int): Unit = {
     Site1.fromNeo4jGraph(siteId).foreach {
       site =>
@@ -73,22 +79,22 @@ object SiteManagerImpl
   }
 
   // Adding new scaling policy
-  def  addAutoScalingPolicy(siteId:Long,policy:AutoScalingPolicy) : AutoScalingPolicy =
-  {
+  def addAutoScalingPolicy(siteId: Long, policy: AutoScalingPolicy): AutoScalingPolicy = {
     val policyNode = policy.toNeo4jGraph(policy)
-    Neo.findNodeByLabelAndId(Site1.label,siteId).foreach { site =>
-      Neo.createRelation(AutoScalingPolicy.relationLable,site,policyNode)}
+    Neo.findNodeByLabelAndId(Site1.label, siteId).foreach { site =>
+      Neo.createRelation(AutoScalingPolicy.relationLable, site, policyNode)
+    }
     //scalastyle:off magic.number
-    val startDelay  = Some(1000L)
+    val startDelay = Some(1000L)
     val reptCount = Some(0)
     val reptIntrvl = Some(6000L)
     //scalastyle:on magic.number
     val jobType = JobType.convert("POLICY")
     val uriInfo = Some(AGU.getUriInfo())
-    //TODO 'name' property have to set from  AutoScaling Policy. Bean declaration required
-    val name = "DummyName"
-    val job = Job(Some(0L),"PolicyJob",jobType,Some(""),startDelay,reptCount,reptIntrvl,Some(true))
-    val pjob = PolicyJob(Some(policyNode.getId),siteId,uriInfo,Some(job),Some(policy))
+    // refer https://github.com/eklavya/activeGrid/issues/64
+    val name = policy.name
+    val job = Job(Some(0L), name, jobType, Some(""), startDelay, reptCount, reptIntrvl, Some(true))
+    val pjob = PolicyJob(Some(policyNode.getId), siteId, uriInfo, Some(job), Some(policy))
     JM.scheduleJob(pjob)
     policy
   }

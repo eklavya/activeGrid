@@ -23,27 +23,29 @@ object AutoScalingPolicyEvaluator {
     scalingPolicy.foreach { policy => policy.application.foreach { app =>
       // This application-list will be retreived throgh APMAdminManager using baseUri value.
       // Realized when APMAdminManager fully implemented
-      //TODO method call "apmAdminManager.fetchApplicationMetrics(job.getBaseUri, app.getApmServer)"
-      val apps: List[Application] = List.empty[Application] // Dummy value
-      apps.filter(p => p.name.equals(app.name)).foreach { application =>
-        if (evaluatePrimaryConditions(application, policy.primaryConditions)) {
-          policy.secondaryConditions.foreach { policyCondition =>
-            if (evaluateSecondaryConditions(policyCondition, policyJob.siteId, baseUri)) {
-              //scalingUnit indicate increment/decremental operation in scaling.
-              val scalingUnit = policyCondition.scaleType match {
-                case Some(stype) => stype match {
-                  case SCALEDOWN => -1
-                  case SCALEUP => 1
+     // Please refer https://github.com/eklavya/activeGrid/issues/72
+      app.apmServer.foreach { apmSrvr =>
+        val apps = AdminManagerImpl.fetchApplicationMetrics(baseUri,apmSrvr)
+        apps.filter(p => p.name.equals(app.name)).foreach { application =>
+          if (evaluatePrimaryConditions(application, policy.primaryConditions)) {
+            policy.secondaryConditions.foreach { policyCondition =>
+              if (evaluateSecondaryConditions(policyCondition, policyJob.siteId, baseUri)) {
+                //scalingUnit indicate increment/decremental operation in scaling.
+                val scalingUnit = policyCondition.scaleType match {
+                  case Some(stype) => stype match {
+                    case SCALEDOWN => -1
+                    case SCALEUP => 1
+                    case _ => 0
+                  }
                   case _ => 0
                 }
-                case _ => 0
+                val scalingGroupId = policyCondition.scalingGroup match {
+                  case Some(sgroup) => sgroup.id.getOrElse(0L)
+                  case _ => 0L
+                }
+                //scalastyle:on magic.number
+                triggerAutoScaling(policyJob.siteId, scalingGroupId, scalingUnit)
               }
-              val scalingGroupId = policyCondition.scalingGroup match {
-                case Some(sgroup) => sgroup.id.getOrElse(0L)
-                case _ => 0L
-              }
-              //scalastyle:on magic.number
-              triggerAutoScaling(policyJob.siteId, scalingGroupId, scalingUnit)
             }
           }
         }
@@ -67,9 +69,10 @@ object AutoScalingPolicyEvaluator {
       case Some(ctype) if (ctype.conditionType.equals(CPUUTILIZATION)) =>
         condition.appTier.exists {
           appTier => appTier.instances.exists { instance =>
-            // todo instance usuage and resouce utilization will realized when APManager's 'fetchMetricData' completed.
-            val metrics = new ResouceUtilization("", List.empty[DataPoint])
-            metrics.dataPoints.exists(dp => dp.value > condition.thresHold)
+            val metrics = AdminManagerImpl.fetchMetricData(baseUri,siteId,instance.id.getOrElse(0L).toString,"cpu")
+            metrics.map {
+              mtrics => mtrics.dataPoints.exists(dp=>dp.value > condition.thresHold)
+            }.getOrElse(false)
           }
         }
       case _ => false

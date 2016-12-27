@@ -9,7 +9,7 @@ sealed trait TaskStatus {
   override def toString: String = super.toString
 }
 
-case object TaskStatus {
+object TaskStatus {
 
   case object FAILED extends TaskStatus {
     override val taskStatus: String = "failed"

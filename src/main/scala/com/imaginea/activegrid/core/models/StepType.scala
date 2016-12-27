@@ -21,7 +21,7 @@ case object TRIGGER extends StepType {
   override val stepType: String = "TRIGGER"
 }
 
-case object StepType {
+object StepType {
   def toStepType(stepType: String): StepType = {
     stepType match {
       case "INPUT" => INPUT

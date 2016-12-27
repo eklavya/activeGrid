@@ -46,7 +46,7 @@ case object Script extends ScriptType {
   override val scriptType: String = "Script"
 }
 
-case object ScriptType {
+object ScriptType {
   def toScriptType(scriptType: String): ScriptType = {
     scriptType match {
       case "Ruby" => Ruby
