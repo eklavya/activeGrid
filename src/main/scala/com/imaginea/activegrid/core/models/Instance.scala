@@ -290,7 +290,6 @@ object Instance {
         }
       }.headOption
     }
-
   }
 }
 
