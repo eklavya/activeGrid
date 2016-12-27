@@ -13,18 +13,24 @@ object SiteManagerImpl {
 
   /**
     *
-    * @param authMechanizm
-    * @return
+    * @param authStratagy
+    * @return Three authorization levels defined in application
+    *         1. Anonymous
+    *         2. Admin
+    *         3. Registered users
+    *         This method will configure headers according to given authorization level
     */
-  def getAuthSettingsFor(authMechanizm: String): String = {
-   AppSettings.getAuthSettingsFor(authMechanizm)
+  def getAuthSettingsFor(authStratagy: String): String = {
+   AppSettings.getAuthSettingsFor(authStratagy)
   }
 
   /**
     *
     * @param siteId
     * @param scalingGroupId
-    * @param scaleSize
+    * @param scaleSize value always be either  -1 or 1
+    *                  Increase/decrease number of instances in an account without exceeding both extrems
+    *                  It uses AWS Auto-scaling request
     */
   def setAutoScalingGroupSize(siteId: Long, scalingGroupId: Long, scaleSize: Int): Unit = {
     Site1.fromNeo4jGraph(siteId).foreach {
@@ -50,6 +56,8 @@ object SiteManagerImpl {
     *
     * @param siteId
     * @return
+    *         Returns scaling policy registered under 'siteId', Empty returned in case if there is no policies
+    *         registered with given siteId
     */
   def getAutoScalingPolicies(siteId: Long): List[AutoScalingPolicy] = {
     Site1.fromNeo4jGraph(siteId) match {
@@ -63,6 +71,7 @@ object SiteManagerImpl {
     * @param siteId
     * @param instanceId
     * @return
+    *
     */
   def deleteIntanceFromSite(siteId: Long, instanceId: String): Boolean = {
     val siteNode = Site1.fromNeo4jGraph(siteId)
@@ -105,6 +114,10 @@ object SiteManagerImpl {
     * @param siteId
     * @param policy
     * @return
+    *         It does the following
+    *         1. It save the policy object into Neo4j for persistance and later usuages
+    *         2. Creaet Job using policy details
+    *         3. Schedule that job with JobManager to apply the policy.
     */
   // Adding new scaling policy
   def addAutoScalingPolicy(siteId: Long, policy: AutoScalingPolicy): AutoScalingPolicy = {
