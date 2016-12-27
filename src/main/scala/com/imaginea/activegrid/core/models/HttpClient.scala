@@ -2,10 +2,11 @@ package com.imaginea.activegrid.core.models
 
 import akka.http.impl.util.Util
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.parboiled2.RuleTrace.Fail
 import com.imaginea.Main
 import com.typesafe.scalalogging.Logger
+import org.apache.http.client.methods.HttpPost
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -25,7 +26,7 @@ object HttpClient {
     * @return
     *         Sends a http request and process response from given "url"
     */
-  val POSTRQ = "POST"
+  val POSTRQ = HttpMethod
   val PUTRQ = "GET"
   val logger = Logger(LoggerFactory.getLogger(HttpClient.getClass.getName))
   val materializer = Main.materializer
@@ -33,7 +34,8 @@ object HttpClient {
   val http = Http(Main.system)
 
   def sendDataAsJson(method: String, url: String, headers: Map[String, String], queryParams: Map[String, String], query: APMQuery): String = {
-    val resp = Http().singleRequest(HttpRequest(uri = url))
+    val resp = Http().singleRequest(HttpRequest(HttpMethods.POST,url))
+    HttpHeader
     resp.onComplete(httpresponse =>
       httpresponse.map { response =>
         if (response.status.isSuccess()) {

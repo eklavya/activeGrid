@@ -18,12 +18,13 @@ AppSettings(override val id: Option[Long], settings: Map[String, String], authSe
 object AppSettings {
 
   def getAuthSettingsFor(settingName: String): String = {
-    repo.withTx {
-      neo => getAppSettingNode.map {
-        node => node.getRelationships.filter { relation => relation.getType.name().equals(authSettingsRelationName)
-        }.map(rln => if(rln.getEndNode.hasProperty(settingName)) rln.getEndNode.getProperty(settingName))
-      }.getOrElse("").toString
-    }
+    Neo4jRepository.getSingleNodeByLabelAndProperty(authSettingsLableName,settingName,"").map {
+      node => if(node.hasProperty(settingName)) {
+        node.getProperty(settingName).toString
+      } else {
+        "NOT FOUND"
+      }
+    }.getOrElse("")
   }
 
   val repo = Neo4jRepository
