@@ -113,7 +113,7 @@ object HttpClient {
     * Read content from HttpResponse object in string format
     */
   def readResponse(httpResponse: HttpResponse): String = {
-    val entity = Some(httpResponse.getEntity)
+    val entity = Option(httpResponse.getEntity)
     entity.map {
       entity =>
         val inputStream = entity.getContent
