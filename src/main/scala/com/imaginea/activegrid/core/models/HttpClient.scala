@@ -47,7 +47,6 @@ object HttpClient {
     val connectionTimeOut = 1000 // in microseconds
     val socketTimeOut = 1000 //in microseconds
     getContent(url, connectionTimeOut, socketTimeOut)
-
   }
 
   /**
@@ -74,7 +73,7 @@ object HttpClient {
     for ((param, value) <- headers) {
       req.addHeader(param, value)
     }
-    val client = buildHttpClient(1000, 1000)
+    val client = buildHttpClient(1000)
     val httpResponse = client.execute(req)
     readResponse(httpResponse)
   }
@@ -90,7 +89,7 @@ object HttpClient {
     * @param socketTimeout     The socket timeout, in ms.
     */
   def getContent(url: String, connectionTimeout: Int, socketTimeout: Int): String = {
-    val httpClient = buildHttpClient(connectionTimeout, socketTimeout)
+    val httpClient = buildHttpClient(connectionTimeout)
     val httpResponse = httpClient.execute(new HttpGet(url))
     readResponse(httpResponse)
   }
@@ -98,10 +97,9 @@ object HttpClient {
   /**
     *
     * @param connectionTimeout
-    * @param socketTimeout
     * @return
     */
-  private def buildHttpClient(connectionTimeout: Int, socketTimeout: Int):
+  private def buildHttpClient(connectionTimeout: Int):
   HttpClient = {
     val builder = HttpClientBuilder.create()
     builder.setConnectionTimeToLive(connectionTimeout.toLong, TimeUnit.MICROSECONDS)
@@ -112,12 +110,13 @@ object HttpClient {
     *
     * @param httpResponse
     * @return
-    *         Read content from HttpResponse object in string foramat
+    * Read content from HttpResponse object in string format
     */
   def readResponse(httpResponse: HttpResponse): String = {
     val entity = Some(httpResponse.getEntity)
     entity.map {
-      entity => val inputStream = entity.getContent
+      entity =>
+        val inputStream = entity.getContent
         val content = io.Source.fromInputStream(inputStream).getLines.mkString
         inputStream.close
         content
