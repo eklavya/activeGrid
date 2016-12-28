@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sivag on 22/12/16.
   */
-///scalastyle:off magic.number
 object HttpClient {
   /**
     * @param method
@@ -44,6 +43,8 @@ object HttpClient {
     * Fetches response and return json values
     *
     */
+
+ //scalastyle:off magic.number
   def getData(url: String, headers: Map[String, String], value: Map[String, String]): String = {
     val connectionTimeOut = 1000 // in microseconds
     val socketTimeOut = 1000 //in microseconds
@@ -74,6 +75,7 @@ object HttpClient {
     for ((param, value) <- headers) {
       req.addHeader(param, value)
     }
+    //scalastyle:off magic.number
     val client = buildClient(1000)
     val httpResponse = client.execute(req)
     readResponse(httpResponse)
