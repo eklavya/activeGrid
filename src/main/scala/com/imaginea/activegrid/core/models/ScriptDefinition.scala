@@ -1,6 +1,8 @@
 package com.imaginea.activegrid.core.models
 
+import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
+import org.slf4j.LoggerFactory
 
 /**
   * Created by shareefn on 20/12/16.
@@ -19,6 +21,7 @@ object ScriptDefinition {
   val scriptDefAndModule = "HAS_Module"
   val scriptDefAndScriptArg = "HAS_ScriptArgument"
   val scriptDefAndPuppetDependency = "HAS_PuppetDependency"
+  val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   implicit class ScriptDefinitionImpl(scriptDefinition: ScriptDefinition) extends Neo4jRep[ScriptDefinition] {
     override def toNeo4jGraph(entity: ScriptDefinition): Node = {
@@ -52,6 +55,7 @@ object ScriptDefinition {
       val module = mayBeModule match {
         case Some(moduleEntity) => moduleEntity
         case None =>
+          logger.warn("Module entity is not found in ScriptDefinition")
           throw new Exception("Module entity is not found")
       }
       val argumentNodeIds = Neo4jRepository.getChildNodeIds(id, scriptDefAndScriptArg)
@@ -61,6 +65,7 @@ object ScriptDefinition {
       val puppetDependecies = mayBepuppetEntity match {
         case Some(puppetEntity) => puppetEntity
         case None =>
+          logger.warn("Puppet entity is not found in ScriptDefinition")
           throw new Exception("Puppet dependecy is not found")
       }
       ScriptDefinition(Some(id),
