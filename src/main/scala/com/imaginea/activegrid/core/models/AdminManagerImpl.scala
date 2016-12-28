@@ -7,27 +7,6 @@ import java.util.Base64
   * Created by sivag on 22/12/16.
   */
 object AdminManagerImpl {
-  /**
-    * @param siteId
-    * @param instanceId
-    * @return APM Server details with given site and instance id
-    */
-  def getAPMServerByInstance(siteId: Long, instanceId: String): Option[APMServerDetails] = {
-    Site1.fromNeo4jGraph(siteId).flatMap {
-      site => site.applications.flatMap{
-        app => app.tiers.filter {
-          tier => tier.instances.exists(instance => instance.id.getOrElse(0L).toString.equals(instanceId))
-        }.flatMap(_.apmServer)
-      }.headOption
-    }
-  }
-
-  /**
-    * Set basic authentication headers in request.
-    */
-  def setAuthStrategy(): Unit = {
-    //todo implementation required
-  }
 
   /**
     * @param baseUri
@@ -38,22 +17,22 @@ object AdminManagerImpl {
     *
     */
   //scalastyle:off cyclomatic.complexity method.length
+  //todo 'sendDataAsJson' implementation
   def fetchMetricData(baseUri: String, siteId: Long, instanceId: String, resouce: String): Option[ResouceUtilization] = {
     val fakeReturnValue = ResouceUtilization("target", List.empty[DataPoint])
     // Getting application management server.
-    val serverDetails = getAPMServerByInstance(siteId, instanceId)
+    val serverDetails = APMServerDetails.getAPMServerByInstance(siteId, instanceId)
     serverDetails.map {
       sdetails =>
-        val instance = SiteManagerImpl.getInstance(siteId, instanceId)
-        val providerType = APMProvider.toProvider(instance.provider)
+        val instancenName = Instance.instanceBySiteAndInstanceID(siteId, instanceId).map(i => i.name).getOrElse("NOT PROVIDED")
+        val providerType = sdetails.provider
         providerType match {
           case NEWRELIC =>
-            val plugIn = PluginManager.getPlugin("apm-newrlic")
+            val plugIn = PluginManager.getPluginByName("apm-newrlic")
             plugIn.map {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/metrics".replace("{plugin}", pi.name).replace("{serverId}", sdetails.id.toString()))
-                val prop = Map("resouce" -> resouce, "instance" -> instance)
-                //todo "getAuthSettingsFor" implementation
+                val prop = Map("resouce" -> resouce, "instance" -> instancenName)
                 val authStrategy = AppSettings.getAuthSettingsFor("auth.strategy")
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
@@ -61,15 +40,11 @@ object AdminManagerImpl {
                 convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass).last
             }.getOrElse(fakeReturnValue)
           case GRAPHITE =>
-            val plugIn = PluginManager.getPlugin("apm-graphite")
+            val plugIn = PluginManager.getPluginByName("apm-graphite")
             plugIn.map {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/metrics".replace("{plugin}", pi.name))
-                //todo setAuthStrategy implementation
-                setAuthStrategy()
                 val query: APMQuery = APMQuery("carbon.agents.ip-10-191-186-149-a.cpuUsage", "-1h", "until", "json", sdetails.serverUrl)
-                // json format data
-                //todo sendDataAsJson implementation
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
                 val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
@@ -81,23 +56,20 @@ object AdminManagerImpl {
   }
 
   /**
+    * Application metrics will describe the running status of application.
     * @param baseUri
     * @param aPMServerDetails
     * @return
+    *
     */
+  //todo getData and convertResposneToType methods implementation
   def fetchApplicationMetrics(baseUri: String, aPMServerDetails: APMServerDetails): List[Application] = {
     val dummyResponse = List.empty[Application]
     aPMServerDetails.provider match {
-      case NEWRELIC => PluginManager.getPlugin("apm-newrilic").map {
+      case NEWRELIC => PluginManager.getPluginByName("apm-newrilic").map {
         plugIn =>
           val queryParams = Map.empty[String, String]
-          val headers = AppSettings.getAuthSettingsFor("auth.strategy") match {
-            case "anonymous" =>
-              val apps = "apiuser:password"
-              val ciper = "Basic" + Base64.getEncoder.encode(apps.getBytes).toString
-              Map[String, String]("Authorization" -> ciper)
-            case _ => Map.empty[String, String]
-          }
+          val headers = getHeadersAsPerAuthStrategy("anonymous")
           val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}",plugIn.name).replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString()))
           val response = HttpClient.getData(url, headers, queryParams)
           //todo logic that extract data from response and covnert data into application beans.
@@ -113,6 +85,8 @@ object AdminManagerImpl {
   }
 
   /**
+    * This method will read the response and convert it to specific type.
+    * Default implementation would be fasterxml jaxb which converts json to objects of specific types
     * @param response
     * @param clsType
     * @tparam T
@@ -132,6 +106,7 @@ object AdminManagerImpl {
   }
 
   /**
+    * Connfigure the headers required for basic authorization.
     * @param authStrategy
     * @return
     */

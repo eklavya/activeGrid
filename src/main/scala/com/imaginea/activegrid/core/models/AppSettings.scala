@@ -16,9 +16,19 @@ case class
 AppSettings(override val id: Option[Long], settings: Map[String, String], authSettings: Map[String, String]) extends BaseEntity
 
 object AppSettings {
-  //todo implementation pending,
+
+  /**
+    *
+    * @param settingName
+    * @return
+    *        Search for 'settingName' in application's Auth Settings and return setting value
+    *        Otherwise return empty if not found.
+    */
   def getAuthSettingsFor(settingName: String): String = {
-    "anonymous" // dummy response
+   val emptyValue = ""
+   Neo4jRepository.getNodesByLabel(authSettingsLableName).flatMap {
+      node => Neo4jRepository.getProperty[String](node,settingName)
+    }.headOption.getOrElse(emptyValue)
   }
 
   val repo = Neo4jRepository
@@ -148,6 +158,5 @@ object AppSettings {
       appSettings
     }
   }
-
 }
 
