@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sivag on 22/12/16.
   */
+///scalastyle:off magic.number
 object HttpClient {
   /**
     * @param method
@@ -73,7 +74,7 @@ object HttpClient {
     for ((param, value) <- headers) {
       req.addHeader(param, value)
     }
-    val client = buildHttpClient(1000)
+    val client = buildClient(1000)
     val httpResponse = client.execute(req)
     readResponse(httpResponse)
   }
@@ -89,7 +90,7 @@ object HttpClient {
     * @param socketTimeout     The socket timeout, in ms.
     */
   def getContent(url: String, connectionTimeout: Int, socketTimeout: Int): String = {
-    val httpClient = buildHttpClient(connectionTimeout)
+    val httpClient = buildClient(connectionTimeout)
     val httpResponse = httpClient.execute(new HttpGet(url))
     readResponse(httpResponse)
   }
@@ -99,7 +100,7 @@ object HttpClient {
     * @param connectionTimeout
     * @return
     */
-  private def buildHttpClient(connectionTimeout: Int):
+  private def buildClient(connectionTimeout: Int):
   HttpClient = {
     val builder = HttpClientBuilder.create()
     builder.setConnectionTimeToLive(connectionTimeout.toLong, TimeUnit.MICROSECONDS)
