@@ -282,5 +282,14 @@ object Instance {
     }
   }
 
+  def instanceBySiteAndInstanceID(siteId: Long, instanceId: String): Option[Instance] = {
+    Site1.fromNeo4jGraph(siteId).flatMap {
+      site => site.applications.flatMap {
+        app => app.instances.filter {
+          instance => instance.id.getOrElse(0L).toString.equals(instanceId)
+        }
+      }.headOption
+    }
+  }
 }
 
