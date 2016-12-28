@@ -12,12 +12,9 @@ object PluginManager {
     * Fetches and return the plugin with given name
     *
     */
-    def getPlugin(pluginName:String) : Option[PlugIn] = {
-      Neo4jRepository.getNodesByLabel(PlugIn.labelName).filter {
-        plugin =>   plugin.hasProperty("name") && plugin.getProperty("name").toString.equals(pluginName)
-      }.flatMap {
-        plgnNode => PlugIn.fromNeo4jGraph(plgnNode.getId)
-      }.headOption
+    def getPluginByName(pluginName:String) : Option[PlugIn] = {
+      val plugInNodes = Neo4jRepository.getSingleNodeByLabelAndProperty(PlugIn.labelName,"name",pluginName)
+      plugInNodes.flatMap(plugIn => PlugIn.fromNeo4jGraph(plugIn.getId))
     }
 
 }

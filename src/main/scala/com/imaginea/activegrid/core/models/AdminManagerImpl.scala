@@ -28,7 +28,7 @@ object AdminManagerImpl {
         val providerType = sdetails.provider
         providerType match {
           case NEWRELIC =>
-            val plugIn = PluginManager.getPlugin("apm-newrlic")
+            val plugIn = PluginManager.getPluginByName("apm-newrlic")
             plugIn.map {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/metrics".replace("{plugin}", pi.name).replace("{serverId}", sdetails.id.toString()))
@@ -40,7 +40,7 @@ object AdminManagerImpl {
                 convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass).last
             }.getOrElse(fakeReturnValue)
           case GRAPHITE =>
-            val plugIn = PluginManager.getPlugin("apm-graphite")
+            val plugIn = PluginManager.getPluginByName("apm-graphite")
             plugIn.map {
               pi =>
                 val url = baseUri.concat("/plugins/{plugin}/metrics".replace("{plugin}", pi.name))
@@ -66,7 +66,7 @@ object AdminManagerImpl {
   def fetchApplicationMetrics(baseUri: String, aPMServerDetails: APMServerDetails): List[Application] = {
     val dummyResponse = List.empty[Application]
     aPMServerDetails.provider match {
-      case NEWRELIC => PluginManager.getPlugin("apm-newrilic").map {
+      case NEWRELIC => PluginManager.getPluginByName("apm-newrilic").map {
         plugIn =>
           val queryParams = Map.empty[String, String]
           val headers = getHeadersAsPerAuthStrategy("anonymous")

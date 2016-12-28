@@ -17,14 +17,18 @@ AppSettings(override val id: Option[Long], settings: Map[String, String], authSe
 
 object AppSettings {
 
+  /**
+    *
+    * @param settingName
+    * @return
+    *        Search for 'settingName' in application's Auth Settings and return setting value
+    *        Otherwise return empty if not found.
+    */
   def getAuthSettingsFor(settingName: String): String = {
-    Neo4jRepository.getSingleNodeByLabelAndProperty(authSettingsLableName,settingName,"").map {
-      node => if(node.hasProperty(settingName)) {
-        node.getProperty(settingName).toString
-      } else {
-        "NOT FOUND"
-      }
-    }.getOrElse("")
+   val emptyValue = ""
+   Neo4jRepository.getNodesByLabel(authSettingsLableName).flatMap {
+      node => Neo4jRepository.getProperty[String](node,settingName)
+    }.headOption.getOrElse(emptyValue)
   }
 
   val repo = Neo4jRepository
