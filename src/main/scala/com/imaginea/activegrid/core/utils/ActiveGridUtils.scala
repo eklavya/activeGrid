@@ -29,6 +29,13 @@ object ActiveGridUtils {
     map.get(key).map(_.asInstanceOf[T])
   }
 
+  def convertToBooleanValue(value: Any): Boolean = {
+    value match {
+      case Some(booleanVal) => booleanVal.asInstanceOf[Boolean]
+      case _ => false
+    }
+  }
+
   def getRegions(instanceProvider: InstanceProvider): List[String] = {
     RegionUtils.getRegions.foldLeft(List.empty[String]) {
       (list, region) =>

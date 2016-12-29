@@ -3,16 +3,34 @@ package com.imaginea.activegrid.core.models
 import org.neo4j.graphdb.{Node, NotFoundException, RelationshipType}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._ //scalastyle:ignore underscore.import
+import scala.collection.JavaConversions._
+
+//scalastyle:ignore underscore.import
 
 
 /**
   * Created by nagulmeeras on 27/09/16.
   */
 
-case class AppSettings(override val id: Option[Long], settings: Map[String, String], authSettings: Map[String, String]) extends BaseEntity
+case class
+AppSettings(override val id: Option[Long], settings: Map[String, String], authSettings: Map[String, String]) extends BaseEntity
 
 object AppSettings {
+
+  /**
+    *
+    * @param settingName
+    * @return
+    *        Search for 'settingName' in application's Auth Settings and return setting value
+    *        Otherwise return empty if not found.
+    */
+  def getAuthSettingsFor(settingName: String): String = {
+   val emptyValue = ""
+   Neo4jRepository.getNodesByLabel(authSettingsLableName).flatMap {
+      node => Neo4jRepository.getProperty[String](node,settingName)
+    }.headOption.getOrElse(emptyValue)
+  }
+
   val repo = Neo4jRepository
   val labelName = "AppSettings"
   val settingsLableName = "Settings"
@@ -140,6 +158,5 @@ object AppSettings {
       appSettings
     }
   }
-
 }
 
