@@ -27,7 +27,7 @@ object HttpClient {
   val logger = Logger(LoggerFactory.getLogger(HttpClient.getClass.getName))
 
   def sendDataAsJson(method: String, url: String, headers: Map[String, String],
-                     queryParams: Map[String, String], query: APMQuery): String = {
+                     queryParams: Map[String, String], query: APMQuery): Option[String] = {
     val connectionTimeOut = 1000 // in microseconds
     val socketTimeOut = 1000 //in microseconds
     getContent(url, connectionTimeOut, socketTimeOut)
@@ -45,7 +45,7 @@ object HttpClient {
     */
 
  //scalastyle:off magic.number
-  def getData(url: String, headers: Map[String, String], value: Map[String, String]): String = {
+  def getData(url: String, headers: Map[String, String], value: Map[String, String]): Option[String] = {
     val connectionTimeOut = 1000 // in microseconds
     val socketTimeOut = 1000 //in microseconds
     getContent(url, connectionTimeOut, socketTimeOut)
@@ -65,7 +65,7 @@ object HttpClient {
     *
     */
 
-  def deleteData(url: String, headers: Map[String, String], queryParams: Map[String, String]): String = {
+  def deleteData(url: String, headers: Map[String, String], queryParams: Map[String, String]): Option[String] = {
     val uri = new URIBuilder(url)
     for ((param, value) <- queryParams) {
       uri.addParameter(param, value)
@@ -91,7 +91,7 @@ object HttpClient {
     * @param connectionTimeout The connection timeout, in ms.
     * @param socketTimeout     The socket timeout, in ms.
     */
-  def getContent(url: String, connectionTimeout: Int, socketTimeout: Int): String = {
+  def getContent(url: String, connectionTimeout: Int, socketTimeout: Int): Option[String] = {
     val httpClient = buildClient(connectionTimeout)
     val httpResponse = httpClient.execute(new HttpGet(url))
     readResponse(httpResponse)
@@ -115,7 +115,7 @@ object HttpClient {
     * @return
     * Read content from HttpResponse object in string format
     */
-  def readResponse(httpResponse: HttpResponse): String = {
+  def readResponse(httpResponse: HttpResponse): Option[String] = {
     val entity = Option(httpResponse.getEntity)
     entity.map {
       entity =>
@@ -123,7 +123,7 @@ object HttpClient {
         val content = io.Source.fromInputStream(inputStream).getLines.mkString
         inputStream.close
         content
-    }.getOrElse("")
+    }
   }
 }
 
