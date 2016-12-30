@@ -39,20 +39,14 @@ object NodeReport {
   }
 
   def fromNeo4jGraph(id: Long): Option[NodeReport] = {
-    val mayBeNode = Neo4jRepository.findNodeById(id)
-    mayBeNode.map { node =>
+    for {
+      node <- Neo4jRepository.findNodeById(id)
+      instanceNodeId <- Neo4jRepository.getChildNodeId(id, nodeReportAndInstance)
+      instance <- Instance.fromNeo4jGraph(instanceNodeId)
+    } yield {
       val map = Neo4jRepository.getProperties(node, "response", "status")
-      val instanceNodeId = Neo4jRepository.getChildNodeId(id, nodeReportAndInstance)
-      val mayBeInstance = instanceNodeId.flatMap(nodeId => Instance.fromNeo4jGraph(nodeId))
-      val instance = mayBeInstance match {
-        case Some(instanceEntity) => instanceEntity
-        case None =>
-          logger.warn("Instance entity is not found as it is mandatory")
-          throw new Exception("Instance entity not found in NodeReport")
-      }
       val reportNodeIds = Neo4jRepository.getChildNodeIds(id, nodeReportAndTaskReport)
       val taskReports = reportNodeIds.flatMap(nodeId => TaskReport.fromNeo4jGraph(nodeId))
-
       NodeReport(Some(id),
         instance,
         map("response").asInstanceOf[String],

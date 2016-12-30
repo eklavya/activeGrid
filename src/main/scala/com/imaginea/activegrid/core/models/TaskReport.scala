@@ -33,17 +33,12 @@ object TaskReport {
   }
 
   def fromNeo4jGraph(id: Long): Option[TaskReport] = {
-    val mayBeNode = Neo4jRepository.findNodeById(id)
-    mayBeNode.map { node =>
+    for {
+      node <- Neo4jRepository.findNodeById(id)
+      taskNodeId <- Neo4jRepository.getChildNodeId(id, taskReportAndTask)
+      task <- Task.fromNeo4jGraph(taskNodeId)
+    } yield {
       val map = Neo4jRepository.getProperties(node, "status", "result")
-      val taskNodeId = Neo4jRepository.getChildNodeId(id, taskReportAndTask)
-      val mayBeTask = taskNodeId.flatMap(nodeId => Task.fromNeo4jGraph(nodeId))
-      val task = mayBeTask match {
-        case Some(taskEntity) => taskEntity
-        case None =>
-          logger.warn("Task entity not found in TaskReport")
-          throw new Exception("Task entity not found in TaskReport")
-      }
       TaskReport(Some(id),
         task,
         TaskStatus.toTaskStatus(map("status").asInstanceOf[String]),

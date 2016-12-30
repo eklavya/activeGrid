@@ -57,57 +57,32 @@ object Step {
   }
 
   def fromNeo4jGraph(id: Long): Option[Step] = {
-    val mayBeNode = Neo4jRepository.findNodeById(id)
-    mayBeNode.map {
-      node =>
-        val map = Neo4jRepository.getProperties(node, "stepId", "name", "description", "stepType", "executionOrder")
-        val scriptDefNodeId = Neo4jRepository.getChildNodeId(id, stepAndScriptDef)
-        val mayBeScriptDef = scriptDefNodeId.flatMap(nodeId => ScriptDefinition.fromNeo4jGraph(nodeId))
-        val scriptDef = mayBeScriptDef match {
-          case Some(scriptDefEntity) => scriptDefEntity
-          case None =>
-            logger.warn("ScriptDefinition entity is not found in Step")
-            throw new Exception("ScriptDefinition is not found")
-        }
-        val stepNodeIds = Neo4jRepository.getChildNodeIds(id, stepAndStep)
-        val steps = stepNodeIds.flatMap(nodeId => Step.fromNeo4jGraph(nodeId))
-
-        val stepInputNodeId = Neo4jRepository.getChildNodeId(id, stepAndStepInput)
-        val mayBeInput = stepInputNodeId.flatMap(nodeId => StepInput.fromNeo4jGraph(nodeId))
-        val stepInput = mayBeInput match {
-          case Some(stepInputEntity) => stepInputEntity
-          case None =>
-            logger.warn("StepInput entity is not found in Step")
-            throw new Exception("StepInput is not found")
-        }
-        val scopeNodeId = Neo4jRepository.getChildNodeId(id, stepAndInventoryExec)
-        val mayBeScopeEntity = scopeNodeId.flatMap(nodeId => InventoryExecutionScope.fromNeo4jGraph(nodeId))
-        val scope = mayBeScopeEntity match {
-          case Some(scopeEntity) => scopeEntity
-          case None =>
-            logger.warn("InventoryExecutionScope entity is not found in Step")
-            throw new Exception("InventoryExecutionScope entity is not found")
-        }
-        val reportNodeId = Neo4jRepository.getChildNodeId(id, stepAndReport)
-        val mayBeReport = reportNodeId.flatMap(nodeId => StepExecutionReport.fromNeo4jGraph(nodeId))
-        val report = mayBeReport match {
-          case Some(reportEntity) => reportEntity
-          case None =>
-            logger.warn("StepExecutionReport entity is not found in Step")
-            throw new Exception("StepExecutionReport entity is not found")
-        }
-        Step(Some(id),
-          map("stepId").asInstanceOf[String],
-          map("name").asInstanceOf[String],
-          map("description").asInstanceOf[String],
-          StepType.toStepType(map("stepType").asInstanceOf[String]),
-          scriptDef,
-          stepInput,
-          scope,
-          map("executionOrder").asInstanceOf[Int],
-          steps,
-          report
-        )
+    for {
+      node <- Neo4jRepository.findNodeById(id)
+      scriptDefNodeId <- Neo4jRepository.getChildNodeId(id, stepAndScriptDef)
+      scriptDef <- ScriptDefinition.fromNeo4jGraph(scriptDefNodeId)
+      stepInputNodeId <- Neo4jRepository.getChildNodeId(id, stepAndStepInput)
+      stepInput <- StepInput.fromNeo4jGraph(stepInputNodeId)
+      scopeNodeId <- Neo4jRepository.getChildNodeId(id, stepAndInventoryExec)
+      scope <- InventoryExecutionScope.fromNeo4jGraph(scopeNodeId)
+      reportNodeId <- Neo4jRepository.getChildNodeId(id, stepAndReport)
+      report <- StepExecutionReport.fromNeo4jGraph(reportNodeId)
+    } yield {
+      val map = Neo4jRepository.getProperties(node, "stepId", "name", "description", "stepType", "executionOrder")
+      val stepNodeIds = Neo4jRepository.getChildNodeIds(id, stepAndStep)
+      val steps = stepNodeIds.flatMap(nodeId => Step.fromNeo4jGraph(nodeId))
+      Step(Some(id),
+        map("stepId").asInstanceOf[String],
+        map("name").asInstanceOf[String],
+        map("description").asInstanceOf[String],
+        StepType.toStepType(map("stepType").asInstanceOf[String]),
+        scriptDef,
+        stepInput,
+        scope,
+        map("executionOrder").asInstanceOf[Int],
+        steps,
+        report
+      )
     }
   }
 }

@@ -42,32 +42,21 @@ object ScriptDefinition {
     }
 
     override def fromNeo4jGraph(id: Long): Option[ScriptDefinition] = {
-
+      ScriptDefinition.fromNeo4jGraph(id)
     }
   }
 
   def fromNeo4jGraph(id: Long): Option[ScriptDefinition] = {
-    val mayBeNode = Neo4jRepository.findNodeById(id)
-    mayBeNode.map { node =>
+    for {
+      node <- Neo4jRepository.findNodeById(id)
+      moduleNodeId <- Neo4jRepository.getChildNodeId(id, scriptDefAndModule)
+      module <- Module.fromNeo4jGraph(moduleNodeId)
+      puppetNodeId <- Neo4jRepository.getChildNodeId(id, scriptDefAndPuppetDependency)
+      puppetDependecies <- PuppetScriptDependencies.fromNeo4jGraph(puppetNodeId)
+    } yield {
       val map = Neo4jRepository.getProperties(node, "name", "description", "language", "version")
-      val moduleNodeId = Neo4jRepository.getChildNodeId(id, scriptDefAndModule)
-      val mayBeModule = moduleNodeId.flatMap(nodeId => Module.fromNeo4jGraph(nodeId))
-      val module = mayBeModule match {
-        case Some(moduleEntity) => moduleEntity
-        case None =>
-          logger.warn("Module entity is not found in ScriptDefinition")
-          throw new Exception("Module entity is not found")
-      }
       val argumentNodeIds = Neo4jRepository.getChildNodeIds(id, scriptDefAndScriptArg)
       val arguments = argumentNodeIds.flatMap(nodeId => ScriptArgument.fromNeo4jGraph(nodeId))
-      val puppetNodeId = Neo4jRepository.getChildNodeId(id, scriptDefAndPuppetDependency)
-      val mayBepuppetEntity = puppetNodeId.flatMap(nodeId => PuppetScriptDependencies.fromNeo4jGraph(nodeId))
-      val puppetDependecies = mayBepuppetEntity match {
-        case Some(puppetEntity) => puppetEntity
-        case None =>
-          logger.warn("Puppet entity is not found in ScriptDefinition")
-          throw new Exception("Puppet dependecy is not found")
-      }
       ScriptDefinition(Some(id),
         map("name").asInstanceOf[String],
         map("description").asInstanceOf[String],
