@@ -45,6 +45,10 @@ object Workflow {
         val workflowExecutionNode = execution.toNeo4jGraph(execution)
         Neo4jRepository.createRelation(workflowAndExecutionRelation, parentNode, workflowExecutionNode)
       }
+      entity.executionHistory.foreach { exection =>
+        val childNode = exection.toNeo4jGraph(exection)
+        Neo4jRepository.createRelation(workflowAndExecHistoryRelation, parentNode, childNode)
+      }
       entity.module.foreach { module =>
         val childNode = module.toNeo4jGraph(module)
         Neo4jRepository.createRelation(workflowAndModuleRelation, parentNode, childNode)

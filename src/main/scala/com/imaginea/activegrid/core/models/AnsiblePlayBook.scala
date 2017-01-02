@@ -46,7 +46,7 @@ object AnsiblePlayBook {
       val childNodeIds = Neo4jRepository.getChildNodeIds(id, playBookAndPlay)
       val playList = childNodeIds.flatMap(childId => AnsiblePlay.fromNeo4jGraph(childId))
       val childNodeIdsVariables = Neo4jRepository.getChildNodeIds(id, playBookAndVariable)
-      val variables = childNodeIds.flatMap(childId => Variable.fromNeo4jGraph(childId))
+      val variables = childNodeIdsVariables.flatMap(childId => Variable.fromNeo4jGraph(childId))
       AnsiblePlayBook(Some(id),
         map("name").asInstanceOf[String],
         map("instanceIds").asInstanceOf[String],
