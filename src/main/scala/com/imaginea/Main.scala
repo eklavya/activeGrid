@@ -2260,6 +2260,19 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
             }
           }
+          post {
+            entity(as[AutoScalingPolicy]) {
+              policy =>
+                val mayBeAdded = Future {
+                  SiteManagerImpl.addAutoScalingPolicy(siteId, policy)
+                }
+                onComplete(mayBeAdded) {
+                  case Success(policy) => complete(StatusCodes.OK, "Policy added successfully")
+                  case Failure(ex) => logger.info(s"Error while retrieving policies of $siteId  details", ex)
+                    complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
+                }
+            }
+          }
         }
       }
 

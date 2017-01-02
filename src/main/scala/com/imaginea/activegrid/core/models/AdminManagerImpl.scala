@@ -123,7 +123,7 @@ object AdminManagerImpl {
   /**
     * Unmarshall given response to ResouceUtilization type
     * @param response
-    * @return List of ResourceUtilization objects, Empty list if the response is not valid  
+    * @return List of ResourceUtilization objects, Empty list if the response is not valid    
     */
   def convertToResouceUtilizationType(response: String): List[ResouceUtilization] = {
     implicit val resouceUtilization = Main.resouceUtilizationFormat
