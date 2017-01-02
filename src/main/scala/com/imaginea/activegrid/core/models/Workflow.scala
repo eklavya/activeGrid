@@ -15,12 +15,18 @@ case class Workflow(override val id: Option[Long],
                     execution: Option[WorkflowExecution],
                     executionHistory: List[WorkflowExecution],
                     lastExecutionBy: String,
-                    lastExecutionAt: Long) extends BaseEntity
+                    lastExecutionAt: Long,
+                    module: Option[Module],
+                    playBooks: List[AnsiblePlayBook],
+                    publishedInventory: Option[Inventory]) extends BaseEntity
 
 object Workflow {
   val labelName = "Workflow"
   val workflowAndExecutionRelation = "HAS_WorkflowExecution"
   val workflowAndExecHistoryRelation = "HAS_ExecutionHistory"
+  val workflowAndModuleRelation = "HAS_Module"
+  val workflowAndPlayBookRelation = "HAS_PlayBook"
+  val workflowAndInventoryRelation = "HAS_Inventory"
 
   //TODO Need integrate Step model in this
   implicit class WorkflowImpl(workFlow: Workflow) extends Neo4jRep[Workflow] {
@@ -39,9 +45,17 @@ object Workflow {
         val workflowExecutionNode = execution.toNeo4jGraph(execution)
         Neo4jRepository.createRelation(workflowAndExecutionRelation, parentNode, workflowExecutionNode)
       }
-      entity.executionHistory.foreach { exection =>
-        val childNode = exection.toNeo4jGraph(exection)
-        Neo4jRepository.createRelation(workflowAndExecHistoryRelation, parentNode, childNode)
+      entity.module.foreach { module =>
+        val childNode = module.toNeo4jGraph(module)
+        Neo4jRepository.createRelation(workflowAndModuleRelation, parentNode, childNode)
+      }
+      entity.playBooks.foreach { playBook =>
+        val playBookNode = playBook.toNeo4jGraph(playBook)
+        Neo4jRepository.createRelation(workflowAndPlayBookRelation, parentNode, playBookNode)
+      }
+      entity.publishedInventory.foreach { inventory =>
+        val childNode = inventory.toNeo4jGraph(inventory)
+        Neo4jRepository.createRelation(workflowAndInventoryRelation, parentNode, childNode)
       }
       parentNode
 
@@ -61,6 +75,12 @@ object Workflow {
       val execution = executionNodeid.flatMap(nodeId => WorkflowExecution.fromNeo4jGraph(nodeId))
       val executionHistoryIds = Neo4jRepository.getChildNodeIds(id, workflowAndExecHistoryRelation)
       val executionHistory = executionHistoryIds.flatMap(nodeId => WorkflowExecution.fromNeo4jGraph(nodeId))
+      val moduleNodeId = Neo4jRepository.getChildNodeId(id, workflowAndModuleRelation)
+      val module = moduleNodeId.flatMap(nodeId => Module.fromNeo4jGraph(nodeId))
+      val playBookIds = Neo4jRepository.getChildNodeIds(id, workflowAndPlayBookRelation)
+      val playBooks = playBookIds.flatMap(nodeId => AnsiblePlayBook.fromNeo4jGraph(nodeId))
+      val inventoryNodeId = Neo4jRepository.getChildNodeId(id, workflowAndInventoryRelation)
+      val publishedInventory = inventoryNodeId.flatMap(nodeId => Inventory.fromNeo4jGraph(nodeId))
       Workflow(Some(id),
         map("name").asInstanceOf[String],
         map("description").asInstanceOf[String],
@@ -71,7 +91,10 @@ object Workflow {
         execution,
         executionHistory,
         map("lastExecutionBy").asInstanceOf[String],
-        map("lastExecutionAt").asInstanceOf[Long]
+        map("lastExecutionAt").asInstanceOf[Long],
+        module,
+        playBooks,
+        publishedInventory
       )
     }
   }
