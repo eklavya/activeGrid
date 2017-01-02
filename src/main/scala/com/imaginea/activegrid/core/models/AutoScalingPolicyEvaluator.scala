@@ -72,7 +72,7 @@ object AutoScalingPolicyEvaluator {
             val metrics = AdminManagerImpl.fetchMetricData(baseUri,siteId,instance.id.getOrElse(0L).toString,"cpu")
             metrics.map {
               mtrics => mtrics.dataPoints.exists(dp=>dp.value > condition.thresHold)
-            }.getOrElse(false)
+            }.headOption.getOrElse(false)
           }
         }
       case _ => false

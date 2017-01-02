@@ -6,25 +6,26 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._ // scalastyle:ignore underscore.import
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.Directives._ // scalastyle:ignore underscore.import
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
-import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _} // scalastyle:ignore underscore.import
+import com.beust.jcommander.JCommander
+import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
-import spray.json._ // scalastyle:ignore underscore.import
-import com.beust.jcommander.JCommander
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationLong}
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, Future, duration}
 import scala.util.{Failure, Random, Success}
 
 object Main extends App {
@@ -347,6 +348,7 @@ object Main extends App {
   implicit val conditionTypeJson = ConditionTypeJson
   implicit val scaleTypeJson = ScaleTypeJson
   implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
+
   implicit object policyTypeFormat extends RootJsonFormat[PolicyType] {
     override def write(obj: PolicyType): JsValue = obj.plcyType.asInstanceOf[JsValue]
 
@@ -357,6 +359,7 @@ object Main extends App {
       }
     }
   }
+
   implicit val autoScalingPolicyJson = jsonFormat8(AutoScalingPolicy.apply)
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups",
     "groupsList", "applications", "groupBy", "scalingPolicies")
@@ -376,6 +379,8 @@ object Main extends App {
   implicit val esQueryFieldFormat = jsonFormat2(EsQueryField.apply)
   implicit val esSearchQueryFormat = jsonFormat6(EsSearchQuery.apply)
   implicit val esSearchResponseFormat = jsonFormat3(EsSearchResponse.apply)
+  implicit val dataPointFormat = jsonFormat(DataPoint.apply, "timestamp", "value")
+  implicit val resouceUtilizationFormat = jsonFormat(ResouceUtilization.apply, "target", "dataPoints")
 
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
@@ -1589,8 +1594,14 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
-                  val memInfo = instance.memoryInfo match { case Some(info) => info.total case _ => 0 }
-                  val dskInfo = instance.rootDiskInfo match { case Some(info) => info.total case _ => 0 }
+                  val memInfo = instance.memoryInfo match {
+                    case Some(info) => info.total
+                    case _ => 0
+                  }
+                  val dskInfo = instance.rootDiskInfo match {
+                    case Some(info) => info.total
+                    case _ => 0
+                  }
                   InstanceFlavor(instance.instanceType.getOrElse(""), None, memInfo, dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)
