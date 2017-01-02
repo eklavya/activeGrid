@@ -64,7 +64,7 @@ object Workflow {
       Workflow(Some(id),
         map("name").asInstanceOf[String],
         map("description").asInstanceOf[String],
-        WorkflowMode.toWorkFlowMode(map("mpde").asInstanceOf[String]),
+        WorkflowMode.toWorkFlowMode(map("mode").asInstanceOf[String]),
         List.empty[Step],
         StepOrderStrategy.toOrderStrategy(map("stepOrderStrategy").asInstanceOf[String]),
         WorkflowExecutionStrategy.toExecutionStrategy(map("executionStrategy").asInstanceOf[String]),
