@@ -1594,12 +1594,12 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
-                  val memInfo = instance.memoryInfo.getOrElse(0)
-                  val dskInfo = instance.rootDiskInfo.getOrElse(0)
+                  val zeroUtilization = 0.toDouble
+                  val memInfo = instance.memoryInfo.map(_.total).getOrElse(zeroUtilization)
+                  val dskInfo = instance.rootDiskInfo.map(_.total).getOrElse(zeroUtilization)
                   InstanceFlavor(instance.instanceType.getOrElse(""), None, memInfo, dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)
-
               case None =>
                 logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
                 Page[InstanceFlavor](List.empty[InstanceFlavor])
