@@ -125,6 +125,7 @@ object AdminManagerImpl {
     * @param response
     * @return List of  T type objects, Empty list if the response is not valid
     */
+  //scalastyle:off magic.number
   def unmarshallResponseTo[T](response: String, clsName:String) :  List[T] = {
     implicit val resouceUtilization = Main.resouceUtilizationFormat
     implicit val applicationFormat = Main.applicationFormat
@@ -137,7 +138,8 @@ object AdminManagerImpl {
           case "ResouceUtilization" => Unmarshal[String](response).to[ResouceUtilization]
           case "Application" => Unmarshal[String](response).to[Application]
         }
-      List(Await.result(mayBeResult, Duration(10, duration.MILLISECONDS)).asInstanceOf[T])
+      val timeOut = 10 // Need to changed  according to its execution time.
+      List(Await.result(mayBeResult, Duration(timeOut, duration.MILLISECONDS)).asInstanceOf[T])
     } else {
       List.empty[T]
     }
