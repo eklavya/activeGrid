@@ -139,6 +139,8 @@ object AdminManagerImpl {
           case "Application" => Unmarshal[String](response).to[Application]
         }
       val timeOut = 5 // Value Need to changed  according to its execution time.
+      // mayBeResult holding the unmarsal value embedded into Future object i.e like Future[T],
+      // To extract T Await used here
       List(Await.result(mayBeResult, Duration(timeOut, duration.MILLISECONDS)).asInstanceOf[T])
     } else {
       List.empty[T]
