@@ -1594,9 +1594,8 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
-                  val zeroUtilization = 0.0
-                  val memInfo = instance.memoryInfo.map(_.total).getOrElse(zeroUtilization)
-                  val dskInfo = instance.rootDiskInfo.map(_.total).getOrElse(zeroUtilization)
+                  val memInfo = instance.memoryInfo.map(_.total).getOrElse(0.0)
+                  val dskInfo = instance.rootDiskInfo.map(_.total).getOrElse(0.0)
                   InstanceFlavor(instance.instanceType.getOrElse(""), None, memInfo, dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)

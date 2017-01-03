@@ -138,7 +138,7 @@ object AdminManagerImpl {
           case "ResouceUtilization" => Unmarshal[String](response).to[ResouceUtilization]
           case "Application" => Unmarshal[String](response).to[Application]
         }
-      val timeOut = 10 // Need to changed  according to its execution time.
+      val timeOut = 5 // Value Need to changed  according to its execution time.
       List(Await.result(mayBeResult, Duration(timeOut, duration.MILLISECONDS)).asInstanceOf[T])
     } else {
       List.empty[T]
