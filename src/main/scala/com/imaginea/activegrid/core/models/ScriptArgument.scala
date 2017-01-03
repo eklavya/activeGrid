@@ -7,5 +7,5 @@ case class ScriptArgument(override val id: Option[Long],
                           propName: String,
                           propValue: String,
                           argOrder: Int,
-                          nestedArg: ScriptArgument,
+                          nestedArg: Option[ScriptArgument],
                           value: String ) extends BaseEntity
