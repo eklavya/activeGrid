@@ -50,7 +50,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
                 val merticData = HttpClient.getData(url, headers, queryParams)
-                convertToResouceUtilizationType(merticData.getOrElse(""))
+                unmarshallResponseTo[ResouceUtilization](merticData.getOrElse(""),ResouceUtilization.getClass.getSimpleName)
             }.getOrElse(emptyResponse)
           case GRAPHITE =>
             val plugIn = PluginManager.getPluginByName("apm-graphite")
@@ -60,8 +60,8 @@ object AdminManagerImpl {
                 val query: APMQuery = APMQuery("carbon.agents.ip-10-191-186-149-a.cpuUsage", "-1h", "until", "json", sdetails.serverUrl)
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
-                val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query).getOrElse("")
-                convertToResouceUtilizationType(metricData)
+                val merticData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query).getOrElse("")
+                unmarshallResponseTo[ResouceUtilization](merticData,ResouceUtilization.getClass.getSimpleName)
             }.getOrElse(emptyResponse)
           case _ => emptyResponse
         }
@@ -87,11 +87,11 @@ object AdminManagerImpl {
           val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}", plugIn.name).replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString()))
           val response = HttpClient.getData(url, headers, queryParams).getOrElse("")
           //todo logic that extract data from response and covnert data into application beans.
-          convertApplicationType(response)
+          unmarshallResponseTo[Application](response,Application.getClass.getSimpleName)
       }.getOrElse(emptyResponse)
       case GRAPHITE => // No procedure implemented.
         val response = "PROCEDURE NOT YET DEFINED"
-        convertApplicationType(response)
+        unmarshallResponseTo[Application](response,Application.getClass.getSimpleName)
       case _ =>
         emptyResponse
     }
@@ -121,33 +121,25 @@ object AdminManagerImpl {
   }
 
   /**
-    * Unmarshall given response to ResouceUtilization type
+    * Unmarshall given response to T type. T depends on the given className
     * @param response
-    * @return List of ResourceUtilization objects, Empty list if the response is not valid    
+    * @return List of  T type objects, Empty list if the response is not valid
     */
-  def convertToResouceUtilizationType(response: String): List[ResouceUtilization] = {
+  def unmarshallResponseTo[T](response: String, clsName:String) :  List[T] = {
     implicit val resouceUtilization = Main.resouceUtilizationFormat
-    if (response.length > 0) {
-      val mayBeResult = Unmarshal[String](response).to[ResouceUtilization]
-      List(Await.result(mayBeResult, Duration(10, duration.MICROSECONDS)))
-    } else {
-      List.empty[ResouceUtilization]
-    }
-  }
-
-  /**
-    * Unmarshlls response type to Application type
-    * @param response
-    * @return List of application, Empty List if response is empty or invalid
-    */
-  def convertApplicationType(response: String): List[Application] = {
     implicit val applicationFormat = Main.applicationFormat
-    val emptyResponse = List.empty[Application]
+
     if (response.length > 0) {
-      val mayBeApp = Unmarshal(response).to[Application]
-      List(Await.result(mayBeApp, Duration(10, duration.MICROSECONDS)))
+      val mayBeResult =
+        // 'clsName' holds value returned by .getSimpleName on a class
+      //  It always  suffixed with '$', To remove it dropRight used
+        clsName.dropRight(1) match {
+          case "ResouceUtilization" => Unmarshal[String](response).to[ResouceUtilization]
+          case "Application" => Unmarshal[String](response).to[Application]
+        }
+      List(Await.result(mayBeResult, Duration(10, duration.MILLISECONDS)).asInstanceOf[T])
     } else {
-      emptyResponse
+      List.empty[T]
     }
   }
 }
