@@ -2,14 +2,15 @@ package com.imaginea.activegrid.core.models
 
 import java.io.File
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 
 /**
   * Created by shareefn on 20/12/16.
   */
 case class ScriptFile(override val id: Option[Long],
-                      name: String,
-                      path: String,
+                      name: Option[String],
+                      path: Option[String],
                       file: Option[File]) extends BaseEntity
 
 object ScriptFile {
@@ -31,7 +32,7 @@ object ScriptFile {
     mayBeNode.map {
       node =>
         val map = Neo4jRepository.getProperties(node, "name", "path")
-        ScriptFile(Some(id), map("name").asInstanceOf[String], map("path").asInstanceOf[String], None)
+        ScriptFile(Some(id), ActiveGridUtils.getValueFromMapAs[String](map, "name"), ActiveGridUtils.getValueFromMapAs[String](map, "path"), None)
     }
   }
 }

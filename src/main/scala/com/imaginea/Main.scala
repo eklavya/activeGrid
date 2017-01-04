@@ -12,6 +12,7 @@ import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._ // scalastyle:ignore underscore.import
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
+import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _} // scalastyle:ignore underscore.import
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
@@ -20,7 +21,6 @@ import org.neo4j.graphdb.NotFoundException
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
 import spray.json._ // scalastyle:ignore underscore.import
-import com.beust.jcommander.JCommander
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationLong}
@@ -347,6 +347,7 @@ object Main extends App {
   implicit val conditionTypeJson = ConditionTypeJson
   implicit val scaleTypeJson = ScaleTypeJson
   implicit val policyConditionJson = jsonFormat8(PolicyCondition.apply)
+
   implicit object policyTypeFormat extends RootJsonFormat[PolicyType] {
     override def write(obj: PolicyType): JsValue = obj.plcyType.asInstanceOf[JsValue]
 
@@ -357,6 +358,7 @@ object Main extends App {
       }
     }
   }
+
   implicit val autoScalingPolicyJson = jsonFormat8(AutoScalingPolicy.apply)
   implicit val site1Format = jsonFormat(Site1.apply, "id", "siteName", "instances", "reservedInstanceDetails", "filters", "loadBalancers", "scalingGroups",
     "groupsList", "applications", "groupBy", "scalingPolicies")
@@ -392,6 +394,347 @@ object Main extends App {
 
   implicit val siteDeltaFormat = jsonFormat(SiteDelta.apply, "siteId", "deltaStatus", "addedInstances", "deletedInstances")
   implicit val pluginFormat = jsonFormat3(PlugIn.apply)
+
+  implicit object WorkflowModeFormat extends RootJsonFormat[WorkflowMode] {
+    override def write(obj: WorkflowMode): JsValue = {
+      JsString(obj.workflowMode)
+    }
+
+    override def read(json: JsValue): WorkflowMode = {
+      json match {
+        case JsString(str) => WorkflowMode.toWorkFlowMode(str)
+        case _ =>
+          throw DeserializationException("Unable to parse WorkflowMode")
+      }
+    }
+  }
+
+  implicit object StepTypeFormat extends RootJsonFormat[StepType] {
+    override def write(obj: StepType): JsValue = {
+      JsString(obj.stepType)
+    }
+
+    override def read(json: JsValue): StepType = {
+      json match {
+        case JsString(str) => StepType.toStepType(str)
+        case _ =>
+          throw DeserializationException("Unable to parse StepType")
+      }
+    }
+  }
+
+  implicit object ScriptTypeFormat extends RootJsonFormat[ScriptType] {
+    override def write(obj: ScriptType): JsValue = {
+      JsString(obj.scriptType)
+    }
+
+    override def read(json: JsValue): ScriptType = {
+      json match {
+        case JsString(str) => ScriptType.toScriptType(str)
+        case _ =>
+          throw DeserializationException("Unable to parse StepType")
+      }
+    }
+  }
+
+  implicit object ScriptFileFormat extends RootJsonFormat[ScriptFile] {
+    override def write(obj: ScriptFile): JsValue = {
+      val fieldNames = List("name", "path")
+      val fields = AGU.stringToJsField(fieldNames.head, obj.name) ++
+        AGU.stringToJsField(fieldNames(1), obj.path)
+      JsObject(fields: _*)
+    }
+
+    override def read(json: JsValue): ScriptFile = {
+      json match {
+        case JsObject(map) =>
+          ScriptFile(
+            AGU.getProperty[Long](map, "id"),
+            AGU.getProperty[String](map, "name"),
+            AGU.getProperty[String](map, "path"),
+            None)
+        case _ => throw DeserializationException("Unable to parse StepType")
+      }
+    }
+  }
+
+  implicit object VariableScopeFormat extends RootJsonFormat[VariableScope] {
+    override def write(obj: VariableScope): JsValue = {
+      JsString(obj.variableScope)
+    }
+
+    override def read(json: JsValue): VariableScope = {
+      json match {
+        case JsString(str) => VariableScope.toVariableScope(str)
+        case _ => throw DeserializationException("Unable to deserialize VariableScope")
+      }
+    }
+  }
+
+  implicit object CumulativeStepExecutionStatusFormat extends RootJsonFormat[CumulativeStepExecutionStatus] {
+    override def write(obj: CumulativeStepExecutionStatus): JsValue = {
+      JsString(obj.cumulativeStepExecutionStatus)
+    }
+
+    override def read(json: JsValue): CumulativeStepExecutionStatus = {
+      json match {
+        case JsString(str) => CumulativeStepExecutionStatus.toCumulativeStepExecutionStatus(str)
+        case _ => throw DeserializationException("Unable to deserialize the CumulativeStepExecutionStatus")
+      }
+    }
+  }
+
+  implicit object StepExecutionStatusFormat extends RootJsonFormat[StepExecutionStatus] {
+    override def write(obj: StepExecutionStatus): JsValue = {
+      JsString(obj.stepExecutionStatus)
+    }
+
+    override def read(json: JsValue): StepExecutionStatus = {
+      json match {
+        case JsString(str) => StepExecutionStatus.toStepExecutionStatus(str)
+        case _ => throw DeserializationException("Unable deserialize the StepExecutionStatus")
+      }
+    }
+  }
+
+  implicit object TaskStatusFormat extends RootJsonFormat[TaskStatus] {
+    override def write(obj: TaskStatus): JsValue = {
+      JsString(obj.taskStatus)
+    }
+
+    override def read(json: JsValue): TaskStatus = {
+      json match {
+        case JsString(str) => TaskStatus.toTaskStatus(str)
+        case _ => throw DeserializationException("Unable to deserialize TaskStatus")
+      }
+    }
+  }
+
+  implicit object TaskTypeFormat extends RootJsonFormat[TaskType] {
+    override def write(obj: TaskType): JsValue = {
+      JsString(obj.taskType)
+    }
+
+    override def read(json: JsValue): TaskType = {
+      json match {
+        case JsString(str) => TaskType.toTaskType(str)
+        case _ => throw DeserializationException("Unable to deserialize the TaskType")
+      }
+    }
+  }
+
+  implicit object StepOrderStrategyFormat extends RootJsonFormat[StepOrderStrategy] {
+    override def write(obj: StepOrderStrategy): JsValue = {
+      JsString(obj.orderStrategy)
+    }
+
+    override def read(json: JsValue): StepOrderStrategy = {
+      json match {
+        case JsString(str) => StepOrderStrategy.toOrderStrategy(str)
+        case _ => throw DeserializationException("Unable to deserialize the StepOrderStrategy")
+      }
+    }
+  }
+
+  implicit object WorkflowExecutionStrategyFormat extends RootJsonFormat[WorkflowExecutionStrategy] {
+    override def write(obj: WorkflowExecutionStrategy): JsValue = {
+      JsString(obj.executionStrategy)
+    }
+
+    override def read(json: JsValue): WorkflowExecutionStrategy = {
+      json match {
+        case JsString(str) => WorkflowExecutionStrategy.toExecutionStrategy(str)
+        case _ => throw DeserializationException("Unable to deserialize WorkflowExecutionStrategy")
+      }
+    }
+  }
+
+  implicit object WorkFlowExecutionStatusFormat extends RootJsonFormat[WorkFlowExecutionStatus] {
+    override def write(obj: WorkFlowExecutionStatus): JsValue = {
+      JsString(obj.executionStatus)
+    }
+
+    override def read(json: JsValue): WorkFlowExecutionStatus = {
+      json match {
+        case JsString(str) => WorkFlowExecutionStatus.toExecutionStatus(str)
+        case _ => throw DeserializationException("Unable to deserialize WorkFlowExecutionStatus")
+      }
+    }
+  }
+
+  implicit val variableFormat = jsonFormat6(Variable.apply)
+  implicit val hostFormat = jsonFormat3(Host.apply)
+  implicit val groupFormat = jsonFormat4(Group.apply)
+  implicit val inventoryFormat = jsonFormat6(Inventory.apply)
+
+  implicit val taskFormat = jsonFormat5(Task.apply)
+  implicit val taskReportFormat = jsonFormat4(TaskReport.apply)
+  implicit val nodeReportFormat = jsonFormat5(NodeReport.apply)
+  implicit val inventoryExecFormat = jsonFormat6(InventoryExecutionScope.apply)
+  implicit val stepInputFormat = jsonFormat2(StepInput.apply)
+
+  implicit object ScriptArgumentFormat extends RootJsonFormat[ScriptArgument] {
+    val fieldNames = List("id", "propName", "propValue", "argOrder", "nestedArg", "value")
+
+    override def read(json: JsValue): ScriptArgument = {
+      json match {
+        case JsObject(map) =>
+          val mayBeScriptArg = for {
+            propName <- AGU.getProperty[String](map, fieldNames(1))
+            propValue <- AGU.getProperty[String](map, fieldNames(2))
+            argOrder <- AGU.getProperty[Int](map, fieldNames(3))
+            value <- AGU.getProperty[String](map, fieldNames(5))
+          } yield {
+            ScriptArgument(AGU.getProperty[Long](map, fieldNames(0)),
+              propName,
+              propValue,
+              argOrder,
+              AGU.getProperty[JsValue](map, fieldNames(4)).map(jsVal => ScriptArgumentFormat.read(jsVal)),
+              value)
+          }
+          mayBeScriptArg match {
+            case Some(scriptArgument) => scriptArgument
+            case None =>
+              logger.warn("Unable to deserialize ScriptArgument,unknown properties found")
+              throw DeserializationException("Unable to deserialize ScriptArgument, unknown properties found")
+          }
+        case _ => throw DeserializationException("Unable to deserialize ScriptArgument, required JsObject")
+      }
+    }
+
+    override def write(obj: ScriptArgument): JsValue = {
+      val fields = AGU.longToJsField(fieldNames(0), obj.id) ++
+        AGU.stringToJsField(fieldNames(1), Some(obj.propName)) ++
+        AGU.stringToJsField(fieldNames(2), Some(obj.propValue)) ++
+        AGU.stringToJsField(fieldNames(3), Some(obj.argOrder.toString)) ++
+        AGU.objectToJsValue[ScriptArgument](fieldNames(4), obj.nestedArg, ScriptArgumentFormat) ++
+        AGU.stringToJsField(fieldNames(5), Some(obj.value))
+      JsObject(fields: _*)
+    }
+  }
+
+  implicit val puppetModuleDefFormat = jsonFormat5(PuppetModuleDefinition.apply)
+  implicit val ansibleModuleDefFormat = jsonFormat3(AnsibleModuleDefinition.apply)
+
+  implicit object ModuleFormat extends RootJsonFormat[Module] {
+    val fieldNames = List("id", "name", "path", "version", "definition")
+
+    override def read(json: JsValue): Module = {
+      json match {
+        case JsObject(map) =>
+          val definitionObj = if (map.contains("definition")) {
+            val obj = map(fieldNames(4))
+            if (obj.asJsObject.fields.contains("playBooks")) {
+              ansibleModuleDefFormat.read(obj)
+            } else {
+              puppetModuleDefFormat.read(obj)
+            }
+          } else {
+            logger.warn("Unable to deserialize ModuleDefinition in Module,property 'definition' not found")
+            throw DeserializationException("Unable to deserialize ModuleDefinition in Module,property 'definition' not found")
+          }
+          val mayBeModule = for {
+            name <- AGU.getProperty[String](map, "name")
+            path <- AGU.getProperty[String](map, "path")
+            version <- AGU.getProperty[String](map, "version")
+          } yield {
+            Module(AGU.getProperty[Long](map, "id"),
+              name,
+              path,
+              version,
+              definitionObj)
+          }
+          mayBeModule match {
+            case Some(module) => module
+            case None =>
+              logger.warn("Unable to deserialize Module , unknown properties found")
+              throw DeserializationException("Unable to deserialize Module , unknown properties found")
+          }
+        case _ => throw DeserializationException("Unable to deserialize Module")
+      }
+    }
+
+    override def write(obj: Module): JsValue = {
+      val definitionFormat = obj.definition match {
+        case _: AnsibleModuleDefinition => AGU.objectToJsValue[AnsibleModuleDefinition](fieldNames(4), Some(obj.definition.asInstanceOf[AnsibleModuleDefinition]), ansibleModuleDefFormat)
+        case _: PuppetModuleDefinition => AGU.objectToJsValue[PuppetModuleDefinition](fieldNames(4), Some(obj.definition.asInstanceOf[PuppetModuleDefinition]), puppetModuleDefFormat)
+      }
+      val fields = AGU.longToJsField(fieldNames(0), obj.id) ++
+        AGU.stringToJsField(fieldNames(1), Some(obj.name)) ++
+        AGU.stringToJsField(fieldNames(2), Some(obj.path)) ++
+        AGU.stringToJsField(fieldNames(3), Some(obj.version)) ++
+        definitionFormat
+      JsObject(fields: _*)
+    }
+  }
+
+  implicit val puppetScriptDependenciesFormat = jsonFormat4(PuppetScriptDependencies.apply)
+  implicit val scriptDefinitionFormat = jsonFormat8(ScriptDefinition.apply)
+
+  implicit object StepFormat extends RootJsonFormat[Step] {
+    val fieldNames = List("id", "stepId", "name", "description", "stepType", "scriptDefinition", "input", "scope",
+      "executionOrder", "childStep", "report")
+
+    override def write(obj: Step): JsValue = {
+      val fields = AGU.longToJsField(fieldNames.head, obj.id) ++
+        AGU.stringToJsField(fieldNames(1), Some(obj.stepId)) ++
+        AGU.stringToJsField(fieldNames(2), Some(obj.name)) ++
+        AGU.stringToJsField(fieldNames(3), Some(obj.description)) ++
+        AGU.stringToJsField(fieldNames(4), Some(obj.stepType.stepType)) ++
+        AGU.objectToJsValue[ScriptDefinition](fieldNames(5), Some(obj.scriptDefinition), scriptDefinitionFormat) ++
+        AGU.objectToJsValue[StepInput](fieldNames(6), Some(obj.input), stepInputFormat) ++
+        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), Some(obj.scope), inventoryExecFormat) ++
+        AGU.stringToJsField(fieldNames(8), Some(obj.executionOrder.toString)) ++
+        AGU.listToJsValue(fieldNames(9), obj.childStep, StepFormat) ++
+        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), Some(obj.report), stepExecFormat)
+      JsObject(fields: _*)
+    }
+
+    override def read(json: JsValue): Step = {
+      json match {
+        case JsObject(map) =>
+          val mayBeStep: Option[Step] = for {
+            stepId <- AGU.getProperty[String](map, fieldNames(1))
+            name <- AGU.getProperty[String](map, fieldNames(2))
+            description <- AGU.getProperty[String](map, fieldNames(3))
+            stepType <- AGU.getProperty[String](map, fieldNames(4))
+            scriptJsVal <- AGU.getProperty[JsValue](map, fieldNames(5))
+            inputJsVal <- AGU.getProperty[JsValue](map, fieldNames(6))
+            scopeJsVal <- AGU.getProperty[JsValue](map, fieldNames(7))
+            executionOrder <- AGU.getProperty[Int](map, fieldNames(8))
+            reportJsVal <- AGU.getProperty[JsValue](map, fieldNames(10))
+          } yield {
+
+            Step(AGU.getProperty[Long](map, fieldNames(0)),
+              stepId,
+              name,
+              description,
+              StepType.toStepType(stepType),
+              scriptDefinitionFormat.read(scriptJsVal),
+              stepInputFormat.read(inputJsVal),
+              inventoryExecFormat.read(scopeJsVal),
+              executionOrder,
+              AGU.getObjectsFromJson[Step](map, "childStep", StepFormat),
+              stepExecFormat.read(reportJsVal)
+            )
+          }
+          mayBeStep match {
+            case Some(step) => step
+            case None =>
+              logger.warn("Unable to deserialize the Step , found unknown properties")
+              throw DeserializationException("Unable to deserialize the Step , found unknown properties")
+          }
+        case _ => throw DeserializationException("Unable to deserialize Step")
+      }
+    }
+  }
+
+  implicit val stepExecFormat = jsonFormat4(StepExecutionReport.apply)
+  implicit val workflowExecutionFormat = jsonFormat8(WorkflowExecution.apply)
+  implicit val ansibleGroupFormat = jsonFormat3(AnsibleGroup.apply)
+  implicit val ansiblePlayFormat = jsonFormat5(AnsiblePlay.apply)
+  implicit val ansiblePlayBookFormat = jsonFormat5(AnsiblePlayBook.apply)
+  implicit val workflowFormat = jsonFormat14(Workflow.apply)
 
   val appsettingRoutes: Route = pathPrefix("config") {
     path("ApplicationSettings") {
@@ -2721,8 +3064,9 @@ object Main extends App {
   }
 
   implicit object commandExecutionContextFormat extends RootJsonFormat[CommandExecutionContext] {
+    val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
+
     override def write(i: CommandExecutionContext): JsValue = {
-      val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
       val contextObject = i.contextObject match {
         case Some(ctx) if ctx.isInstanceOf[Site1] =>
           AGU.objectToJsValue[Site1](fieldNames(3), Some(i.contextObject.asInstanceOf[Site1]), site1Format)
@@ -2745,8 +3089,43 @@ object Main extends App {
     }
 
     override def read(json: JsValue): CommandExecutionContext = {
-      //TODO need to write custom read
-      throw new Exception("read not implemented yet")
+      json match {
+        case JsObject(map) =>
+          val mayBeCec = for {
+            contextName <- AGU.getProperty[String](map, fieldNames(0))
+            contextType <- AGU.getProperty[String](map, fieldNames(1))
+            instances <- AGU.getProperty[Array[String]](map, fieldNames(4))
+            siteId <- AGU.getProperty[Long](map, fieldNames(5))
+          } yield {
+            val contextObj = if (map.contains("contextObject")) {
+              val contextObj = map("contextObject").asJsObject
+              if (contextObj.fields.contains("instanceId")) {
+                instanceFormat.read(contextObj)
+              } else {
+                site1Format.read(contextObj)
+              }
+            } else {
+              throw DeserializationException("Unable to parse the contextObject")
+            }
+
+            CommandExecutionContext(
+              contextName,
+              ContextType.toContextType(contextType),
+              Some(contextObj),
+              AGU.getProperty[String](map, fieldNames(3)).map(parentContext => commandExecutionContextFormat.read(parentContext.asInstanceOf[JsValue])),
+              instances,
+              siteId,
+              AGU.getProperty[String](map, fieldNames(6))
+            )
+          }
+          mayBeCec match {
+            case Some(commandExecutionContext) => commandExecutionContext
+            case None => logger.warn("Unable to deserialize the CommandExecutionContext, Unknown properties found")
+              throw DeserializationException("Unable to deserialize the CommandExecutionContext, Unknown properties found")
+          }
+        case _ =>
+          throw DeserializationException("Unable deseriailize the CommandExecutionContext")
+      }
     }
   }
 

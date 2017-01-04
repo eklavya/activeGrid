@@ -37,7 +37,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
                 val merticData = HttpClient.getData(url, headers, queryParams)
-                convertResposneToType[ResouceUtilization](merticData,ResouceUtilization.getClass).last
+                convertResposneToType[ResouceUtilization](merticData.getOrElse(""),ResouceUtilization.getClass).last
             }.getOrElse(fakeReturnValue)
           case GRAPHITE =>
             val plugIn = PluginManager.getPluginByName("apm-graphite")
@@ -48,7 +48,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
                 val metricData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query)
-                convertResposneToType[ResouceUtilization](metricData,ResouceUtilization.getClass).last
+                convertResposneToType[ResouceUtilization](metricData.getOrElse(""),ResouceUtilization.getClass).last
             }.getOrElse(fakeReturnValue)
           case _ => fakeReturnValue
         }
@@ -73,7 +73,7 @@ object AdminManagerImpl {
           val url = baseUri.concat("/plugins/{plugin}/servers/{serverId}/applications".replace("{plugin}",plugIn.name).replace("{serverId}", aPMServerDetails.id.getOrElse("0L").toString()))
           val response = HttpClient.getData(url, headers, queryParams)
           //todo logic that extract data from response and covnert data into application beans.
-          convertResposneToType[Application](response,Application.getClass)
+          convertResposneToType[Application](response.getOrElse(""),Application.getClass)
       }
       case GRAPHITE => // No procedure implemented.
         val response = "PROCEDURE NOT YET DEFINED"
