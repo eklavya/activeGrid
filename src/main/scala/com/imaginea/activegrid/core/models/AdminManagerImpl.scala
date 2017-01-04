@@ -29,8 +29,8 @@ object AdminManagerImpl {
     */
   //scalastyle:off cyclomatic.complexity method.length
   //todo 'sendDataAsJson' implementation
-  def fetchMetricData(baseUri: String, siteId: Long, instanceId: String, resouce: String): List[ResouceUtilization] = {
-    val emptyResponse = List(ResouceUtilization("target", List.empty[DataPoint]))
+  def fetchMetricData(baseUri: String, siteId: Long, instanceId: String, resouce: String): List[ResourceUtilization] = {
+    val emptyResponse = List(ResourceUtilization("target", List.empty[DataPoint]))
     // Getting application management server.
     val serverDetails = APMServerDetails.getAPMServerByInstance(siteId, instanceId)
     serverDetails.map {
@@ -50,7 +50,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy(authStrategy)
                 val queryParams = Map.empty[String, String]
                 val merticData = HttpClient.getData(url, headers, queryParams)
-                unmarshallResponseTo[ResouceUtilization](merticData.getOrElse(""),ResouceUtilization.getClass.getSimpleName)
+                unmarshallResponseTo[ResourceUtilization](merticData.getOrElse(""),ResourceUtilization.getClass.getSimpleName)
             }.getOrElse(emptyResponse)
           case GRAPHITE =>
             val plugIn = PluginManager.getPluginByName("apm-graphite")
@@ -61,7 +61,7 @@ object AdminManagerImpl {
                 val headers = getHeadersAsPerAuthStrategy("anonymous")
                 val queryParams = Map.empty[String, String]
                 val merticData = HttpClient.sendDataAsJson("put", url, headers, queryParams, query).getOrElse("")
-                unmarshallResponseTo[ResouceUtilization](merticData,ResouceUtilization.getClass.getSimpleName)
+                unmarshallResponseTo[ResourceUtilization](merticData,ResourceUtilization.getClass.getSimpleName)
             }.getOrElse(emptyResponse)
           case _ => emptyResponse
         }
@@ -135,7 +135,7 @@ object AdminManagerImpl {
         // 'clsName' holds value returned by .getSimpleName on a class
       //  It always  suffixed with '$', To remove it dropRight used
         clsName.dropRight(1) match {
-          case "ResouceUtilization" => Unmarshal[String](response).to[ResouceUtilization]
+          case "ResourceUtilization" => Unmarshal[String](response).to[ResourceUtilization]
           case "Application" => Unmarshal[String](response).to[Application]
         }
       val timeOut = 5 // Value Need to changed  according to its execution time.

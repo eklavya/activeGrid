@@ -380,7 +380,7 @@ object Main extends App {
   implicit val esSearchQueryFormat = jsonFormat6(EsSearchQuery.apply)
   implicit val esSearchResponseFormat = jsonFormat3(EsSearchResponse.apply)
   implicit val dataPointFormat = jsonFormat(DataPoint.apply, "timestamp", "value")
-  implicit val resouceUtilizationFormat = jsonFormat(ResouceUtilization.apply, "target", "dataPoints")
+  implicit val resouceUtilizationFormat = jsonFormat(ResourceUtilization.apply, "target", "dataPoints")
 
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
