@@ -397,7 +397,7 @@ object Main extends App {
 
   implicit object WorkflowModeFormat extends RootJsonFormat[WorkflowMode] {
     override def write(obj: WorkflowMode): JsValue = {
-      obj.workflowMode.asInstanceOf[JsValue]
+      JsString(obj.workflowMode)
     }
 
     override def read(json: JsValue): WorkflowMode = {
