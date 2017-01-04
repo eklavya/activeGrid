@@ -411,7 +411,7 @@ object Main extends App {
 
   implicit object StepTypeFormat extends RootJsonFormat[StepType] {
     override def write(obj: StepType): JsValue = {
-      obj.stepType.asInstanceOf[JsValue]
+      JsString(obj.stepType)
     }
 
     override def read(json: JsValue): StepType = {
@@ -425,7 +425,7 @@ object Main extends App {
 
   implicit object ScriptTypeFormat extends RootJsonFormat[ScriptType] {
     override def write(obj: ScriptType): JsValue = {
-      obj.scriptType.asInstanceOf[JsValue]
+      JsString(obj.scriptType)
     }
 
     override def read(json: JsValue): ScriptType = {
@@ -460,7 +460,7 @@ object Main extends App {
 
   implicit object VariableScopeFormat extends RootJsonFormat[VariableScope] {
     override def write(obj: VariableScope): JsValue = {
-      obj.variableScope.asInstanceOf[JsValue]
+      JsString(obj.variableScope)
     }
 
     override def read(json: JsValue): VariableScope = {
@@ -473,7 +473,7 @@ object Main extends App {
 
   implicit object CumulativeStepExecutionStatusFormat extends RootJsonFormat[CumulativeStepExecutionStatus] {
     override def write(obj: CumulativeStepExecutionStatus): JsValue = {
-      obj.cumulativeStepExecutionStatus.asInstanceOf[JsValue]
+      JsString(obj.cumulativeStepExecutionStatus)
     }
 
     override def read(json: JsValue): CumulativeStepExecutionStatus = {
@@ -486,7 +486,7 @@ object Main extends App {
 
   implicit object StepExecutionStatusFormat extends RootJsonFormat[StepExecutionStatus] {
     override def write(obj: StepExecutionStatus): JsValue = {
-      obj.stepExecutionStatus.asInstanceOf[JsValue]
+      JsString(obj.stepExecutionStatus)
     }
 
     override def read(json: JsValue): StepExecutionStatus = {
@@ -499,7 +499,7 @@ object Main extends App {
 
   implicit object TaskStatusFormat extends RootJsonFormat[TaskStatus] {
     override def write(obj: TaskStatus): JsValue = {
-      obj.taskStatus.asInstanceOf[JsValue]
+      JsString(obj.taskStatus)
     }
 
     override def read(json: JsValue): TaskStatus = {
@@ -512,7 +512,7 @@ object Main extends App {
 
   implicit object TaskTypeFormat extends RootJsonFormat[TaskType] {
     override def write(obj: TaskType): JsValue = {
-      obj.taskType.asInstanceOf[JsValue]
+      JsString(obj.taskType)
     }
 
     override def read(json: JsValue): TaskType = {
@@ -525,7 +525,7 @@ object Main extends App {
 
   implicit object StepOrderStrategyFormat extends RootJsonFormat[StepOrderStrategy] {
     override def write(obj: StepOrderStrategy): JsValue = {
-      obj.orderStrategy.asInstanceOf[JsValue]
+      JsString(obj.orderStrategy)
     }
 
     override def read(json: JsValue): StepOrderStrategy = {
@@ -538,7 +538,7 @@ object Main extends App {
 
   implicit object WorkflowExecutionStrategyFormat extends RootJsonFormat[WorkflowExecutionStrategy] {
     override def write(obj: WorkflowExecutionStrategy): JsValue = {
-      obj.executionStrategy.asInstanceOf[JsValue]
+      JsString(obj.executionStrategy)
     }
 
     override def read(json: JsValue): WorkflowExecutionStrategy = {
@@ -551,7 +551,7 @@ object Main extends App {
 
   implicit object WorkFlowExecutionStatusFormat extends RootJsonFormat[WorkFlowExecutionStatus] {
     override def write(obj: WorkFlowExecutionStatus): JsValue = {
-      obj.executionStatus.asInstanceOf[JsValue]
+      JsString(obj.executionStatus)
     }
 
     override def read(json: JsValue): WorkFlowExecutionStatus = {
@@ -731,7 +731,10 @@ object Main extends App {
 
   implicit val stepExecFormat = jsonFormat4(StepExecutionReport.apply)
   implicit val workflowExecutionFormat = jsonFormat8(WorkflowExecution.apply)
-  implicit val workflowFormat = jsonFormat11(Workflow.apply)
+  implicit val ansibleGroupFormat = jsonFormat3(AnsibleGroup.apply)
+  implicit val ansiblePlayFormat = jsonFormat5(AnsiblePlay.apply)
+  implicit val ansiblePlayBookFormat = jsonFormat5(AnsiblePlayBook.apply)
+  implicit val workflowFormat = jsonFormat14(Workflow.apply)
 
   val appsettingRoutes: Route = pathPrefix("config") {
     path("ApplicationSettings") {
