@@ -770,35 +770,7 @@ object Main extends App {
   implicit val pageScopeTypeFormat = jsonFormat4(Page[ScopeType])
 
   val workflowRoutes: Route = pathPrefix("workflows") {
-    get {
-      val workflows = Future {
-        val nodesList = Neo4jRepository.getNodesByLabel(Workflow.labelName)
-        val workflowList = nodesList.flatMap(node => Workflow.fromNeo4jGraph(node.getId))
-        Page[Workflow](workflowList)
-      }
-      onComplete(workflows) {
-        case Success(response) => complete(StatusCodes.OK, response)
-        case Failure(exception) =>
-          logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
-          complete(StatusCodes.BadRequest, "Unable to get workflow list")
-      }
-    } ~ post {
-      entity(as[Workflow]) { workflow =>
-        val updateWorkflow = Future {
-          if (workflow.id.isEmpty) {
-            throw new RuntimeException("Missing Workflow id")
-          }
-          workflow.toNeo4jGraph(workflow)
-          "Workflow updated successfully"
-        }
-        onComplete(updateWorkflow) {
-          case Success(response) => complete(StatusCodes.OK, response)
-          case Failure(exception) =>
-            logger.error(s"Unable to update workflow ${exception.getMessage}", exception)
-            complete(StatusCodes.BadRequest, "Unable to update workflow")
-        }
-      }
-    } ~ path("step" / "types") {
+    path("step" / "types") {
       get {
         val stepTypes = Future {
           val stepTypesList = StepType.values
@@ -863,6 +835,34 @@ object Main extends App {
           case Failure(exception) =>
             logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to get workflow list")
+        }
+      }
+    } ~ get {
+      val workflows = Future {
+        val nodesList = Neo4jRepository.getNodesByLabel(Workflow.labelName)
+        val workflowList = nodesList.flatMap(node => Workflow.fromNeo4jGraph(node.getId))
+        Page[Workflow](workflowList)
+      }
+      onComplete(workflows) {
+        case Success(response) => complete(StatusCodes.OK, response)
+        case Failure(exception) =>
+          logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
+          complete(StatusCodes.BadRequest, "Unable to get workflow list")
+      }
+    } ~ post {
+      entity(as[Workflow]) { workflow =>
+        val updateWorkflow = Future {
+          if (workflow.id.isEmpty) {
+            throw new RuntimeException("Missing Workflow id")
+          }
+          workflow.toNeo4jGraph(workflow)
+          "Workflow updated successfully"
+        }
+        onComplete(updateWorkflow) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to update workflow ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to update workflow")
         }
       }
     }
@@ -1384,7 +1384,8 @@ object Main extends App {
     }
   }
   val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
-    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~ esServiceRoutes
+    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
+    esServiceRoutes ~ workflowRoutes
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
