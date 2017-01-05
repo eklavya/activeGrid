@@ -1,24 +1,26 @@
 Workflow - General meaning of workflow is a process in which business processing
-           steps will be converted to software execution phases to automate business1 steps.
-           Example : Steps  involved in  receiving order from online to delivery to the customers.
-           Convertion procedure done though human readable input by  translating to system instructions.
+           steps will be converted to software execution phases to automate business steps.
+           Example : Steps  involved in  receiving order from online to delivery of product  to the customers.
 
-In active grid application, Workflow term is used in a different context  that scheduing a configuration managment script.
+          DSL languages are often used to write instructions. Yaml is such language used in actiegrid.
 
+In active grid application, Workflow term is used in a different context  that scheduling a configuration managment script.
 There are two types of confiugration managment plugins are included in existing activegrid application
 
 1. Ansible
 2. Puppet
 
-It have been observed that most implementation binded Ansible, Though general design of the application support both plugin
-integration but special Puppet related steps haven't seen in the code. Probably seperate procedure to invoke these puppet files.
+It have been observed that most implementation binded to Ansible, Though general design of the application support both
+ansible and puppet plugins but unlike ansible,no  exclusive steps for  Puppet  execution haven't seen in the code.
+Compared to ansibl,more puppet related scripts are written and included.
 
-Mcollective included in code base. It enbale parlel execution of tasks and dynamic host descovery over large or mini network nodes.
+Mcollective an ansible module,included in code base. It enbale parllel execution of tasks and dynamic host descovery over
+large distributed network of nodes.
 
 Puppet  support in-mechine or remote system configuration. In active application remote system configuration used.
 
-There is a tab in activegrid UI to upload module. As of now Ansible and Puppet modules are allowed to accept. There is workflow service
-written to access the status of workflows configured under a site.
+There is a tab in activegrid user interface to upload module. As of now Ansible and Puppet modules are supported in screen.
+
 
 
 
