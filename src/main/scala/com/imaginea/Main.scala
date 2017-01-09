@@ -1393,9 +1393,11 @@ object Main extends App {
       }
     }
   }
-  val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
-    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
-    esServiceRoutes ~ workflowRoutes
+  val route: Route = pathPrefix("api" / AGU.APIVERSION) {
+    siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
+      apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
+      esServiceRoutes ~ workflowRoutes
+  }
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
@@ -3220,6 +3222,7 @@ object Main extends App {
 
   implicit object commandExecutionContextFormat extends RootJsonFormat[CommandExecutionContext] {
     val fieldNames = List("contextName", "contextType", "contextObject", "parentContext", "instances", "siteId", "user")
+
     override def write(i: CommandExecutionContext): JsValue = {
       val contextObject = i.contextObject match {
         case Some(ctx) if ctx.isInstanceOf[Site1] =>
