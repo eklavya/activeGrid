@@ -22,5 +22,7 @@ Puppet support in-machine or remote system configuration. In active application 
 There is a tab in the activegrid user interface to upload configuration module.
 As of now Ansible and Puppet modules are supported in the screen.
 
+![alt tag](workflow.png)
+
 
 
