@@ -765,7 +765,7 @@ object Main extends App {
   }
 
   implicit val stepExecFormat = jsonFormat4(StepExecutionReport.apply)
-  implicit val workflowExecutionFormat = jsonFormat8(WorkflowExecution.apply)
+  implicit val workflowExecutionFormat = jsonFormat9(WorkflowExecution.apply)
   implicit val workflowFormat = jsonFormat14(Workflow.apply)
   implicit val pageWorkflowFormat = jsonFormat4(Page[Workflow])
   implicit val pageStepTypeFormat = jsonFormat4(Page[StepType])
@@ -815,19 +815,9 @@ object Main extends App {
     } ~ path(LongNumber) { workflowId =>
       get {
         val workflow = Future {
-          val mayBeWorkflow = Workflow.fromNeo4jGraph(workflowId)
+          val mayBeWorkflow = getWorkflow(workflowId)
           mayBeWorkflow match {
-            case Some(w) =>
-              val steps = w.steps
-              val sortedStepsByTaskId = steps.map { step =>
-                val ansiblePlay = step.script.asInstanceOf[AnsiblePlay]
-                val tasks = ansiblePlay.taskList
-                val sortedTasks = tasks.sortBy(_.id)
-                ansiblePlay.copy(taskList = sortedTasks)
-                step.copy(script = ansiblePlay)
-              }
-              val sortedStepsByExcOrder = sortedStepsByTaskId.sortBy(_.executionOrder)
-              w.copy(steps = sortedStepsByExcOrder)
+            case Some(workflow) => workflow
             case None =>
               logger.warn(s"Node not found with ID: $workflowId")
               throw new Exception(s"Node not found with ID: $workflowId")
@@ -868,6 +858,23 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to update workflow")
         }
       }
+    }
+  }
+
+  def getWorkflow(workflowId: Long): Option[Workflow] = {
+    val mayBeWorkflow = Workflow.fromNeo4jGraph(workflowId)
+    mayBeWorkflow.map { w =>
+        val steps = w.steps
+        val sortedStepsByTaskId = steps.map { step =>
+          val ansiblePlay = step.script.asInstanceOf[AnsiblePlay]
+          val tasks = ansiblePlay.taskList
+          val sortedTasks = tasks.sortBy(_.id)
+          ansiblePlay.copy(taskList = sortedTasks)
+          step.copy(script = ansiblePlay)
+        }
+        val sortedStepsByExcOrder = sortedStepsByTaskId.sortBy(_.executionOrder)
+        val workflow = w.copy(steps = sortedStepsByExcOrder)
+        workflow
     }
   }
 
