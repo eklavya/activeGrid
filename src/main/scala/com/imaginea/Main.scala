@@ -1008,17 +1008,20 @@ object Main extends App {
   }
   val discoveryRoutes: Route = pathPrefix("discover") {
     path("site") {
-      put {
-        entity(as[Site1]) { site =>
-          val buildSite = Future {
-            val savedSite = populateInstances(site)
-            savedSite.id.map(siteId => cachedSite.put(siteId, savedSite))
-          }
-          onComplete(buildSite) {
-            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case Failure(exception) =>
-              logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to save the Site.")
+      withRequestTimeout(1.minutes) {
+        put {
+          entity(as[Site1]) { site =>
+            val buildSite = Future {
+              val savedSite = populateInstances(site)
+              savedSite.id.foreach(siteId => cachedSite.put(siteId, savedSite))
+              savedSite
+            }
+            onComplete(buildSite) {
+              case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case Failure(exception) =>
+                logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to save the Site.")
+            }
           }
         }
       }
@@ -2984,7 +2987,6 @@ object Main extends App {
     }
     val site1 = Site1(Some(siteNode.getId), site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(),
       List.empty[Application], site.groupBy, site.scalingPolicies)
-    site1.toNeo4jGraph(site1)
     site1
   }
 
