@@ -44,7 +44,7 @@ object HttpClient {
     *
     */
 
- //scalastyle:off magic.number
+  //scalastyle:off magic.number
   def getData(url: String, headers: Map[String, String], value: Map[String, String]): Option[String] = {
     val connectionTimeOut = 1000 // in microseconds
     val socketTimeOut = 1000 //in microseconds
