@@ -1013,7 +1013,7 @@ object Main extends App {
           entity(as[Site1]) { site =>
             val buildSite = Future {
               val savedSite = populateInstances(site)
-              savedSite.id.map(siteId => cachedSite.put(siteId, savedSite))
+              savedSite.id.foreach(siteId => cachedSite.put(siteId, savedSite))
               savedSite
             }
             onComplete(buildSite) {
