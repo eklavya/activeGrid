@@ -6,47 +6,46 @@ package com.imaginea.activegrid.core.models
 
 sealed trait ScriptType {
   val scriptType: String
-
-  override def toString: String = super.toString
-}
-
-case object Ruby extends ScriptType {
-  override val scriptType: String = "Ruby"
-}
-
-case object Shell extends ScriptType {
-  override val scriptType: String = "Shell"
-}
-
-case object PuppetDSL extends ScriptType {
-  override val scriptType: String = "PuppetDSL"
-}
-
-case object Jruby extends ScriptType {
-  override val scriptType: String = "Jruby"
-}
-
-case object Ansible extends ScriptType {
-  override val scriptType: String = "Ansible"
-}
-
-case object Yaml extends ScriptType {
-  override val scriptType: String = "Yaml"
-}
-
-case object Play extends ScriptType {
-  override val scriptType: String = "Play"
-}
-
-case object File extends ScriptType {
-  override val scriptType: String = "File"
-}
-
-case object Script extends ScriptType {
-  override val scriptType: String = "Script"
 }
 
 object ScriptType {
+
+  case object Ruby extends ScriptType {
+    override val scriptType: String = "Ruby"
+  }
+
+  case object Shell extends ScriptType {
+    override val scriptType: String = "Shell"
+  }
+
+  case object PuppetDSL extends ScriptType {
+    override val scriptType: String = "PuppetDSL"
+  }
+
+  case object Jruby extends ScriptType {
+    override val scriptType: String = "Jruby"
+  }
+
+  case object Ansible extends ScriptType {
+    override val scriptType: String = "Ansible"
+  }
+
+  case object Yaml extends ScriptType {
+    override val scriptType: String = "Yaml"
+  }
+
+  case object Play extends ScriptType {
+    override val scriptType: String = "Play"
+  }
+
+  case object File extends ScriptType {
+    override val scriptType: String = "File"
+  }
+
+  case object Script extends ScriptType {
+    override val scriptType: String = "Script"
+  }
+
   def toScriptType(scriptType: String): ScriptType = {
     scriptType match {
       case "Ruby" => Ruby
@@ -60,4 +59,6 @@ object ScriptType {
       case "Script" => Script
     }
   }
+
+  def values: List[ScriptType] = List(Ruby, Shell, PuppetDSL, Jruby, Ansible, Yaml, Play, File, Script)
 }

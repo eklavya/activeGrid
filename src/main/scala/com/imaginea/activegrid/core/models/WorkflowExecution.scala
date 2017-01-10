@@ -11,6 +11,7 @@ case class WorkflowExecution(override val id: Option[Long],
                              status: WorkFlowExecutionStatus,
                              currentStep: Option[Step],
                              logs: List[String],
+                             logTail: List[String],
                              inventory: Option[Inventory],
                              stepExecutionReports: List[StepExecutionReport]) extends BaseEntity
 
@@ -53,6 +54,7 @@ object WorkflowExecution {
           WorkFlowExecutionStatus.toExecutionStatus(map("status").asInstanceOf[String]),
           None,
           map("logs").asInstanceOf[Array[String]].toList,
+          List.empty[String],
           inventory,
           List.empty[StepExecutionReport]
         )

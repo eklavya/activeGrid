@@ -14,7 +14,7 @@ case class ScriptDefinition(override val id: Option[Long],
                             version: String,
                             module: Module,
                             arguments: List[ScriptArgument],
-                            dependencies: PuppetScriptDependencies) extends BaseEntity
+                            dependencies: PuppetScriptDependencies) extends Script
 
 object ScriptDefinition {
   val labelName = "ScriptDefinition"

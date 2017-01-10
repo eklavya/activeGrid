@@ -12,7 +12,7 @@ case class Step(override val id: Option[Long],
                 name: String,
                 description: String,
                 stepType: StepType,
-                scriptDefinition: ScriptDefinition,
+                script: Script,
                 input: StepInput,
                 scope: InventoryExecutionScope,
                 executionOrder: Int,
@@ -22,6 +22,7 @@ case class Step(override val id: Option[Long],
 object Step {
   val labelName = "Step"
   val stepAndScriptDef = "HAS_ScriptDefinition"
+  val stepAndAnsiblePlay = "HAS_AnsiblePlay"
   val stepAndStepInput = "HAS_StepInput"
   val stepAndInventoryExec = "HAS_InvExecScope"
   val stepAndStep = "HAS_Step"
@@ -36,8 +37,14 @@ object Step {
         "stepType" -> entity.stepType.stepType,
         "executionOrder" -> entity.executionOrder)
       val parentNode = Neo4jRepository.saveEntity(labelName, entity.id, map)
-      val scriptDefNode = entity.scriptDefinition.toNeo4jGraph(entity.scriptDefinition)
-      Neo4jRepository.createRelation(stepAndScriptDef, parentNode, scriptDefNode)
+      entity.script match {
+        case scriptDef: ScriptDefinition =>
+          val scriptDefNode = scriptDef.toNeo4jGraph(scriptDef)
+          Neo4jRepository.createRelation(stepAndScriptDef, parentNode, scriptDefNode)
+        case ansiblePlay: AnsiblePlay =>
+          val ansiblePlayNode = ansiblePlay.toNeo4jGraph(ansiblePlay)
+          Neo4jRepository.createRelation(stepAndAnsiblePlay, parentNode, ansiblePlayNode)
+      }
       val stepInputNode = entity.input.toNeo4jGraph(entity.input)
       Neo4jRepository.createRelation(stepAndStepInput, parentNode, stepInputNode)
       val invScopeNode = entity.scope.toNeo4jGraph(entity.scope)
@@ -57,10 +64,16 @@ object Step {
   }
 
   def fromNeo4jGraph(id: Long): Option[Step] = {
+    val scriptDefNodeId = Neo4jRepository.getChildNodeId(id, stepAndScriptDef)
+    val mayBeScript: Option[Script] = scriptDefNodeId match {
+      case Some(nodeId) => ScriptDefinition.fromNeo4jGraph(nodeId)
+      case None =>
+        val ansiblePlayNodeId = Neo4jRepository.getChildNodeId(id, stepAndAnsiblePlay)
+        ansiblePlayNodeId.flatMap { nodeId => AnsiblePlay.fromNeo4jGraph(nodeId) }
+    }
     for {
       node <- Neo4jRepository.findNodeById(id)
-      scriptDefNodeId <- Neo4jRepository.getChildNodeId(id, stepAndScriptDef)
-      scriptDef <- ScriptDefinition.fromNeo4jGraph(scriptDefNodeId)
+      script <- mayBeScript
       stepInputNodeId <- Neo4jRepository.getChildNodeId(id, stepAndStepInput)
       stepInput <- StepInput.fromNeo4jGraph(stepInputNodeId)
       scopeNodeId <- Neo4jRepository.getChildNodeId(id, stepAndInventoryExec)
@@ -76,7 +89,7 @@ object Step {
         map("name").asInstanceOf[String],
         map("description").asInstanceOf[String],
         StepType.toStepType(map("stepType").asInstanceOf[String]),
-        scriptDef,
+        script,
         stepInput,
         scope,
         map("executionOrder").asInstanceOf[Int],
