@@ -5,23 +5,22 @@ package com.imaginea.activegrid.core.models
   */
 sealed trait StepType {
   val stepType: String
-
-  override def toString: String = super.toString
-}
-
-case object INPUT extends StepType {
-  override val stepType: String = "INPUT"
-}
-
-case object EXECUTION extends StepType {
-  override val stepType: String = "EXECUTION"
-}
-
-case object TRIGGER extends StepType {
-  override val stepType: String = "TRIGGER"
 }
 
 object StepType {
+
+  case object INPUT extends StepType {
+    override val stepType: String = "INPUT"
+  }
+
+  case object EXECUTION extends StepType {
+    override val stepType: String = "EXECUTION"
+  }
+
+  case object TRIGGER extends StepType {
+    override val stepType: String = "TRIGGER"
+  }
+
   def toStepType(stepType: String): StepType = {
     stepType match {
       case "INPUT" => INPUT
@@ -29,4 +28,6 @@ object StepType {
       case "TRIGGER" => TRIGGER
     }
   }
+
+  def values: List[StepType] = List(INPUT, EXECUTION, TRIGGER)
 }
