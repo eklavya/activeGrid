@@ -6,10 +6,18 @@ import org.neo4j.graphdb.Node
   * Created by shareefn on 2/1/17.
   */
 case class AnsiblePlay(override val id: Option[Long],
+                       name: String,
+                       description: String,
+                       language: ScriptType,
+                       version: String,
+                       module: Module,
+                       arguments: List[ScriptArgument],
+                       dependencies: PuppetScriptDependencies,
                        pattern: String,
                        taskList: List[Task],
                        content: String,
-                       group: AnsibleGroup) extends BaseEntity
+                       path: String,
+                       group: AnsibleGroup) extends BaseEntity with Script
 
 object AnsiblePlay {
   val labelName = "AnsiblePlay"
