@@ -6,22 +6,23 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._ // scalastyle:ignore underscore.import
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.Directives._ // scalastyle:ignore underscore.import
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import com.beust.jcommander.JCommander
-import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _} // scalastyle:ignore underscore.import
+import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.NotFoundException
+import org.neo4j.kernel.impl.transaction.log.checkpoint.SimpleTriggerInfo
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol._ // scalastyle:ignore underscore.import
-import spray.json._ // scalastyle:ignore underscore.import
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationLong}
@@ -2750,6 +2751,32 @@ object Main extends App {
                   case Failure(ex) => logger.info(s"Error while retrieving policies of $siteId  details", ex)
                     complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
                 }
+            }
+          }
+        }
+
+      } ~
+      path("site" / LongNumber / "policies" / Segment ) {
+        (siteId,policyId) => {
+          get {
+          val mayBePolicy =
+            Future {
+              SiteManagerImpl.getAutoScalingPolicy(siteId,policyId)
+            }
+            onComplete(mayBePolicy) {
+              case Success(policyList) => complete(StatusCodes.OK, policyList)
+              case Failure(ex) => logger.info(s"Error while retrieving policy $siteId and $policyId ", ex)
+                complete(StatusCodes.BadRequest, s"Error while retrieving policiy $siteId and $policyId")
+            }
+          }
+          delete {
+            val mayBeDeleted = Future {
+              SiteManagerImpl.deletePolicy(policyId)
+            }
+            onComplete(mayBeDeleted) {
+              case Success(deleted) => complete(StatusCodes.OK, "Policy $policyId deleted successfully")
+              case Failure(ex) => logger.info(s"Error in deleting policy $policyId ", ex)
+                complete(StatusCodes.BadRequest, s"Error while deleting policy $policyId")
             }
           }
         }
