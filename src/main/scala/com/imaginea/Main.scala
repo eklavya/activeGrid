@@ -946,12 +946,12 @@ object Main extends App {
         val mayBeExecution = wkfl.execution
         val (workflow, newExecution) = mayBeExecution match {
           case Some(exc) =>
-            if (exc.status.contains(WorkFlowExecutionStatus.STARTED)) {
-              throw new RuntimeException(s"Workflow with id [ $workflowId ] is currently running, cannot update inventory")
-            } else if (exc.status.contains(WorkFlowExecutionStatus.FAILED) || exc.status.contains(WorkFlowExecutionStatus.SUCCESS)) {
-              (addWorkflowExecutionHistory(wkfl, exc), None)
-            } else {
-              (wkfl, Some(exc))
+            exc.status match {
+              case Some(WorkFlowExecutionStatus.STARTED) =>
+                throw new RuntimeException(s"Workflow with id [ $workflowId ] is currently running, cannot update inventory")
+              case Some(WorkFlowExecutionStatus.FAILED) | Some(WorkFlowExecutionStatus.SUCCESS) =>
+                (addWorkflowExecutionHistory(wkfl, exc), None)
+              case _ => (wkfl, Some(exc))
             }
           case None => (wkfl, None)
         }

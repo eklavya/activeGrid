@@ -53,7 +53,7 @@ object WorkflowExecution {
         val inventory = inventoryNodeId.flatMap(nodeId => Inventory.fromNeo4jGraph(nodeId))
         WorkflowExecution(Some(id),
           map("executionTime").asInstanceOf[Long],
-          map("executionBy").asInstanceOf[Option[String]],
+          map.get("executionBy").asInstanceOf[Option[String]],
           Some(WorkFlowExecutionStatus.toExecutionStatus(map("status").asInstanceOf[String])),
           None,
           map("logs").asInstanceOf[Array[String]].toList,
