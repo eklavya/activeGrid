@@ -11,6 +11,7 @@ import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._ // scalastyle:ignore underscore.import
 import akka.http.scaladsl.server.{PathMatchers, Route}
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _} // scalastyle:ignore underscore.import
@@ -24,7 +25,7 @@ import spray.json._ // scalastyle:ignore underscore.import
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationLong}
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, Future, duration}
 import scala.util.{Failure, Random, Success}
 
 object Main extends App {
@@ -378,6 +379,8 @@ object Main extends App {
   implicit val esQueryFieldFormat = jsonFormat2(EsQueryField.apply)
   implicit val esSearchQueryFormat = jsonFormat6(EsSearchQuery.apply)
   implicit val esSearchResponseFormat = jsonFormat3(EsSearchResponse.apply)
+  implicit val dataPointFormat = jsonFormat(DataPoint.apply, "timestamp", "value")
+  implicit val resouceUtilizationFormat = jsonFormat(ResourceUtilization.apply, "target", "dataPoints")
 
   implicit object SiteDeltaStatusFormat extends RootJsonFormat[SiteDeltaStatus] {
     override def write(obj: SiteDeltaStatus): JsValue = {
@@ -562,6 +565,20 @@ object Main extends App {
     }
   }
 
+  implicit object ScopeTypeFormat extends RootJsonFormat[ScopeType] {
+    override def write(obj: ScopeType): JsValue = {
+      JsString(obj.scopeType)
+    }
+
+    override def read(json: JsValue): ScopeType = {
+      json match {
+        case JsString(str) => ScopeType.toScopeType(str)
+        case _ =>
+          throw DeserializationException("Unable to parse ScopeType")
+      }
+    }
+  }
+
   implicit val variableFormat = jsonFormat6(Variable.apply)
   implicit val hostFormat = jsonFormat3(Host.apply)
   implicit val groupFormat = jsonFormat4(Group.apply)
@@ -670,18 +687,25 @@ object Main extends App {
 
   implicit val puppetScriptDependenciesFormat = jsonFormat4(PuppetScriptDependencies.apply)
   implicit val scriptDefinitionFormat = jsonFormat8(ScriptDefinition.apply)
+  implicit val ansibleGroupFormat = jsonFormat3(AnsibleGroup.apply)
+  implicit val ansiblePlayFormat = jsonFormat13(AnsiblePlay.apply)
+  implicit val ansiblePlayBookFormat = jsonFormat5(AnsiblePlayBook.apply)
 
   implicit object StepFormat extends RootJsonFormat[Step] {
     val fieldNames = List("id", "stepId", "name", "description", "stepType", "scriptDefinition", "input", "scope",
       "executionOrder", "childStep", "report")
 
     override def write(obj: Step): JsValue = {
+      val scriptFormat = obj.script match {
+        case scriptDef: ScriptDefinition => AGU.objectToJsValue[ScriptDefinition](fieldNames(5), Some(scriptDef), scriptDefinitionFormat)
+        case ansiblePlay: AnsiblePlay => AGU.objectToJsValue[AnsiblePlay](fieldNames(5), Some(ansiblePlay), ansiblePlayFormat)
+      }
       val fields = AGU.longToJsField(fieldNames.head, obj.id) ++
         AGU.stringToJsField(fieldNames(1), Some(obj.stepId)) ++
         AGU.stringToJsField(fieldNames(2), Some(obj.name)) ++
         AGU.stringToJsField(fieldNames(3), Some(obj.description)) ++
         AGU.stringToJsField(fieldNames(4), Some(obj.stepType.stepType)) ++
-        AGU.objectToJsValue[ScriptDefinition](fieldNames(5), Some(obj.scriptDefinition), scriptDefinitionFormat) ++
+        scriptFormat ++
         AGU.objectToJsValue[StepInput](fieldNames(6), Some(obj.input), stepInputFormat) ++
         AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), Some(obj.scope), inventoryExecFormat) ++
         AGU.stringToJsField(fieldNames(8), Some(obj.executionOrder.toString)) ++
@@ -693,6 +717,17 @@ object Main extends App {
     override def read(json: JsValue): Step = {
       json match {
         case JsObject(map) =>
+          val scriptObj = if (map.contains("script")) {
+            val obj = map(fieldNames(5))
+            if (obj.asJsObject.fields.contains("taskList")) {
+              ansiblePlayFormat.read(obj)
+            } else {
+              scriptDefinitionFormat.read(obj)
+            }
+          } else {
+            logger.warn("Unable to deserialize Script in Step,property 'taskList' not found")
+            throw DeserializationException("Unable to deserialize  Script,property 'taskList' not found")
+          }
           val mayBeStep: Option[Step] = for {
             stepId <- AGU.getProperty[String](map, fieldNames(1))
             name <- AGU.getProperty[String](map, fieldNames(2))
@@ -710,7 +745,7 @@ object Main extends App {
               name,
               description,
               StepType.toStepType(stepType),
-              scriptDefinitionFormat.read(scriptJsVal),
+              scriptObj,
               stepInputFormat.read(inputJsVal),
               inventoryExecFormat.read(scopeJsVal),
               executionOrder,
@@ -730,11 +765,118 @@ object Main extends App {
   }
 
   implicit val stepExecFormat = jsonFormat4(StepExecutionReport.apply)
-  implicit val workflowExecutionFormat = jsonFormat8(WorkflowExecution.apply)
-  implicit val ansibleGroupFormat = jsonFormat3(AnsibleGroup.apply)
-  implicit val ansiblePlayFormat = jsonFormat5(AnsiblePlay.apply)
-  implicit val ansiblePlayBookFormat = jsonFormat5(AnsiblePlayBook.apply)
+  implicit val workflowExecutionFormat = jsonFormat9(WorkflowExecution.apply)
   implicit val workflowFormat = jsonFormat14(Workflow.apply)
+  implicit val pageWorkflowFormat = jsonFormat4(Page[Workflow])
+  implicit val pageStepTypeFormat = jsonFormat4(Page[StepType])
+  implicit val pageScriptTypeFormat = jsonFormat4(Page[ScriptType])
+  implicit val pageScopeTypeFormat = jsonFormat4(Page[ScopeType])
+
+  val workflowRoutes: Route = pathPrefix("workflows") {
+    path("step" / "types") {
+      get {
+        val stepTypes = Future {
+          val stepTypesList = StepType.values
+          Page[StepType](stepTypesList)
+        }
+        onComplete(stepTypes) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to get the Step Types list ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get Step Types list")
+        }
+      }
+    } ~ path("step" / "scriptTypes") {
+      get {
+        val scriptTypes = Future {
+          val scriptTypesList = ScriptType.values
+          Page[ScriptType](scriptTypesList)
+        }
+        onComplete(scriptTypes) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to get the Script Types list ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get Script Types list")
+        }
+      }
+    } ~ path("scope" / "types") {
+      get {
+        val scopeTypes = Future {
+          val scopeTypesList = ScopeType.values
+          Page[ScopeType](scopeTypesList)
+        }
+        onComplete(scopeTypes) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to get the Scope Types list ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get Scope Types list")
+        }
+      }
+    } ~ path(LongNumber) { workflowId =>
+      get {
+        val workflow = Future {
+          val mayBeWorkflow = getWorkflow(workflowId)
+          mayBeWorkflow match {
+            case Some(workflow) => workflow
+            case None =>
+              logger.warn(s"Node not found with ID: $workflowId")
+              throw new Exception(s"Node not found with ID: $workflowId")
+          }
+        }
+        onComplete(workflow) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get workflow list")
+        }
+      }
+    } ~ get {
+      val workflows = Future {
+        val nodesList = Neo4jRepository.getNodesByLabel(Workflow.labelName)
+        val workflowList = nodesList.flatMap(node => Workflow.fromNeo4jGraph(node.getId))
+        Page[Workflow](workflowList)
+      }
+      onComplete(workflows) {
+        case Success(response) => complete(StatusCodes.OK, response)
+        case Failure(exception) =>
+          logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
+          complete(StatusCodes.BadRequest, "Unable to get workflow list")
+      }
+    } ~ post {
+      entity(as[Workflow]) { workflow =>
+        val updateWorkflow = Future {
+          if (workflow.id.isEmpty) {
+            throw new RuntimeException("Missing Workflow id")
+          }
+          workflow.toNeo4jGraph(workflow)
+          "Workflow updated successfully"
+        }
+        onComplete(updateWorkflow) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to update workflow ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to update workflow")
+        }
+      }
+    }
+  }
+
+  def getWorkflow(workflowId: Long): Option[Workflow] = {
+    val mayBeWorkflow = Workflow.fromNeo4jGraph(workflowId)
+    mayBeWorkflow.map { w =>
+        val steps = w.steps
+        val sortedStepsByTaskId = steps.map { step =>
+          val ansiblePlay = step.script.asInstanceOf[AnsiblePlay]
+          val tasks = ansiblePlay.taskList
+          val sortedTasks = tasks.sortBy(_.id)
+          ansiblePlay.copy(taskList = sortedTasks)
+          step.copy(script = ansiblePlay)
+        }
+        val sortedStepsByExcOrder = sortedStepsByTaskId.sortBy(_.executionOrder)
+        val workflow = w.copy(steps = sortedStepsByExcOrder)
+        workflow
+    }
+  }
 
   val appsettingRoutes: Route = pathPrefix("config") {
     path("ApplicationSettings") {
@@ -866,17 +1008,20 @@ object Main extends App {
   }
   val discoveryRoutes: Route = pathPrefix("discover") {
     path("site") {
-      put {
-        entity(as[Site1]) { site =>
-          val buildSite = Future {
-            val savedSite = populateInstances(site)
-            savedSite.id.map(siteId => cachedSite.put(siteId, savedSite))
-          }
-          onComplete(buildSite) {
-            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
-            case Failure(exception) =>
-              logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
-              complete(StatusCodes.BadRequest, "Unable to save the Site.")
+      withRequestTimeout(1.minutes) {
+        put {
+          entity(as[Site1]) { site =>
+            val buildSite = Future {
+              val savedSite = populateInstances(site)
+              savedSite.id.foreach(siteId => cachedSite.put(siteId, savedSite))
+              savedSite
+            }
+            onComplete(buildSite) {
+              case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+              case Failure(exception) =>
+                logger.error(s"Unable to save the Site with : ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable to save the Site.")
+            }
           }
         }
       }
@@ -1251,8 +1396,11 @@ object Main extends App {
       }
     }
   }
-  val route: Route = siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
-    apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~ esServiceRoutes
+  val route: Route = pathPrefix("api" / AGU.APIVERSION) {
+    siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
+      apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
+      esServiceRoutes ~ workflowRoutes
+  }
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
@@ -1932,12 +2080,11 @@ object Main extends App {
               case Some(site) =>
                 val listOfInstances = site.instances
                 val listOfInstanceFlavors = listOfInstances.map { instance =>
-                  val memInfo = instance.memoryInfo match { case Some(info) => info.total case _ => 0 }
-                  val dskInfo = instance.rootDiskInfo match { case Some(info) => info.total case _ => 0 }
+                  val memInfo = instance.memoryInfo.map(_.total).getOrElse(0.0)
+                  val dskInfo = instance.rootDiskInfo.map(_.total).getOrElse(0.0)
                   InstanceFlavor(instance.instanceType.getOrElse(""), None, memInfo, dskInfo)
                 }
                 Page[InstanceFlavor](listOfInstanceFlavors)
-
               case None =>
                 logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
                 Page[InstanceFlavor](List.empty[InstanceFlavor])
@@ -2592,6 +2739,19 @@ object Main extends App {
                 complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
             }
           }
+          post {
+            entity(as[AutoScalingPolicy]) {
+              policy =>
+                val mayBeAdded = Future {
+                  SiteManagerImpl.addAutoScalingPolicy(siteId, policy)
+                }
+                onComplete(mayBeAdded) {
+                  case Success(policy) => complete(StatusCodes.OK, "Policy added successfully")
+                  case Failure(ex) => logger.info(s"Error while retrieving policies of $siteId  details", ex)
+                    complete(StatusCodes.BadRequest, s"Error while retrieving policies of  ${siteId} details")
+                }
+            }
+          }
         }
       }
 
@@ -2827,7 +2987,6 @@ object Main extends App {
     }
     val site1 = Site1(Some(siteNode.getId), site.siteName, instances, reservedInstanceDetails, site.filters, loadBalancer, scalingGroup, List(),
       List.empty[Application], site.groupBy, site.scalingPolicies)
-    site1.toNeo4jGraph(site1)
     site1
   }
 

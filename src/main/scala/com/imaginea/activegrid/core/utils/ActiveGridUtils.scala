@@ -1,11 +1,11 @@
 package com.imaginea.activegrid.core.utils
 
 import com.amazonaws.regions.RegionUtils
-import com.imaginea.activegrid.core.models._
+import com.imaginea.activegrid.core.models._ // scalastyle:ignore underscore.import
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-import spray.json._
+import spray.json._ // scalastyle:ignore underscore.import
 
 import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 
@@ -23,6 +23,7 @@ object ActiveGridUtils {
   val HOST = config.getString("http.host")
   val PORT = config.getInt("http.port")
   val DBPATH = config.getString("neo4j.dbpath")
+  val APIVERSION = config.getString("http.version")
 
 
   def getValueFromMapAs[T](map: Map[String, Any], key: String): Option[T] = {
