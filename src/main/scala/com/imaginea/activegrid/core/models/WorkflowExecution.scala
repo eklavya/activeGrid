@@ -13,7 +13,10 @@ case class WorkflowExecution(override val id: Option[Long],
                              logs: List[String],
                              logTail: List[String],
                              inventory: Option[Inventory],
-                             stepExecutionReports: List[StepExecutionReport]) extends BaseEntity
+                             stepExecutionReports: List[StepExecutionReport]) extends BaseEntity {
+
+
+}
 
 object WorkflowExecution {
   val labelName = "WorkflowExecution"
@@ -59,5 +62,8 @@ object WorkflowExecution {
           List.empty[StepExecutionReport]
         )
     }
+  }
+  def clearLogs() : Unit =  {
+    //todo clear logs procedure.
   }
 }
