@@ -63,7 +63,7 @@ object WorkflowExecution {
         )
     }
   }
-  def clearLogs() =  {
+  def clearLogs() : Unit =  {
     //todo clear logs procedure.
   }
 }
