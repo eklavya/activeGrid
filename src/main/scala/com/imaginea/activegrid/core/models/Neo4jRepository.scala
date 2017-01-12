@@ -156,7 +156,7 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
   def updateNodeByLabelAndId[T<:BaseEntity](label: String, id: Long,props:Map[String,Any]): Unit =
     withTx
     {
-      implicit neo => findNodeById(id).foreach {
+      implicit neo => Neo4jRepository.findNodeByLabelAndId(label,id).foreach {
       node =>
         for ((prop,value) <- props) { node.setProperty(prop,value) }
     }
