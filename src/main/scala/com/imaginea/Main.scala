@@ -772,6 +772,7 @@ object Main extends App {
   implicit val pageStepTypeFormat = jsonFormat4(Page[StepType])
   implicit val pageScriptTypeFormat = jsonFormat4(Page[ScriptType])
   implicit val pageScopeTypeFormat = jsonFormat4(Page[ScopeType])
+  implicit val pageStringFormat = jsonFormat4(Page[String])
 
   val workflowRoutes: Route = pathPrefix("workflows") {
     path("step" / "types") {
@@ -818,7 +819,7 @@ object Main extends App {
         val workflow = Future {
           val mayBeWorkflow = getWorkflow(workflowId)
           mayBeWorkflow match {
-            case Some(workflow) => workflow
+            case Some(wkfl) => wkfl
             case None =>
               logger.warn(s"Node not found with ID: $workflowId")
               throw new Exception(s"Node not found with ID: $workflowId")
@@ -829,6 +830,66 @@ object Main extends App {
           case Failure(exception) =>
             logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to get workflow list")
+        }
+      }
+    } ~ path(LongNumber / "logs") { workflowId =>
+      get {
+        parameter("start".as[Int]) { filePointer =>
+          val logs = Future {
+            for {
+              workflow <- getWorkflow(workflowId)
+              execution <- workflow.execution
+            } yield {
+              val logs = execution.logs
+              val size = logs.size
+              val start = if (filePointer == 0) 1 else filePointer
+              val logTail = if (start < size) logs.slice(start - 1, size) else List.empty[String]
+              Page[String](logTail)
+            }
+          }
+          onComplete(logs) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to get the Logs ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get Logs")
+          }
+        }
+      }
+    } ~ path(LongNumber / "inventory") { workflowId =>
+      put {
+        entity(as[Inventory]) { inventory =>
+          val inv = Future {
+            addInventory(workflowId, inventory)
+            "Inventory added successfully"
+          }
+          onComplete(inv) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to add Inventory ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to add Inventory")
+          }
+        }
+      }
+    } ~ path(LongNumber / "inventory") { workflowId =>
+      get {
+        val inventory = Future {
+          logger.info(s"Retrieving inventory for workflow[ $workflowId ]")
+          val mayBeWorkflow = getWorkflow(workflowId)
+          mayBeWorkflow match {
+            case Some(workflow) =>
+              val mayBeExecution = workflow.execution
+              mayBeExecution match {
+                case Some(execution) => execution.inventory
+                case None => throw new RuntimeException(s"No inventory built for execution of workflow [ ${workflow.name} ]")
+              }
+            case None => throw new RuntimeException(s"No workflow with id [ $workflowId ] found")
+          }
+        }
+        onComplete(inventory) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to retrieve Inventory ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to retrieve Inventory")
         }
       }
     } ~ get {
@@ -877,6 +938,45 @@ object Main extends App {
         val workflow = w.copy(steps = sortedStepsByExcOrder)
         workflow
     }
+  }
+
+  def addInventory(workflowId: Long, inventory: Inventory): Unit = {
+    val mayBeWorkflow = getWorkflow(workflowId)
+    mayBeWorkflow match {
+      case Some(wkfl) =>
+        val mayBeExecution = wkfl.execution
+        val (workflow, newExecution) = mayBeExecution match {
+          case Some(exc) =>
+            exc.status match {
+              case Some(WorkFlowExecutionStatus.STARTED) =>
+                throw new RuntimeException(s"Workflow with id [ $workflowId ] is currently running, cannot update inventory")
+              case Some(WorkFlowExecutionStatus.FAILED) | Some(WorkFlowExecutionStatus.SUCCESS) =>
+                (addWorkflowExecutionHistory(wkfl, exc), None)
+              case _ => (wkfl, Some(exc))
+            }
+          case None => (wkfl, None)
+        }
+        val mayBeId = newExecution.flatMap(_.id)
+        mayBeId match {
+          case Some(id) =>
+            inventory.toNeo4jGraph(inventory)
+            mayBeExecution.map { exc =>
+              exc.copy(inventory = Some(inventory))
+              exc.toNeo4jGraph(exc)
+            }
+          case None =>
+            val exc = WorkflowExecution(Some(inventory))
+            workflow.copy(execution = Some(exc))
+            workflow.toNeo4jGraph(workflow)
+        }
+      case None => throw new RuntimeException(s"No workflow with id [ $workflowId ] found")
+    }
+  }
+
+  def addWorkflowExecutionHistory(workflow: Workflow, execution: WorkflowExecution): Workflow = {
+    val wkfl = workflow.copy(executionHistory = execution :: workflow.executionHistory)
+    wkfl.toNeo4jGraph(wkfl)
+    wkfl
   }
 
   val appsettingRoutes: Route = pathPrefix("config") {
