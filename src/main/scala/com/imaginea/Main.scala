@@ -1,6 +1,6 @@
 package com.imaginea
 
-import java.io.File
+import java.io.{File, IOException}
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
@@ -18,6 +18,7 @@ import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
+import org.apache.commons.io.{FileUtils => CommonFileUtils, FilenameUtils}
 import org.neo4j.graphdb.NotFoundException
 import org.neo4j.kernel.impl.transaction.log.checkpoint.SimpleTriggerInfo
 import org.slf4j.LoggerFactory
@@ -773,6 +774,7 @@ object Main extends App {
   implicit val pageScriptTypeFormat = jsonFormat4(Page[ScriptType])
   implicit val pageScopeTypeFormat = jsonFormat4(Page[ScopeType])
   implicit val pageStringFormat = jsonFormat4(Page[String])
+  implicit val scriptContentFormat = jsonFormat4(ScriptContent.apply)
 
   val workflowRoutes: Route = pathPrefix("workflows") {
     path("step" / "types") {
@@ -892,6 +894,53 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to retrieve Inventory")
         }
       }
+    } ~ path(LongNumber / "history") { workflowId =>
+      get {
+        val executionHistory = Future {
+          logger.info("Retrieving workflow execution history")
+          val mayBeWorkflow = getWorkflow(workflowId)
+          mayBeWorkflow.map(_.executionHistory)
+        }
+        onComplete(executionHistory) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to retrieve workflow execution history ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to retrieve workflow execution history")
+        }
+      }
+    } ~ path(LongNumber / "history" / LongNumber) { (workflowId, executionId) =>
+      get {
+        val execution = Future {
+          val mayBeExecution = WorkflowExecution.fromNeo4jGraph(executionId)
+          mayBeExecution match {
+            case Some(exc) => exc
+            case None =>
+              logger.warn(s"Workflow Execution with ID : $executionId is Not Found")
+              throw new NotFoundException(s"WorkFlow Execution with ID : $executionId is Not Found")
+          }
+        }
+        onComplete(execution) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to retrieve workflow execution ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to retrieve workflow execution ")
+        }
+      }
+    } ~ path(LongNumber / "content") { workflowId =>
+      post {
+        entity(as[ScriptContent]) { content =>
+          val moduleContent = Future {
+            logger.info("Reading workflow module content")
+            readContent(content)
+          }
+          onComplete(moduleContent) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to read workflow module content ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to read workflow module content ")
+          }
+        }
+      }
     } ~ get {
       val workflows = Future {
         val nodesList = Neo4jRepository.getNodesByLabel(Workflow.labelName)
@@ -977,6 +1026,33 @@ object Main extends App {
     val wkfl = workflow.copy(executionHistory = execution :: workflow.executionHistory)
     wkfl.toNeo4jGraph(wkfl)
     wkfl
+  }
+
+  def readContent(content: ScriptContent): Option[ScriptContent] = {
+    val mayBePath = buildPath(content.path, content.scriptType)
+    mayBePath.map { path =>
+      val fileToRead = path.concat(File.separator).concat(content.name)
+      val f = new File(fileToRead)
+      if (!f.exists()) {
+        throw new RuntimeException(s"File $fileToRead not found")
+      }
+      try {
+        val fileContent = CommonFileUtils.readFileToString(f)
+        content.copy(content = fileContent)
+      } catch {
+        case e: IOException => throw new RuntimeException(s"Cannot read $fileToRead")
+      }
+    }
+  }
+
+  def buildPath(path: String, scriptType: ScriptType): Option[String] = {
+    scriptType match {
+      case ScriptType.Script =>
+        val targetFile = new StringBuilder
+        targetFile.append(FilenameUtils.getFullPathNoEndSeparator(path)).append(File.separator).append("files")
+        Some(targetFile.toString)
+      case _ => None
+    }
   }
 
   val appsettingRoutes: Route = pathPrefix("config") {
