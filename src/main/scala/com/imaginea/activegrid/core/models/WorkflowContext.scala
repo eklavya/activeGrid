@@ -8,3 +8,9 @@ case class WorkflowContext(workflow: Workflow,
                            stepContextMap: Map[Step, StepExecutonContext],
                            workFlowExecutionStatus: WorkFlowExecutionStatus
                           )
+
+object WorkflowContext {
+  def get() : WorkflowContext = {
+    AnyRef.asInstanceOf[WorkflowContext] // TODO by Shiva
+  }
+}
