@@ -21,6 +21,6 @@ trait WorkflowProcessor {
     * Returns the processor object.
     * @return
     */
-  def getProcessor() : Option[WorkflowProcessor]
+  def getProcessor() : WorkflowProcessor
 
 }
