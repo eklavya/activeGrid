@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
   */
 class AnsiblePlayBookRunner(workflowContext: WorkflowContext) extends Actor with Runnable {
 
-  def getWorkflowContext() = workflowContext
+  def getWorkflowContext() : WorkflowContext = workflowContext
 
   val logger = Logger(LoggerFactory.getLogger(AnsiblePlayBookRunner.this.getClass.getName))
 

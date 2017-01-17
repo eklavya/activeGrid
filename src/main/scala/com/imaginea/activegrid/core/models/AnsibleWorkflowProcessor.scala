@@ -23,7 +23,7 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
   val logger = Logger(LoggerFactory.getLogger(AnsibleWorkflowProcessor.getClass.getName))
 
   override def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Unit = {
-
+    //scalastyle:off magic.number
     implicit val system = Main.system
     implicit val materializer = Main.materializer
     implicit val executionContext = system.dispatcher
@@ -38,11 +38,11 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
       if (workflowExecutors.contains(workflowId)) {
         logger.info("Workflow [" + workflow.name + "] is currently running, Please try after some time.")
       }
-      Main.system.scheduler.scheduleOnce(Duration.create(50, TimeUnit.MILLISECONDS),
+      Main.system.scheduler.scheduleOnce(Duration.create(50L, TimeUnit.MILLISECONDS),
         playBookActor, Main.system.dispatcher)
     }
     else {
-      Main.system.scheduler.scheduleOnce(Duration.create(50, TimeUnit.MILLISECONDS),
+      Main.system.scheduler.scheduleOnce(Duration.create(50L, TimeUnit.MILLISECONDS),
         playBookActor, Main.system.dispatcher)
     }
   }

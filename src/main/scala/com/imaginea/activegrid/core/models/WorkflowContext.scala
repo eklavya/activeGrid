@@ -6,6 +6,6 @@ package com.imaginea.activegrid.core.models
 class WorkflowContext(workflow:Workflow, workflowListener: WorkflowListener,
                         workflowExecLogListener: WorkflowExecLogListener)
 {
-    def getWorkflow()  = workflow
+    def getWorkflow()  : Workflow = workflow
 }
 
