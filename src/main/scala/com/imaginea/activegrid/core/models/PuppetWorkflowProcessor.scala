@@ -12,10 +12,11 @@ object PuppetWorkflowProcessor extends WorkflowProcessor {
 
   override def stopWorkflow(workflow: Workflow): Unit = {
   }
-   /*
-    * Workflow either be puppet or ansible service. It delegatge control to respective processor.
-    *
-    * @param workflowContext
-    */
+
+  /*
+   * Workflow either be puppet or ansible service. It delegatge control to respective processor.
+   *
+   * @param workflowContext
+   */
   override def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Unit = ???
 }

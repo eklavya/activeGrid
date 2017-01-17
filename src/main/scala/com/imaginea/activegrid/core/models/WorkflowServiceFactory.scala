@@ -10,6 +10,7 @@ object WorkflowServiceFactory {
 
 
   val logger = Logger(LoggerFactory.getLogger(WorkflowServiceFactory.this.getClass.getName))
+
   /**
     *
     * @param mode

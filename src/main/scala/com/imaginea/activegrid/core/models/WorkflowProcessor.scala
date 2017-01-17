@@ -7,15 +7,16 @@ trait WorkflowProcessor {
   /**
     *
     * @param workflow
-    *                 Halts execution of scrips during execution
+    * Halts execution of scrips during execution
     */
-  def stopWorkflow(workflow:Workflow) : Unit
+  def stopWorkflow(workflow: Workflow): Unit
 
   /**
     * Workflow either be puppet or ansible service. It delegatge control to respective processor.
+    *
     * @param workflowContext
     */
-  def executeWorkflow(workflowContext: WorkflowContext,async:Boolean) : Unit
+  def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Unit
 
 
 }

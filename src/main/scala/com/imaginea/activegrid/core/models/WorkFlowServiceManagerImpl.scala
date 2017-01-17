@@ -38,7 +38,6 @@ class WorkFlowServiceManagerImpl {
             Neo4jRepository.updateNodeByLabelAndId[WorkflowExecution](WorkflowExecution.labelName,
               exec.id.getOrElse(0L), executionUpdate)
             val logListener = WorkflowExecLogListener.get()
-            val workflowContext = WorkflowContext.get()
             val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
             Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, wf.id.getOrElse(0L), workFlowUpdate)
           //todo workflow processor creation and execution
