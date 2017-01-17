@@ -7,17 +7,16 @@ import org.slf4j.LoggerFactory
 ;
 
 class WorkflowStrategyFactory {
-
-	val logger = Logger(LoggerFactory.getLogger(WorkflowStrategyFactory.this.getClass.getName))
+  val logger = Logger(LoggerFactory.getLogger(WorkflowStrategyFactory.this.getClass.getName))
 
   //todo stepExecutionProcessor implementation
-	def   getWorkflowProcessor(stepOrderStrategy: Option[StepOrderStrategy]) : Option[SequentialWorkflowProcessor]  =
-  {
-		stepOrderStrategy.map {
-      stratagy => stratagy  match  {
-			case SEQUENTIAL =>  new SequentialWorkflowProcessor();
-      //todo other cases
-			}
-		}
-	}
+  def getWorkflowProcessor(stepOrderStrategy: Option[StepOrderStrategy]): Option[SequentialWorkflowProcessor] = {
+    stepOrderStrategy.map {
+      stratagy =>
+        stratagy match {
+          case SEQUENTIAL => new SequentialWorkflowProcessor();
+          //todo other cases
+        }
+    }
+  }
 }

@@ -17,10 +17,5 @@ trait WorkflowProcessor {
     */
   def executeWorkflow(workflow: Workflow) : Unit
 
-  /**
-    * Returns the processor object.
-    * @return
-    */
-  def getProcessor() : WorkflowProcessor
 
 }
