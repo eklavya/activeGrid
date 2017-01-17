@@ -7,24 +7,30 @@ import org.neo4j.graphdb.Node
   */
 case class WorkflowExecution(override val id: Option[Long],
                              executionTime: Long,
-                             executionBy: String,
-                             status: WorkFlowExecutionStatus,
+                             executionBy: Option[String],
+                             status: Option[WorkFlowExecutionStatus],
                              currentStep: Option[Step],
                              logs: List[String],
                              logTail: List[String],
                              inventory: Option[Inventory],
-                             stepExecutionReports: List[StepExecutionReport]) extends BaseEntity
+                             stepExecutionReports: List[StepExecutionReport]) extends BaseEntity {
+
+
+}
 
 object WorkflowExecution {
   val labelName = "WorkflowExecution"
   val workflowAndInventoryRelation = "HAS_Inventory"
+
+  def apply(inventory: Option[Inventory]): WorkflowExecution =
+    WorkflowExecution(None, 0L, None, None, None, List.empty[String], List.empty[String], inventory, List.empty[StepExecutionReport])
 
   //TODO Need to write models for Step and StepExecutionReport then we have to integrate here
   implicit class WorkflowExecutionImpl(workflowExecution: WorkflowExecution) extends Neo4jRep[WorkflowExecution] {
     override def toNeo4jGraph(entity: WorkflowExecution): Node = {
       val map = Map("executionTime" -> entity.executionTime,
         "executionBy" -> entity.executionBy,
-        "status" -> entity.status.executionStatus,
+        "status" -> entity.status.map(_.toString),
         "logs" -> entity.logs.toArray)
       val parentNode = Neo4jRepository.saveEntity(labelName, entity.id, map)
       entity.inventory.foreach {
@@ -50,8 +56,8 @@ object WorkflowExecution {
         val inventory = inventoryNodeId.flatMap(nodeId => Inventory.fromNeo4jGraph(nodeId))
         WorkflowExecution(Some(id),
           map("executionTime").asInstanceOf[Long],
-          map("executionBy").asInstanceOf[String],
-          WorkFlowExecutionStatus.toExecutionStatus(map("status").asInstanceOf[String]),
+          map.get("executionBy").asInstanceOf[Option[String]],
+          Some(WorkFlowExecutionStatus.toExecutionStatus(map("status").asInstanceOf[String])),
           None,
           map("logs").asInstanceOf[Array[String]].toList,
           List.empty[String],
@@ -59,5 +65,8 @@ object WorkflowExecution {
           List.empty[StepExecutionReport]
         )
     }
+  }
+  def clearLogs() : Unit =  {
+    //todo clear logs procedure.
   }
 }
