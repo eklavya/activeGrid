@@ -13,9 +13,9 @@ trait WorkflowProcessor {
 
   /**
     * Workflow either be puppet or ansible service. It delegatge control to respective processor.
-    * @param workflow
+    * @param workflowContext
     */
-  def executeWorkflow(workflow: Workflow) : Unit
+  def executeWorkflow(workflowContext: WorkflowContext,async:Boolean) : Unit
 
 
 }

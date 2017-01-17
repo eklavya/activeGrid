@@ -19,7 +19,7 @@ object WorkflowServiceFactory {
     logger.info("Fetching workflow mode processor for [" + mode + "]")
     mode match {
       case AGENT => Some(PuppetWorkflowProcessor)
-      case AGENT_LESS => Some(AnsibleWorkflowProcessor.getProcessor)
+      case AGENT_LESS => Some(AnsibleWorkflowProcessor)
       case _ => None
     }
   }
