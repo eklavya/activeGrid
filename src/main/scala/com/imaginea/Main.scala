@@ -11,23 +11,21 @@ import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
-import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
-import org.apache.commons.io.{FileUtils => CommonFileUtils, FilenameUtils}
+import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
 import org.neo4j.graphdb.NotFoundException
-import org.neo4j.kernel.impl.transaction.log.checkpoint.SimpleTriggerInfo
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationLong}
-import scala.concurrent.{Await, Future, duration}
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Random, Success}
 
 object Main extends App {
@@ -972,7 +970,7 @@ object Main extends App {
         }
       }
     }
-  }~pathPrefix("workflows") {
+  } ~ pathPrefix("workflows") {
     path(LongNumber / "status") { workflowId =>
       parameter("start") { start =>
         val workflowExecution = Future {
@@ -983,11 +981,11 @@ object Main extends App {
                 workflow <- Workflow.fromNeo4jGraph(workflowId)
                 execution <- workflow.execution
               } yield {
-                val from = if (start.toInt == 0L) 1 else start.toInt
+                val from = if (start.toInt == 0) 1 else start.toInt
                 if (from < execution.logs.size) {
                   execution.copy(logs = execution.logs.slice(from, execution.logs.size))
                 } else {
-                  execution.copy(logs = execution.logs.slice(from, execution.logs.size))
+                  execution.copy(logs = List.empty[String])
                 }
               }
             case None =>
@@ -1012,7 +1010,7 @@ object Main extends App {
               val marshlledInventory = addJsonToInventory(inventory)
               workflow.copy(publishedInventory = Some(marshlledInventory))
               workflow.toNeo4jGraph(workflow)
-              addInventory(workflowId , inventory)
+              addInventory(workflowId, inventory)
               "Workflow is published"
             }
           }
@@ -1037,7 +1035,9 @@ object Main extends App {
             logger.error(s"Unable to fetch Published Inventory ${exception.getMessage()}", exception)
             complete(StatusCodes.BadRequest, "Unable to fetch Published Inventory")
         }
-      } ~ delete {
+      }
+    } ~ path(LongNumber) { workflowId =>
+      delete {
         val isDeleted = Future {
           for {
             workflow <- getWorkflow(workflowId)
@@ -1092,17 +1092,17 @@ object Main extends App {
   def getWorkflow(workflowId: Long): Option[Workflow] = {
     val mayBeWorkflow = Workflow.fromNeo4jGraph(workflowId)
     mayBeWorkflow.map { w =>
-        val steps = w.steps
-        val sortedStepsByTaskId = steps.map { step =>
-          val ansiblePlay = step.script.asInstanceOf[AnsiblePlay]
-          val tasks = ansiblePlay.taskList
-          val sortedTasks = tasks.sortBy(_.id)
-          ansiblePlay.copy(taskList = sortedTasks)
-          step.copy(script = ansiblePlay)
-        }
-        val sortedStepsByExcOrder = sortedStepsByTaskId.sortBy(_.executionOrder)
-        val workflow = w.copy(steps = sortedStepsByExcOrder)
-        workflow
+      val steps = w.steps
+      val sortedStepsByTaskId = steps.map { step =>
+        val ansiblePlay = step.script.asInstanceOf[AnsiblePlay]
+        val tasks = ansiblePlay.taskList
+        val sortedTasks = tasks.sortBy(_.id)
+        ansiblePlay.copy(taskList = sortedTasks)
+        step.copy(script = ansiblePlay)
+      }
+      val sortedStepsByExcOrder = sortedStepsByTaskId.sortBy(_.executionOrder)
+      val workflow = w.copy(steps = sortedStepsByExcOrder)
+      workflow
     }
   }
 
@@ -3049,13 +3049,13 @@ object Main extends App {
         }
 
       } ~
-      path("site" / LongNumber / "policies" / Segment ) {
-        (siteId,policyId) => {
+      path("site" / LongNumber / "policies" / Segment) {
+        (siteId, policyId) => {
           get {
-          val mayBePolicy =
-            Future {
-              SiteManagerImpl.getAutoScalingPolicy(siteId,policyId)
-            }
+            val mayBePolicy =
+              Future {
+                SiteManagerImpl.getAutoScalingPolicy(siteId, policyId)
+              }
             onComplete(mayBePolicy) {
               case Success(policyList) => complete(StatusCodes.OK, policyList)
               case Failure(ex) => logger.info(s"Error while retrieving policy $siteId and $policyId ", ex)
