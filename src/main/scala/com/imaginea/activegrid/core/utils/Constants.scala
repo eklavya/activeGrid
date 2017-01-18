@@ -10,6 +10,7 @@ import com.typesafe.config.ConfigFactory
 object Constants {
   val config = ConfigFactory.load
 
+  //scalastyle:off field.name
   val TEMP_DIR_LOC: String = config.getString("tmp.dir")
   val USER_KEYS: String = "userkeys"
   val FILE_SEPARATOR = File.separator
@@ -18,6 +19,7 @@ object Constants {
   val LIST_COMMAND = "ls"
   val CD_COMMAND = "cd"
   val GREP_COMMAND = "grep"
+  //scalastyle:on field.name
 
   val tempDirectoryLocation: String = TEMP_DIR_LOC
 }
