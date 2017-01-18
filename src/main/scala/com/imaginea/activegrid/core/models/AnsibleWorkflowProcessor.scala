@@ -2,7 +2,6 @@ package com.imaginea.activegrid.core.models
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 
-import akka.actor.Props
 import com.imaginea.Main
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -15,9 +14,6 @@ import scala.concurrent.duration.Duration
 
 object AnsibleWorkflowProcessor extends WorkflowProcessor {
 
-  def stopWorkflow(workflow: Workflow): Unit = {
-    //todo implementation
-  }
 
   val workflowExecutors = Map.empty[Long, ScheduledExecutorService]
   val logger = Logger(LoggerFactory.getLogger(AnsibleWorkflowProcessor.getClass.getName))
@@ -30,12 +26,14 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
     val workflow = workflowContext.getWorkflow()
     val playBookRunner = new AnsiblePlayBookRunner(workflowContext)
     if (async) {
-      if (workflowExecutors.size > WorkflowConstants.maxParlellWorkflows) {
+      if (CurrentRunningWorkflows.size > WorkflowConstants.maxParlellWorkflows) {
         logger.error("Too many parlell workflows trigger, Max parllel works ares " + WorkflowConstants.maxParlellWorkflows)
+        //todo code to break execution
       }
       val workflowId = workflow.id.getOrElse(0L)
-      if (workflowExecutors.contains(workflowId)) {
-        logger.info("Workflow [" + workflow.name + "] is currently running, Please try after some time.")
+      CurrentRunningWorkflows.get(workflowId).map {
+        node => logger.info("Workflow [" + workflow.name + "] is currently running, Please try after some time.")
+        //todo code to break execution
       }
       system.scheduler.scheduleOnce(Duration.create(50L, TimeUnit.MILLISECONDS), playBookRunner)
     }
@@ -43,5 +41,12 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
       playBookRunner.run()
     }
   }
+
+  def stopWorkflow(workflow: Workflow): Unit = {
+    workflow.id.foreach {
+      id => CurrentRunningWorkflows.remove(id)
+    }
+  }
+
 }
 

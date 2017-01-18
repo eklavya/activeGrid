@@ -27,25 +27,27 @@ class WorkFlowServiceManagerImpl {
         val execution = wf.execution
         execution.map {
           exec =>
-            // TODO clearlog implementation.
-            WorkflowExecution.clearLogs()
-            //TODO Authentication Mechansim to extract current user
-            val currentUser = "anonymous"
-            import java.util.Calendar
-            val currentTime = Calendar.getInstance().getTime
-            val executionUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser, "status" -> "STARTED")
-            Neo4jRepository.updateNodeByLabelAndId[WorkflowExecution](WorkflowExecution.labelName,
-              exec.id.getOrElse(0L), executionUpdate)
-            val logListener = WorkflowExecLogListener.get()
-            val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
-            val workflowListener:WorkflowListener = new WorkflowExecutionListener()
-            val workflowExecLogListener = WorkflowExecLogListener.get()
-            val workflowContext:WorkflowContext = new WorkflowContext(wf,workflowListener,workflowExecLogListener)
-            WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode).map {
-              processor => processor.executeWorkflow(workflowContext,async)
+            wf.id.map { workflowId =>
+              // TODO clearlog implementation.
+              WorkflowExecution.clearLogs()
+              //TODO Authentication Mechansim to extract current user
+              val currentUser = "anonymous"
+              import java.util.Calendar
+              val currentTime = Calendar.getInstance().getTime
+              val executionUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser, "status" -> "STARTED")
+              Neo4jRepository.updateNodeByLabelAndId[WorkflowExecution](WorkflowExecution.labelName,
+                exec.id.getOrElse(0L), executionUpdate)
+              val logListener = WorkflowExecLogListener.get()
+              val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
+              val workflowListener: WorkflowListener = new WorkflowExecutionListener()
+              val workflowExecLogListener = WorkflowExecLogListener.get()
+              val workflowContext: WorkflowContext = new WorkflowContext(wf, workflowListener, workflowExecLogListener)
+              WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode).map {
+                processor => processor.executeWorkflow(workflowContext, async)
+              }
+              Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, workflowId, workFlowUpdate)
+              CurrentRunningWorkflows.add(workflowId)
             }
-            Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, wf.id.getOrElse(0L), workFlowUpdate)
-            //todo update workflow in current workflows.
         }
 
 
