@@ -41,7 +41,7 @@ class WorkFlowServiceManagerImpl {
               val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
               val workflowListener: WorkflowListener = new WorkflowExecutionListener()
               val workflowExecLogListener = WorkflowExecLogListener.get()
-              val workflowContext: WorkflowContext = new WorkflowContext(wf, workflowListener, workflowExecLogListener)
+              val workflowContext: WorkflowContext = new WorkflowContext(wf, workflowListener, workflowExecLogListener,None,None,None)
               WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode).map {
                 processor => processor.executeWorkflow(workflowContext, async)
               }

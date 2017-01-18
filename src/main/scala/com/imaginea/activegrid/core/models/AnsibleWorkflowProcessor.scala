@@ -23,7 +23,7 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
     implicit val system = Main.system
     implicit val materializer = Main.materializer
     implicit val executionContext = system.dispatcher
-    val workflow = workflowContext.getWorkflow()
+    val workflow = workflowContext.workflow
     val playBookRunner = new AnsiblePlayBookRunner(workflowContext)
     if (async) {
       if (CurrentRunningWorkflows.size > WorkflowConstants.maxParlellWorkflows) {
