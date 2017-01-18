@@ -1144,11 +1144,6 @@ object Main extends App {
     }
   }
 
-  def addJsonToInventory(inventory: Inventory): Inventory = {
-    val inventoryJsVal = inventoryFormat.write(inventory)
-    inventory.copy(json = inventoryJsVal.toString)
-  }
-
   def workflowCompleted(workflow: Workflow, workFlowExecutionStatus: WorkFlowExecutionStatus): Unit = {
     for {
       workflowExec <- workflow.execution
