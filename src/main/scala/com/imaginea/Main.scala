@@ -594,6 +594,7 @@ object Main extends App {
 
   implicit object ScriptArgumentFormat extends RootJsonFormat[ScriptArgument] {
     val fieldNames = List("id", "propName", "propValue", "argOrder", "nestedArg", "value")
+
     // scalastyle:off magic.number
     override def read(json: JsValue): ScriptArgument = {
       json match {
@@ -630,6 +631,7 @@ object Main extends App {
         AGU.stringToJsField(fieldNames(5), Some(obj.value))
       JsObject(fields: _*)
     }
+
     // scalastyle:on magic.number
   }
 
@@ -697,6 +699,7 @@ object Main extends App {
   implicit object StepFormat extends RootJsonFormat[Step] {
     val fieldNames = List("id", "stepId", "name", "description", "stepType", "scriptDefinition", "input", "scope",
       "executionOrder", "childStep", "report")
+
     // scalastyle:off magic.number
     override def write(obj: Step): JsValue = {
       val scriptFormat = obj.script match {
@@ -765,6 +768,7 @@ object Main extends App {
         case _ => throw DeserializationException("Unable to deserialize Step")
       }
     }
+
     // scalastyle:on magic.number
   }
 
@@ -1008,36 +1012,36 @@ object Main extends App {
     }
   }
 
-  val stepServiceRoutes : Route = pathPrefix("workflow" / LongNumber ){ workflowId =>
-    path("step" / LongNumber){ stepId =>
-      get{
-        val step = Future{
-          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName,"id",stepId)
+  val stepServiceRoutes: Route = pathPrefix("workflow" / LongNumber) { workflowId =>
+    path("step" / LongNumber) { stepId =>
+      get {
+        val step = Future {
+          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName, "id", stepId)
           mayBeNode.flatMap(node => Step.fromNeo4jGraph(node.getId))
         }
-        onComplete(step){
+        onComplete(step) {
           case Success(response) =>
-            if(response.nonEmpty)
-              complete(StatusCodes.OK , response)
+            if (response.nonEmpty)
+              complete(StatusCodes.OK, response)
             else
-              complete(StatusCodes.NoContent , s"No Step found with workflow $workflowId and step $stepId")
+              complete(StatusCodes.NoContent, s"No Step found with workflow $workflowId and step $stepId")
           case Failure(exception) =>
             logger.error(s"Unable to fetch step ${exception.getMessage}", exception)
-            complete(StatusCodes.BadRequest , s"Unable to fetch step entity with workflowId : $workflowId and stepId : $stepId ")
+            complete(StatusCodes.BadRequest, s"Unable to fetch step entity with workflowId : $workflowId and stepId : $stepId ")
         }
       }
-    }~path("step"/ LongNumber /"status"){ stepId =>
-      get{
-        val report = Future{
-          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName,"id",stepId)
+    } ~ path("step" / LongNumber / "status") { stepId =>
+      get {
+        val report = Future {
+          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName, "id", stepId)
           val mayBeStep = mayBeNode.flatMap(node => Step.fromNeo4jGraph(node.getId))
           mayBeStep.map(step => step.report)
         }
-        onComplete(report){
+        onComplete(report) {
           case Success(response) => complete(StatusCodes.OK, response)
           case Failure(exception) =>
-            logger.error(s"Unable to fetch Execution report ${exception.getMessage}",exception)
-            complete(StatusCodes.BadRequest , s"Unable to get Report with workflow $workflowId and step $stepId")
+            logger.error(s"Unable to fetch Execution report ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to get Report with workflow $workflowId and step $stepId")
         }
       }
     }
@@ -1227,10 +1231,12 @@ object Main extends App {
       }
     }
   }
+
   def addJsonToInventory(inventory: Inventory): Inventory = {
     val inventoryJsVal = inventoryFormat.write(inventory)
     inventory.copy(json = inventoryJsVal.toString)
   }
+
   def buildPath(path: String, scriptType: ScriptType): Option[String] = {
     scriptType match {
       case ScriptType.Script =>
