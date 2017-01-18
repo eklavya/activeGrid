@@ -35,6 +35,8 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   val cachedSite = mutable.Map.empty[Long, Site1]
   val sessionCache = mutable.Map.empty[Long, TerminalSession]
+  val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
+  val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
@@ -1038,6 +1040,123 @@ object Main extends App {
             complete(StatusCodes.BadRequest , s"Unable to get Report with workflow $workflowId and step $stepId")
         }
       }
+    }
+  } ~ pathPrefix("workflows") {
+    path(LongNumber / "status") { workflowId =>
+      parameter("start") { start =>
+        val workflowExecution = Future {
+          val workFlowExecution = getRunningWorkflowExecution(workflowId)
+          workFlowExecution match {
+            case Some(workflowExec) =>
+              for {
+                workflow <- Workflow.fromNeo4jGraph(workflowId)
+                execution <- workflow.execution
+              } yield {
+                val from = if (start.toInt == 0) 1 else start.toInt
+                if (from < execution.logs.size) {
+                  execution.copy(logs = execution.logs.slice(from, execution.logs.size))
+                } else {
+                  execution.copy(logs = List.empty[String])
+                }
+              }
+            case None =>
+              logger.warn(s"No workflow found with Id: $workflowId")
+              throw new Exception(s"No running workflow found with Id : $workflowId")
+          }
+        }
+        onComplete(workflowExecution) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch the WorkflowExecution with given WorkflowID : $workflowId", exception)
+            complete(StatusCodes.BadRequest, s"No Running Workflow is found with ID : $workflowId")
+        }
+      }
+    } ~ path(LongNumber / "publish") { workflowId =>
+      put {
+        entity(as[Inventory]) { inventory =>
+          val publishedInventory = Future {
+            for {
+              workflow <- getWorkflow(workflowId)
+            } yield {
+              val marshlledInventory = addJsonToInventory(inventory)
+              workflow.copy(publishedInventory = Some(marshlledInventory))
+              workflow.toNeo4jGraph(workflow)
+              addInventory(workflowId, inventory)
+              "Workflow is published"
+            }
+          }
+          onComplete(publishedInventory) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to publish the inventory ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to publish the inventory")
+          }
+        }
+      } ~ get {
+        val publishedInventory = Future {
+          for {
+            workflow <- getWorkflow(workflowId)
+          } yield {
+            workflow.publishedInventory
+          }
+        }
+        onComplete(publishedInventory) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch Published Inventory ${exception.getMessage()}", exception)
+            complete(StatusCodes.BadRequest, "Unable to fetch Published Inventory")
+        }
+      }
+    } ~ path(LongNumber) { workflowId =>
+      delete {
+        val isDeleted = Future {
+          for {
+            workflow <- getWorkflow(workflowId)
+          } yield {
+            workflowCompleted(workflow, WorkFlowExecutionStatus.INTERRUPTED)
+            val execHistory = workflow.executionHistory
+            execHistory.foreach(workflowExecution => workflowExecution.id.foreach(id => Neo4jRepository.deleteEntity(id)))
+            val steps = workflow.steps.foreach(step => step.id.foreach(id => Neo4jRepository.deleteEntity(id)))
+            workflow.module.map { module =>
+              val path = FilenameUtils.getFullPath(module.path)
+              val file = new File(path)
+              CommonFileUtils.deleteDirectory(file)
+              true
+            }
+          }
+        }
+        onComplete(isDeleted) {
+          case Success(response) =>
+            complete(StatusCodes.OK, "Workflow deleted succesfully")
+          case Failure(exception) =>
+            logger.error(s"Unable to delete workflow ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to delete workflow with id $workflowId")
+        }
+      }
+    }
+  }
+
+  def getRunningWorkflowExecution(workflowId: Long): Option[WorkflowExecution] = {
+    if (currentWorkflows.contains(workflowId)) {
+      currentWorkflows(workflowId).workflow.execution
+    } else {
+      None
+    }
+  }
+
+  def addJsonToInventory(inventory: Inventory): Inventory = {
+    val inventoryJsVal = inventoryFormat.write(inventory)
+    inventory.copy(json = inventoryJsVal.toString)
+  }
+
+  def workflowCompleted(workflow: Workflow, workFlowExecutionStatus: WorkFlowExecutionStatus): Unit = {
+    for {
+      workflowExec <- workflow.execution
+    } yield {
+      val stoppedWorkflowExec = workflowExec.copy(status = Some(workFlowExecutionStatus))
+      stoppedWorkflowExec.toNeo4jGraph(stoppedWorkflowExec)
+      ansibleWorkflowProcessor.stopWorkflow(workflow)
+      workflow.id.map(id => currentWorkflows.remove(id))
     }
   }
 
