@@ -4,7 +4,7 @@ package com.imaginea.activegrid.core.models
   * Created by sivag on 18/1/17.
   */
 //implementation of all methods.
-class WorkflowExecutionListener extends WorkflowListener{
+class WorkflowExecutionListener extends WorkflowListener {
 
   override def workflowStarted(we: WorkflowEvent): Unit = ???
 
