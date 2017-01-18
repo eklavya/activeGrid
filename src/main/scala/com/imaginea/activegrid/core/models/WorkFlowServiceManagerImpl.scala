@@ -31,7 +31,6 @@ class WorkFlowServiceManagerImpl {
             WorkflowExecution.clearLogs()
             //TODO Authentication Mechansim to extract current user
             val currentUser = "anonymous"
-            //TODO Authentication Mechansim
             import java.util.Calendar
             val currentTime = Calendar.getInstance().getTime
             val executionUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser, "status" -> "STARTED")
@@ -39,10 +38,17 @@ class WorkFlowServiceManagerImpl {
               exec.id.getOrElse(0L), executionUpdate)
             val logListener = WorkflowExecLogListener.get()
             val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
+            val workflowListener:WorkflowListener = new WorkflowExecutionListener()
+            val workflowExecLogListener = WorkflowExecLogListener.get()
+            val workflowContext:WorkflowContext = new WorkflowContext(wf,workflowListener,workflowExecLogListener)
+            WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode).map {
+              processor => processor.executeWorkflow(workflowContext,async)
+            }
             Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, wf.id.getOrElse(0L), workFlowUpdate)
-          //todo workflow processor creation and execution
-
+            //todo update workflow in current workflows.
         }
+
+
     }
   }
 

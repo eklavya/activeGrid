@@ -29,7 +29,6 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
     implicit val executionContext = system.dispatcher
     val workflow = workflowContext.getWorkflow()
     val playBookRunner = new AnsiblePlayBookRunner(workflowContext)
-    val playBookActor = Main.system.actorOf(Props.create(playBookRunner.getClass, this));
     if (async) {
       if (workflowExecutors.size > WorkflowConstants.maxParlellWorkflows) {
         logger.error("Too many parlell workflows trigger, Max parllel works ares " + WorkflowConstants.maxParlellWorkflows)
@@ -38,12 +37,10 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
       if (workflowExecutors.contains(workflowId)) {
         logger.info("Workflow [" + workflow.name + "] is currently running, Please try after some time.")
       }
-      Main.system.scheduler.scheduleOnce(Duration.create(50L, TimeUnit.MILLISECONDS),
-        playBookActor, Main.system.dispatcher)
+      system.scheduler.scheduleOnce(Duration.create(50L, TimeUnit.MILLISECONDS), playBookRunner)
     }
     else {
-      Main.system.scheduler.scheduleOnce(Duration.create(50L, TimeUnit.MILLISECONDS),
-        playBookActor, Main.system.dispatcher)
+      playBookRunner.run()
     }
   }
 }
