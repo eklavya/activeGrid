@@ -10,7 +10,13 @@ case class Inventory(override val id: Option[Long],
                      siteId: Long,
                      groups: List[Group],
                      hosts: List[Host],
-                     extraVariables: List[Variable]) extends BaseEntity
+                     extraVariables: List[Variable]) extends BaseEntity {
+  def getExtraVariableByName(varName: String): Option[Variable] = {
+    extraVariables.find {
+      variable => variable.name.contentEquals(varName)
+    }
+  }
+}
 
 object Inventory {
   val labelName = "Inventory"

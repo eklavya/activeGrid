@@ -37,7 +37,6 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   val cachedSite = mutable.Map.empty[Long, Site1]
   val sessionCache = mutable.Map.empty[Long, TerminalSession]
-  val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
   val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
@@ -1213,7 +1212,7 @@ object Main extends App {
     } yield {
       val stoppedWorkflowExec = workflowExec.copy(status = Some(workFlowExecutionStatus))
       stoppedWorkflowExec.toNeo4jGraph(stoppedWorkflowExec)
-      ansibleWorkflowProcessor.stopWorkflow(workflow)
+      AnsibleWorkflowProcessor.stopWorkflow(workflow)
       workflow.id.map(id => currentWorkflows.remove(id))
     }
   }
