@@ -1038,7 +1038,11 @@ object Main extends App {
           mayBeStep.map(step => step.report)
         }
         onComplete(report) {
-          case Success(response) => complete(StatusCodes.OK, response)
+          case Success(response) =>
+            if (response.nonEmpty)
+              complete(StatusCodes.OK, response)
+            else
+              complete(StatusCodes.NoContent, s"No Step found with workflow $workflowId and step $stepId")
           case Failure(exception) =>
             logger.error(s"Unable to fetch Execution report ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, s"Unable to get Report with workflow $workflowId and step $stepId")
@@ -1148,6 +1152,11 @@ object Main extends App {
     }
   }
 
+  def addJsonToInventory(inventory: Inventory): Inventory = {
+    val inventoryJsVal = inventoryFormat.write(inventory)
+    inventory.copy(json = inventoryJsVal.toString)
+  }
+
   def workflowCompleted(workflow: Workflow, workFlowExecutionStatus: WorkFlowExecutionStatus): Unit = {
     for {
       workflowExec <- workflow.execution
@@ -1230,11 +1239,6 @@ object Main extends App {
         case e: IOException => throw new RuntimeException(s"Cannot read $fileToRead")
       }
     }
-  }
-
-  def addJsonToInventory(inventory: Inventory): Inventory = {
-    val inventoryJsVal = inventoryFormat.write(inventory)
-    inventory.copy(json = inventoryJsVal.toString)
   }
 
   def buildPath(path: String, scriptType: ScriptType): Option[String] = {
