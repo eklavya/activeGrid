@@ -597,6 +597,7 @@ object Main extends App {
   implicit object ScriptArgumentFormat extends RootJsonFormat[ScriptArgument] {
     val fieldNames = List("id", "propName", "propValue", "argOrder", "nestedArg", "value")
 
+    // scalastyle:off magic.number
     override def read(json: JsValue): ScriptArgument = {
       json match {
         case JsObject(map) =>
@@ -632,6 +633,8 @@ object Main extends App {
         AGU.stringToJsField(fieldNames(5), Some(obj.value))
       JsObject(fields: _*)
     }
+
+    // scalastyle:on magic.number
   }
 
   implicit val puppetModuleDefFormat = jsonFormat5(PuppetModuleDefinition.apply)
@@ -699,6 +702,7 @@ object Main extends App {
     val fieldNames = List("id", "stepId", "name", "description", "stepType", "scriptDefinition", "input", "scope",
       "executionOrder", "childStep", "report")
 
+    // scalastyle:off magic.number
     override def write(obj: Step): JsValue = {
       val scriptFormat = obj.script match {
         case scriptDef: ScriptDefinition => AGU.objectToJsValue[ScriptDefinition](fieldNames(5), Some(scriptDef), scriptDefinitionFormat)
@@ -766,6 +770,8 @@ object Main extends App {
         case _ => throw DeserializationException("Unable to deserialize Step")
       }
     }
+
+    // scalastyle:on magic.number
   }
 
   implicit val stepExecFormat = jsonFormat4(StepExecutionReport.apply)
@@ -1017,6 +1023,79 @@ object Main extends App {
           case Failure(exception) =>
             logger.error(s"Unable to update workflow ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to update workflow")
+        }
+      }
+    } ~ path("published" / LongNumber) { workflowId =>
+      post {
+        entity(as[List[Variable]]) { variables =>
+          val updatedWorkflow = Future {
+            for {
+              workflow <- getWorkflow(workflowId)
+              inventory <- workflow.publishedInventory
+            } yield {
+              val updatedGroups = inventory.groups.map { group =>
+                val updatedVars = group.variables.flatMap { variable =>
+                  variables.map { variab =>
+                    if (variab.name.equals(variable.name)) {
+                      variab.copy(value = variable.value)
+                    } else {
+                      variable
+                    }
+                  }
+                }
+                group.copy(variables = updatedVars)
+              }
+              val updatedInventory = inventory.copy(groups = updatedGroups)
+              val marshalledInv = addJsonToInventory(updatedInventory)
+              addInventory(workflowId, marshalledInv)
+            }
+            getWorkflow(workflowId)
+          }
+          onComplete(updatedWorkflow) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to update inventory ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Unable to update the published inventory with ID $workflowId")
+          }
+        }
+      }
+    }
+  }
+
+  val stepServiceRoutes: Route = pathPrefix("workflow" / LongNumber) { workflowId =>
+    path("step" / LongNumber) { stepId =>
+      get {
+        val step = Future {
+          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName, "id", stepId)
+          mayBeNode.flatMap(node => Step.fromNeo4jGraph(node.getId))
+        }
+        onComplete(step) {
+          case Success(response) =>
+            if (response.nonEmpty)
+              complete(StatusCodes.OK, response)
+            else
+              complete(StatusCodes.NoContent, s"No Step found with workflow $workflowId and step $stepId")
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch step ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to fetch step entity with workflowId : $workflowId and stepId : $stepId ")
+        }
+      }
+    } ~ path("step" / LongNumber / "status") { stepId =>
+      get {
+        val report = Future {
+          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName, "id", stepId)
+          val mayBeStep = mayBeNode.flatMap(node => Step.fromNeo4jGraph(node.getId))
+          mayBeStep.map(step => step.report)
+        }
+        onComplete(report) {
+          case Success(response) =>
+            if (response.nonEmpty)
+              complete(StatusCodes.OK, response)
+            else
+              complete(StatusCodes.NoContent, s"No Step found with workflow $workflowId and step $stepId")
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch Execution report ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to get Report with workflow $workflowId and step $stepId")
         }
       }
     }
@@ -2569,12 +2648,12 @@ object Main extends App {
           }
           val instanceNode = Neo4jRepository.getNodeByProperty("Instance", "name", name)
           instanceNode match {
-            case Some(node) => Instance.fromNeo4jGraph(node.getId).get
+            case Some(node) => Instance.fromNeo4jGraph(node.getId)
             case None =>
               val name = "echo node"
               val tags: List[KeyValueInfo] = List(KeyValueInfo(None, "tag", "tag"))
               val processInfo = ProcessInfo(1, 1, "init")
-              Instance(name, tags, Set(processInfo))
+              Option(Instance(name, tags, Set(processInfo)))
           }
         }
         onComplete(nodeInstance) {
