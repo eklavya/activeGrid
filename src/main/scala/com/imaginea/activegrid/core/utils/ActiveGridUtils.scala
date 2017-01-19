@@ -1,13 +1,16 @@
 package com.imaginea.activegrid.core.utils
 
+import akka.actor.ActorSystem
 import com.amazonaws.regions.RegionUtils
-import com.imaginea.activegrid.core.models._ // scalastyle:ignore underscore.import
+import com.imaginea.Main
+import com.imaginea.activegrid.core.models._
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-import spray.json._ // scalastyle:ignore underscore.import
+import spray.json._
 
-import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
+import scala.collection.JavaConversions._
+import scala.concurrent.ExecutionContext // scalastyle:ignore underscore.import
 
 /**
   * Created by babjik on 13/10/16.
@@ -100,6 +103,22 @@ object ActiveGridUtils {
     fieldValue match {
       case Some(x) => (fieldName, JsString(x)) :: rest
       case None => rest
+    }
+
+    /**
+      *
+      * @param serviceName
+      * @return
+      *         New or Existing ExecutionContext mapped to serviceName
+      */
+    def executionContext(serviceName:String) : ExecutionContext = {
+      serviceName match  {
+        case "POLICY" => Main.system.dispatcher
+        // ActorSystem.create("POLICY").dispatcher
+        case "WORKFLOW" => Main.system.dispatcher
+        // ActorSystem.create("WORKFLOW").dispatcher
+        case _ => Main.system.dispatcher
+      }
     }
   }
 }

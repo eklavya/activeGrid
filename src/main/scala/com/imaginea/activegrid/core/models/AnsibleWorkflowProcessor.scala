@@ -6,6 +6,7 @@ import com.imaginea.Main
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 /**
@@ -35,13 +36,12 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
         node => logger.info("Workflow [" + workflow.name + "] is currently running, Please try after some time.")
         //todo code to break execution
       }
-      system.scheduler.scheduleOnce(Duration.create(50L, TimeUnit.MILLISECONDS), playBookRunner)
+      val result  = Future { playBookRunner.executePlayBook()}
     }
     else {
-      playBookRunner.run()
+      playBookRunner.executePlayBook()
     }
   }
-
   def stopWorkflow(workflow: Workflow): Unit = {
     workflow.id.foreach {
       id => CurrentRunningWorkflows.remove(id)
