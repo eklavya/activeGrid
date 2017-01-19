@@ -57,7 +57,7 @@ object WorkflowExecution {
         WorkflowExecution(Some(id),
           map("executionTime").asInstanceOf[Long],
           map.get("executionBy").asInstanceOf[Option[String]],
-          Some(WorkFlowExecutionStatus.toExecutionStatus(map("status").asInstanceOf[String])),
+          map.get("status").asInstanceOf[Option[String]].map(WorkFlowExecutionStatus.toExecutionStatus),
           None,
           map("logs").asInstanceOf[Array[String]].toList,
           List.empty[String],
