@@ -3,6 +3,7 @@ package com.imaginea.activegrid.core.models
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 
 import com.imaginea.Main
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -23,7 +24,7 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
     //scalastyle:off magic.number
     implicit val system = Main.system
     implicit val materializer = Main.materializer
-    implicit val executionContext = system.dispatcher
+    implicit val executionContext = ActiveGridUtils.getExecutionContextByService("workflow")
     val workflow = workflowContext.workflow
     val playBookRunner = new AnsiblePlayBookRunner(workflowContext)
     if (async) {

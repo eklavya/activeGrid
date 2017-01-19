@@ -104,21 +104,21 @@ object ActiveGridUtils {
       case Some(x) => (fieldName, JsString(x)) :: rest
       case None => rest
     }
+  }
 
-    /**
-      *
-      * @param serviceName
-      * @return
-      *         New or Existing ExecutionContext mapped to serviceName
-      */
-    def executionContext(serviceName:String) : ExecutionContext = {
-      serviceName match  {
-        case "POLICY" => Main.system.dispatcher
-        // ActorSystem.create("POLICY").dispatcher
-        case "WORKFLOW" => Main.system.dispatcher
-        // ActorSystem.create("WORKFLOW").dispatcher
-        case _ => Main.system.dispatcher
-      }
+  /**
+    *
+    * @param serviceName
+    * @return
+    *         New or Existing ExecutionContext mapped to serviceName
+    */
+  def getExecutionContextByService(serviceName:String) : ExecutionContext = {
+    serviceName match  {
+      case "POLICY" => Main.system.dispatcher
+      // todo implementation
+      case "WORKFLOW" => Main.system.dispatcher
+      // todo implementation
+      case _ => Main.system.dispatcher
     }
   }
 }
