@@ -7,14 +7,14 @@ import org.neo4j.graphdb.Node
   */
 case class Workflow(override val id: Option[Long],
                     name: String,
-                    description: String,
-                    mode: WorkflowMode,
+                    description: Option[String],
+                    mode: Option[WorkflowMode],
                     steps: List[Step],
-                    stepOrderStrategy: StepOrderStrategy,
-                    executionStrategy: WorkflowExecutionStrategy,
+                    stepOrderStrategy: Option[StepOrderStrategy],
+                    executionStrategy: Option[WorkflowExecutionStrategy],
                     execution: Option[WorkflowExecution],
                     executionHistory: List[WorkflowExecution],
-                    lastExecutionBy: String,
+                    lastExecutionBy: Option[String],
                     lastExecutionAt: Long,
                     module: Option[Module],
                     playBooks: List[AnsiblePlayBook],
@@ -28,15 +28,19 @@ object Workflow {
   val workflowAndPlayBookRelation = "HAS_PlayBook"
   val workflowAndInventoryRelation = "HAS_Inventory"
 
+  def apply(name: String, module: Module, playBooks: List[AnsiblePlayBook]): Workflow =
+    Workflow(None, name, None, None, List.empty[Step], None, None, None, List.empty[WorkflowExecution],
+      None, 0L, Some(module), List.empty[AnsiblePlayBook], None)
+
   //TODO Need integrate Step model in this
   implicit class WorkflowImpl(workFlow: Workflow) extends Neo4jRep[Workflow] {
 
     override def toNeo4jGraph(entity: Workflow): Node = {
       val map = Map("name" -> entity.name,
         "description" -> entity.description,
-        "mode" -> entity.mode.toString,
-        "stepOrderStrategy" -> entity.stepOrderStrategy.orderStrategy,
-        "executionStrategy" -> entity.executionStrategy.executionStrategy,
+        "mode" -> entity.mode.map(_.workflowMode),
+        "stepOrderStrategy" -> entity.stepOrderStrategy.map(_.orderStrategy),
+        "executionStrategy" -> entity.executionStrategy.map(_.executionStrategy),
         "lastExecutionBy" -> entity.lastExecutionBy,
         "lastExecutionAt" -> entity.lastExecutionAt
       )
@@ -87,14 +91,14 @@ object Workflow {
       val publishedInventory = inventoryNodeId.flatMap(nodeId => Inventory.fromNeo4jGraph(nodeId))
       Workflow(Some(id),
         map("name").asInstanceOf[String],
-        map("description").asInstanceOf[String],
-        WorkflowMode.toWorkFlowMode(map("mode").asInstanceOf[String]),
+        map.get("description").asInstanceOf[Option[String]],
+        map.get("mode").asInstanceOf[Option[String]].map(WorkflowMode.toWorkFlowMode),
         List.empty[Step],
-        StepOrderStrategy.toOrderStrategy(map("stepOrderStrategy").asInstanceOf[String]),
-        WorkflowExecutionStrategy.toExecutionStrategy(map("executionStrategy").asInstanceOf[String]),
+        map.get("stepOrderStrategy").asInstanceOf[Option[String]].map(StepOrderStrategy.toOrderStrategy),
+        map.get("executionStrategy").asInstanceOf[Option[String]].map(WorkflowExecutionStrategy.toExecutionStrategy),
         execution,
         executionHistory,
-        map("lastExecutionBy").asInstanceOf[String],
+        map.get("lastExecutionBy").asInstanceOf[Option[String]],
         map("lastExecutionAt").asInstanceOf[Long],
         module,
         playBooks,

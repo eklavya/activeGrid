@@ -23,11 +23,12 @@ object ActiveGridUtils {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
   val config = ConfigFactory.load
+  //scalastyle:off field.name
   val HOST = config.getString("http.host")
   val PORT = config.getInt("http.port")
   val DBPATH = config.getString("neo4j.dbpath")
   val APIVERSION = config.getString("http.version")
-
+  //scalastyle:on field.name
 
   def getValueFromMapAs[T](map: Map[String, Any], key: String): Option[T] = {
     map.get(key).map(_.asInstanceOf[T])
