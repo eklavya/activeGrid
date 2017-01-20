@@ -15,7 +15,7 @@ class AnsibleScriptEngine(val inventory: Inventory, val workflowContext: Workflo
   val workflowId: Long = workflowContext.workflow.id.getOrElse(0L)
   val logger: Logger = Logger(LoggerFactory.getLogger("AnsibleScriptEngine"))
 
-  def executeScript() = {
+  def executeScript() : Unit = {
     //to variable
     val variable = inventory.getExtraVariableByName("workflow-id").getOrElse(
       new Variable(None, "workflow-id", workflowId.toString, VariableScope.toVariableScope("EXTRA"), true, true))
