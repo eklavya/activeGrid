@@ -25,9 +25,10 @@ object Software {
 
   def fromNeo4jGraph(nodeId: Long): Option[Software] = {
     val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-    try {
-      val node = Neo4jRepository.findNodeById(nodeId)
-      val map = Neo4jRepository.getProperties(node.get, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
+    for {
+      node <- Neo4jRepository.findNodeById(nodeId)
+    } yield {
+      val map = Neo4jRepository.getProperties(node, "version", "name", "provider", "downloadURL", "port", "processNames", "discoverApplications")
       val software = Software(Some(nodeId),
         ActiveGridUtils.getValueFromMapAs[String](map, "version"),
         map("name").asInstanceOf[String],
@@ -36,12 +37,7 @@ object Software {
         map("port").asInstanceOf[String],
         map("processNames").asInstanceOf[Array[String]].toList,
         map("discoverApplications").asInstanceOf[Boolean])
-      Some(software)
-    } catch {
-      case ex: Exception =>
-        logger.warn(ex.getMessage, ex)
-        None
-
+      software
     }
   }
 

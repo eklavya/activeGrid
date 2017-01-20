@@ -43,7 +43,7 @@ case class Instance(override val id: Option[Long],
 object Instance {
 
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-  val LaunchTime = 100
+  val launchTime = 100
 
   val label = Instance.getClass.getName
   val relationLabel = ActiveGridUtils.relationLbl(label)
@@ -104,7 +104,6 @@ object Instance {
         val region = map.get("region").asInstanceOf[Option[String]]
         //TO DO
         //val launchTime: Date = new Date(map.get("launchTime").get.toString.toLong)
-        val launchTime: Option[Long] = Some(LaunchTime)
         //map.get("launchTime").get.toString.toLong
 
         val storeageInfoRelation1 = "HAS_storageInfo1"
@@ -165,7 +164,7 @@ object Instance {
         }
 
         Some(Instance(Some(nodeId), instanceId, name, state, instanceType, platform, architecture,
-          publicDnsName, launchTime, memoryInfo, rootDiskInfo, tags, sshAccessInfo, liveConnections,
+          publicDnsName, Some(launchTime), memoryInfo, rootDiskInfo, tags, sshAccessInfo, liveConnections,
           estimatedConnections, processes, imageInfo, existingUsers, None, availabilityZone, privateDnsName,
           privateIpAddress, publicIpAddress, elasticIP, monitoring, rootDeviceType, blockDeviceMappings,
           securityGroups, reservedInstance, region))

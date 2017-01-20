@@ -58,7 +58,10 @@ object AppSettings {
             val mapObj = node.getRelationships.foldLeft(Map[String, Map[String, String]]()) {
               (map, relationship) =>
                 val childNode = relationship.getEndNode
-                val settingsProps = childNode.getAllProperties.foldLeft(Map[String, String]())((map, prop) => map + ((prop._1, prop._2.asInstanceOf[String])))
+                val settingsProps = childNode.getAllProperties.foldLeft(Map[String, String]()){ (map, prop) =>
+                  val (name , value) = prop
+                  map + ((name, value.asInstanceOf[String]))
+                }
                 relationship.getType.name match {
                   case `settingsRelationName` => map + (("settings", settingsProps))
                   case `authSettingsRelationName` => map + (("authSettings", settingsProps))
