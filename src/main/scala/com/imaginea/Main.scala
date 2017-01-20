@@ -705,16 +705,16 @@ object Main extends App {
         case ansiblePlay: AnsiblePlay => AGU.objectToJsValue[AnsiblePlay](fieldNames(5), Some(ansiblePlay), ansiblePlayFormat)
       }
       val fields = AGU.longToJsField(fieldNames.head, obj.id) ++
-        AGU.stringToJsField(fieldNames(1), Some(obj.stepId)) ++
+        AGU.stringToJsField(fieldNames(1), obj.stepId) ++
         AGU.stringToJsField(fieldNames(2), Some(obj.name)) ++
-        AGU.stringToJsField(fieldNames(3), Some(obj.description)) ++
-        AGU.stringToJsField(fieldNames(4), Some(obj.stepType.stepType)) ++
+        AGU.stringToJsField(fieldNames(3), obj.description) ++
+        AGU.stringToJsField(fieldNames(4), obj.stepType.map(_.stepType)) ++
         scriptFormat ++
-        AGU.objectToJsValue[StepInput](fieldNames(6), Some(obj.input), stepInputFormat) ++
-        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), Some(obj.scope), inventoryExecFormat) ++
+        AGU.objectToJsValue[StepInput](fieldNames(6), obj.input, stepInputFormat) ++
+        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), obj.scope, inventoryExecFormat) ++
         AGU.stringToJsField(fieldNames(8), Some(obj.executionOrder.toString)) ++
         AGU.listToJsValue(fieldNames(9), obj.childStep, StepFormat) ++
-        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), Some(obj.report), stepExecFormat)
+        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), obj.report, stepExecFormat)
       JsObject(fields: _*)
     }
 
@@ -733,28 +733,22 @@ object Main extends App {
             throw DeserializationException("Unable to deserialize  Script,property 'taskList' not found")
           }
           val mayBeStep: Option[Step] = for {
-            stepId <- AGU.getProperty[String](map, fieldNames(1))
             name <- AGU.getProperty[String](map, fieldNames(2))
-            description <- AGU.getProperty[String](map, fieldNames(3))
-            stepType <- AGU.getProperty[String](map, fieldNames(4))
             scriptJsVal <- AGU.getProperty[JsValue](map, fieldNames(5))
-            inputJsVal <- AGU.getProperty[JsValue](map, fieldNames(6))
-            scopeJsVal <- AGU.getProperty[JsValue](map, fieldNames(7))
             executionOrder <- AGU.getProperty[Int](map, fieldNames(8))
-            reportJsVal <- AGU.getProperty[JsValue](map, fieldNames(10))
           } yield {
 
             Step(AGU.getProperty[Long](map, fieldNames(0)),
-              stepId,
+              AGU.getProperty[String](map, fieldNames(1)),
               name,
-              description,
-              StepType.toStepType(stepType),
+              AGU.getProperty[String](map, fieldNames(3)),
+              AGU.getProperty[String](map, fieldNames(4)).map(StepType.toStepType),
               scriptObj,
-              stepInputFormat.read(inputJsVal),
-              inventoryExecFormat.read(scopeJsVal),
+              AGU.getProperty[JsValue](map, fieldNames(6)).map(stepInputFormat.read),
+              AGU.getProperty[JsValue](map, fieldNames(7)).map(inventoryExecFormat.read),
               executionOrder,
               AGU.getObjectsFromJson[Step](map, "childStep", StepFormat),
-              stepExecFormat.read(reportJsVal)
+              AGU.getProperty[JsValue](map, fieldNames(10)).map(stepExecFormat.read)
             )
           }
           mayBeStep match {
