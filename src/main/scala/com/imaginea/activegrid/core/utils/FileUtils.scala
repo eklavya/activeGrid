@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.utils
 
 import java.io.{File, PrintWriter}
+import javax.swing.text.AbstractDocument.Content
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -14,6 +15,14 @@ object FileUtils {
   def saveContentToFile(file: String, content: String): Unit = {
     logger.debug(s"writing content to $file")
     val writer = new PrintWriter(new File(file), "UTF-8")
+    try {
+      writer.print(content)
+    } finally {
+      writer.close()
+    }
+  }
+  def saveContentToFile(file:File,content:String) : Unit = {
+    val writer = new PrintWriter(file, "UTF-8")
     try {
       writer.print(content)
     } finally {

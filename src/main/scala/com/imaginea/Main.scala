@@ -1,6 +1,7 @@
 package com.imaginea
 
-import java.io.{File, IOException}
+import java.io.{File, FileInputStream, FileOutputStream, IOException}
+import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
@@ -9,6 +10,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
+import akka.http.scaladsl.server.directives.ContentTypeResolver.Default
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
@@ -594,6 +596,7 @@ object Main extends App {
   implicit object ScriptArgumentFormat extends RootJsonFormat[ScriptArgument] {
     val fieldNames = List("id", "propName", "propValue", "argOrder", "nestedArg", "value")
 
+    // scalastyle:off magic.number
     override def read(json: JsValue): ScriptArgument = {
       json match {
         case JsObject(map) =>
@@ -629,6 +632,8 @@ object Main extends App {
         AGU.stringToJsField(fieldNames(5), Some(obj.value))
       JsObject(fields: _*)
     }
+
+    // scalastyle:on magic.number
   }
 
   implicit val puppetModuleDefFormat = jsonFormat5(PuppetModuleDefinition.apply)
@@ -696,6 +701,7 @@ object Main extends App {
     val fieldNames = List("id", "stepId", "name", "description", "stepType", "scriptDefinition", "input", "scope",
       "executionOrder", "childStep", "report")
 
+    // scalastyle:off magic.number
     override def write(obj: Step): JsValue = {
       val scriptFormat = obj.script match {
         case scriptDef: ScriptDefinition => AGU.objectToJsValue[ScriptDefinition](fieldNames(5), Some(scriptDef), scriptDefinitionFormat)
@@ -763,6 +769,8 @@ object Main extends App {
         case _ => throw DeserializationException("Unable to deserialize Step")
       }
     }
+
+    // scalastyle:on magic.number
   }
 
   implicit val stepExecFormat = jsonFormat4(StepExecutionReport.apply)
@@ -940,6 +948,54 @@ object Main extends App {
           }
         }
       }
+    } ~ path(LongNumber / "export") { workflowId =>
+      val mayBeWorkflow = getWorkflow(workflowId)
+      val mayBeZipFile = for {
+        workflow <- mayBeWorkflow
+        module <- workflow.module
+      } yield {
+        val modulePath = module.path
+        val workflowZipPath = exportWorkflow(modulePath, workflow)
+        val workflowZip = new File(workflowZipPath)
+        workflowZip
+      }
+      mayBeZipFile match {
+        case Some(zipFile) => getFromFile(zipFile)
+        case None =>
+          logger.error(s"Workflow with id [ $workflowId ] or Module not found")
+          complete(StatusCodes.BadRequest, s"Workflow with id [ $workflowId ] or Module not found")
+      }
+    } ~ path(LongNumber / "clone") { workflowId =>
+      post {
+        entity(as[String]) { name =>
+          val workflow = Future {
+            logger.info(s"Received request for cloning workflow with id - $workflowId and name $name")
+            cloneWorkflow(workflowId, name)
+          }
+          onComplete(workflow) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to clone workflow ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to clone workflow")
+          }
+        }
+      }
+    } ~ path("published") {
+      get {
+        val publishedWorkflows = Future {
+          val wfLabel = Workflow.labelName
+          val nodesList = Neo4jRepository.getNodesByLabel(wfLabel)
+          val workflows = nodesList.flatMap(node => Workflow.fromNeo4jGraph(node.getId))
+          val workflowsList = workflows.filter(_.publishedInventory.nonEmpty)
+          Page[Workflow](workflowsList)
+        }
+        onComplete(publishedWorkflows) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to retrieve published workflows List. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to retrieve published workflows List.")
+        }
+      }
     } ~ get {
       val workflows = Future {
         val nodesList = Neo4jRepository.getNodesByLabel(Workflow.labelName)
@@ -966,6 +1022,79 @@ object Main extends App {
           case Failure(exception) =>
             logger.error(s"Unable to update workflow ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to update workflow")
+        }
+      }
+    } ~ path("published" / LongNumber) { workflowId =>
+      post {
+        entity(as[List[Variable]]) { variables =>
+          val updatedWorkflow = Future {
+            for {
+              workflow <- getWorkflow(workflowId)
+              inventory <- workflow.publishedInventory
+            } yield {
+              val updatedGroups = inventory.groups.map { group =>
+                val updatedVars = group.variables.flatMap { variable =>
+                  variables.map { variab =>
+                    if (variab.name.equals(variable.name)) {
+                      variab.copy(value = variable.value)
+                    } else {
+                      variable
+                    }
+                  }
+                }
+                group.copy(variables = updatedVars)
+              }
+              val updatedInventory = inventory.copy(groups = updatedGroups)
+              val marshalledInv = addJsonToInventory(updatedInventory)
+              addInventory(workflowId, marshalledInv)
+            }
+            getWorkflow(workflowId)
+          }
+          onComplete(updatedWorkflow) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to update inventory ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Unable to update the published inventory with ID $workflowId")
+          }
+        }
+      }
+    }
+  }
+
+  val stepServiceRoutes: Route = pathPrefix("workflow" / LongNumber) { workflowId =>
+    path("step" / LongNumber) { stepId =>
+      get {
+        val step = Future {
+          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName, "id", stepId)
+          mayBeNode.flatMap(node => Step.fromNeo4jGraph(node.getId))
+        }
+        onComplete(step) {
+          case Success(response) =>
+            if (response.nonEmpty)
+              complete(StatusCodes.OK, response)
+            else
+              complete(StatusCodes.NoContent, s"No Step found with workflow $workflowId and step $stepId")
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch step ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to fetch step entity with workflowId : $workflowId and stepId : $stepId ")
+        }
+      }
+    } ~ path("step" / LongNumber / "status") { stepId =>
+      get {
+        val report = Future {
+          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName, "id", stepId)
+          val mayBeStep = mayBeNode.flatMap(node => Step.fromNeo4jGraph(node.getId))
+          mayBeStep.map(step => step.report)
+        }
+        onComplete(report) {
+          case Success(response) =>
+            if (response.nonEmpty)
+              complete(StatusCodes.OK, response)
+            else
+              complete(StatusCodes.NoContent, s"No Step found with workflow $workflowId and step $stepId")
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch Execution report ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to get Report with workflow $workflowId and step $stepId")
         }
       }
     }
@@ -1168,6 +1297,90 @@ object Main extends App {
         targetFile.append(FilenameUtils.getFullPathNoEndSeparator(path)).append(File.separator).append("files")
         Some(targetFile.toString)
       case _ => None
+    }
+  }
+
+  def exportWorkflow(modulePath: String, workflow: Workflow): String = {
+    val workflowZipPath = Constants.TEMP_DIR_LOC + File.separator + System.currentTimeMillis() + ""
+    val workflowName = workflow.name
+    logger.info(s"Exporting workflow [ $workflowName ] to $workflowZipPath")
+    val dir = new File(workflowZipPath)
+    dir.mkdirs
+    val inventoryFile = new File(modulePath.concat(File.separator).concat("inventory_cjo.json"))
+    for {
+      exc <- workflow.execution
+      inv <- exc.inventory
+    } yield {
+      try {
+        CommonFileUtils.writeStringToFile(inventoryFile, inv.json)
+      } catch {
+        case e: IOException =>
+          logger.error(s"Failed to export inventory for workflow [ $workflowName ]")
+      }
+    }
+    val workflowZipFile = new StringBuilder(workflowZipPath)
+      .append(File.separator).append(workflowName).append(".zip")
+    try {
+      zipWorkflow(
+        FilenameUtils.getFullPathNoEndSeparator(modulePath), workflowZipFile.toString
+      )
+    } catch {
+      case e: IOException => logger.error(e.getMessage, e)
+        throw new RuntimeException(s"Error while exporting workflow [ $workflowName ]")
+    }
+    inventoryFile.delete
+    workflowZipFile.toString
+  }
+
+  def zipWorkflow(source: String, dest: String): Unit = {
+    val sourceDir = new File(source)
+    val fos = new FileOutputStream(dest)
+    val zos = new ZipOutputStream(fos)
+    val fileList = getFileList(sourceDir)
+    fileList.foreach { filePath =>
+      val ze = new ZipEntry(filePath.substring(sourceDir.getAbsolutePath.length + 1, filePath.length))
+      zos.putNextEntry(ze)
+      val fis = new FileInputStream(filePath)
+      val size = 1024
+      val buffer = new Array[Byte](size)
+      var len = 0
+      while ( {
+        len = fis.read(buffer)
+        len > 0
+      }) {
+        zos.write(buffer, 0, len)
+      }
+      zos.closeEntry()
+      fis.close()
+    }
+    zos.close()
+    fos.close()
+  }
+
+  def getFileList(dir: File, fileList: List[String] = List.empty[String]): List[String] = {
+    val files = dir.listFiles()
+    files.foldLeft(fileList) { (list, file) =>
+      if (file.isFile) file.getAbsolutePath :: list else getFileList(file, list)
+    }
+  }
+
+  def cloneWorkflow(workflowId: Long, wfName: String): Option[Workflow] = {
+    val existingWorkflow = getWorkflow(workflowId)
+    for {
+      workflow <- existingWorkflow
+      module <- workflow.module
+    } yield {
+      val modulePath = module.path
+      val workflowZipPath = exportWorkflow(modulePath, workflow)
+      val workflowZip = new File(workflowZipPath)
+      //TODO add module
+      val newModule = module
+      val existingPlaybooks = workflow.playBooks
+      val newPlayBooks = existingPlaybooks.map { playBook =>
+        AnsiblePlayBook(None, playBook.name, None, List.empty[AnsiblePlay], List.empty[Variable])
+      }
+      Workflow(wfName, module, newPlayBooks)
+      //TODO addWorkflow
     }
   }
 
@@ -2434,12 +2647,12 @@ object Main extends App {
           }
           val instanceNode = Neo4jRepository.getNodeByProperty("Instance", "name", name)
           instanceNode match {
-            case Some(node) => Instance.fromNeo4jGraph(node.getId).get
+            case Some(node) => Instance.fromNeo4jGraph(node.getId)
             case None =>
               val name = "echo node"
               val tags: List[KeyValueInfo] = List(KeyValueInfo(None, "tag", "tag"))
               val processInfo = ProcessInfo(1, 1, "init")
-              Instance(name, tags, Set(processInfo))
+              Option(Instance(name, tags, Set(processInfo)))
           }
         }
         onComplete(nodeInstance) {

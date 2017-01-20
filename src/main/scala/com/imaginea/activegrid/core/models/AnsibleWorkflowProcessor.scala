@@ -3,9 +3,11 @@ package com.imaginea.activegrid.core.models
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 
 import com.imaginea.Main
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 /**
@@ -22,7 +24,7 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
     //scalastyle:off magic.number
     implicit val system = Main.system
     implicit val materializer = Main.materializer
-    implicit val executionContext = system.dispatcher
+    implicit val executionContext = ActiveGridUtils.getExecutionContextByService("workflow")
     val workflow = workflowContext.workflow
     val playBookRunner = new AnsiblePlayBookRunner(workflowContext)
     if (async) {
@@ -35,13 +37,12 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
         node => logger.info("Workflow [" + workflow.name + "] is currently running, Please try after some time.")
         //todo code to break execution
       }
-      system.scheduler.scheduleOnce(Duration.create(50L, TimeUnit.MILLISECONDS), playBookRunner)
+      val result  = Future { playBookRunner.executePlayBook()}
     }
     else {
-      playBookRunner.run()
+      playBookRunner.executePlayBook()
     }
   }
-
   def stopWorkflow(workflow: Workflow): Unit = {
     workflow.id.foreach {
       id => CurrentRunningWorkflows.remove(id)

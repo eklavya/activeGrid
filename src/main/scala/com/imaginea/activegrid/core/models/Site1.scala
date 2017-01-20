@@ -56,7 +56,7 @@ object Site1 {
     mayBeNode match {
       case Some(node) =>
         val map = Neo4jRepository.getProperties(node, "siteName")
-        val siteName = map.get("siteName").toString
+        val siteName = map("siteName").toString
         val instanceRelation = "HAS_Instance"
         val groupBy = map.get("groupBy").toString
         val childNodeIdsInst: List[Long] = Neo4jRepository.getChildNodeIds(nodeId, instanceRelation)
