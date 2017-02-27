@@ -4,12 +4,12 @@ import akka.actor.Actor
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberEvent, MemberUp, UnreachableMember}
 import org.slf4j.LoggerFactory
-
+import RequestHandler._ //scalastyle:ignore underscore.import
 /**
   * Created by shareefn on 27/2/17.
   */
 class RequestHandler extends Actor {
-  import RequestHandler._
+
   val logger = LoggerFactory.getLogger(getClass)
   val cluster = Cluster(context.system)
 
@@ -20,7 +20,7 @@ class RequestHandler extends Actor {
     //#subscribe
   }
 
-  override def receive = {
+  override def receive: PartialFunction[Any, Unit] = {
     case MemberUp(member) =>
       logger.info("Member is Up: {}", member.address)
 
