@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.utils
 
+import akka.actor.{ActorSystem, Props}
 import com.amazonaws.regions.RegionUtils
 import com.imaginea.activegrid.core.models._ // scalastyle:ignore underscore.import
 import com.typesafe.config.ConfigFactory
@@ -26,6 +27,17 @@ object ActiveGridUtils {
   val DBPATH = config.getString("neo4j.dbpath")
   val APIVERSION = config.getString("http.version")
   //scalastyle:on field.name
+
+  def startUp(ports: List[String]) = {
+    logger.info("starting up seed nodes")
+    ports.foreach { port =>
+      val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
+        withFallback(ConfigFactory.load())
+      val system = ActorSystem("ClusterSystem", config)
+      // Create an actor that handles cluster domain events
+      system.actorOf(Props[RequestHandler], name = "requestHandler")
+    }
+  }
 
   def getValueFromMapAs[T](map: Map[String, Any], key: String): Option[T] = {
     map.get(key).map(_.asInstanceOf[T])

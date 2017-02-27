@@ -5,7 +5,9 @@ import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.{Date, UUID}
 import java.util.concurrent.TimeUnit
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Props}
+import akka.cluster.routing.{AdaptiveLoadBalancingPool, ClusterRouterPool, ClusterRouterPoolSettings, SystemLoadAverageMetricsSelector}
+import akka.pattern.ask
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
@@ -14,10 +16,12 @@ import akka.http.scaladsl.server.directives.ContentTypeResolver.Default
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
+import akka.util.Timeout
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
 import org.neo4j.graphdb.NotFoundException
@@ -32,9 +36,10 @@ import scala.util.{Failure, Random, Success}
 
 object Main extends App {
 
-  implicit val system = ActorSystem()
+  implicit val system = ActorSystem("ClusterSystem")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
+  implicit val timeout = Timeout(15.seconds)
   val cachedSite = mutable.Map.empty[Long, Site1]
   val sessionCache = mutable.Map.empty[Long, TerminalSession]
   val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
@@ -1979,6 +1984,16 @@ object Main extends App {
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
       esServiceRoutes ~ workflowRoutes
   }
+
+  val adaptiveRouter = system.actorOf(
+    ClusterRouterPool(AdaptiveLoadBalancingPool(
+      SystemLoadAverageMetricsSelector), ClusterRouterPoolSettings(
+      totalInstances = 3, maxInstancesPerNode = 5,
+      allowLocalRoutees = true, useRole = None)).props(Props[RequestHandler]),
+    name = "adaptiveRouter")
+
+  AGU.startUp(List("2551","2552","2553"))
+
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
@@ -2562,13 +2577,7 @@ object Main extends App {
   def catalogRoutes: Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
-        val images: Future[Page[ImageInfo]] = Future {
-          val imageLabel: String = "ImageInfo"
-          val nodesList = Neo4jRepository.getNodesByLabel(imageLabel)
-          val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
-
-          Page[ImageInfo](imageInfoList)
-        }
+        val images = (adaptiveRouter ? RequestHandler.ListOfImages).mapTo[Page[ImageInfo]]
 
         onComplete(images) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
