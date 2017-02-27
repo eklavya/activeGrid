@@ -28,7 +28,7 @@ object ActiveGridUtils {
   val APIVERSION = config.getString("http.version")
   //scalastyle:on field.name
 
-  def startUp(ports: List[String]) = {
+  def startUp(ports: List[String]): Unit = {
     logger.info("starting up seed nodes")
     ports.foreach { port =>
       val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
