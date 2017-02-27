@@ -2,10 +2,12 @@ package com.imaginea
 
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
-import java.util.Date
+import java.util.{Date, UUID}
 import java.util.concurrent.TimeUnit
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Props}
+import akka.cluster.routing.{AdaptiveLoadBalancingPool, ClusterRouterPool, ClusterRouterPoolSettings, SystemLoadAverageMetricsSelector}
+import akka.pattern.ask
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
@@ -14,10 +16,12 @@ import akka.http.scaladsl.server.directives.ContentTypeResolver.Default
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
+import akka.util.Timeout
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
 import org.neo4j.graphdb.NotFoundException
@@ -32,9 +36,10 @@ import scala.util.{Failure, Random, Success}
 
 object Main extends App {
 
-  implicit val system = ActorSystem()
+  implicit val system = ActorSystem("ClusterSystem")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
+  implicit val timeout = Timeout(15.seconds)
   val cachedSite = mutable.Map.empty[Long, Site1]
   val sessionCache = mutable.Map.empty[Long, TerminalSession]
   val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
@@ -709,16 +714,16 @@ object Main extends App {
         case ansiblePlay: AnsiblePlay => AGU.objectToJsValue[AnsiblePlay](fieldNames(5), Some(ansiblePlay), ansiblePlayFormat)
       }
       val fields = AGU.longToJsField(fieldNames.head, obj.id) ++
-        AGU.stringToJsField(fieldNames(1), Some(obj.stepId)) ++
+        AGU.stringToJsField(fieldNames(1), obj.stepId) ++
         AGU.stringToJsField(fieldNames(2), Some(obj.name)) ++
-        AGU.stringToJsField(fieldNames(3), Some(obj.description)) ++
-        AGU.stringToJsField(fieldNames(4), Some(obj.stepType.stepType)) ++
+        AGU.stringToJsField(fieldNames(3), obj.description) ++
+        AGU.stringToJsField(fieldNames(4), obj.stepType.map(_.stepType)) ++
         scriptFormat ++
-        AGU.objectToJsValue[StepInput](fieldNames(6), Some(obj.input), stepInputFormat) ++
-        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), Some(obj.scope), inventoryExecFormat) ++
+        AGU.objectToJsValue[StepInput](fieldNames(6), obj.input, stepInputFormat) ++
+        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), obj.scope, inventoryExecFormat) ++
         AGU.stringToJsField(fieldNames(8), Some(obj.executionOrder.toString)) ++
         AGU.listToJsValue(fieldNames(9), obj.childStep, StepFormat) ++
-        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), Some(obj.report), stepExecFormat)
+        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), obj.report, stepExecFormat)
       JsObject(fields: _*)
     }
 
@@ -737,28 +742,21 @@ object Main extends App {
             throw DeserializationException("Unable to deserialize  Script,property 'taskList' not found")
           }
           val mayBeStep: Option[Step] = for {
-            stepId <- AGU.getProperty[String](map, fieldNames(1))
             name <- AGU.getProperty[String](map, fieldNames(2))
-            description <- AGU.getProperty[String](map, fieldNames(3))
-            stepType <- AGU.getProperty[String](map, fieldNames(4))
             scriptJsVal <- AGU.getProperty[JsValue](map, fieldNames(5))
-            inputJsVal <- AGU.getProperty[JsValue](map, fieldNames(6))
-            scopeJsVal <- AGU.getProperty[JsValue](map, fieldNames(7))
             executionOrder <- AGU.getProperty[Int](map, fieldNames(8))
-            reportJsVal <- AGU.getProperty[JsValue](map, fieldNames(10))
           } yield {
-
             Step(AGU.getProperty[Long](map, fieldNames(0)),
-              stepId,
+              AGU.getProperty[String](map, fieldNames(1)),
               name,
-              description,
-              StepType.toStepType(stepType),
+              AGU.getProperty[String](map, fieldNames(3)),
+              AGU.getProperty[String](map, fieldNames(4)).map(StepType.toStepType),
               scriptObj,
-              stepInputFormat.read(inputJsVal),
-              inventoryExecFormat.read(scopeJsVal),
+              AGU.getProperty[JsValue](map, fieldNames(6)).map(stepInputFormat.read),
+              AGU.getProperty[JsValue](map, fieldNames(7)).map(inventoryExecFormat.read),
               executionOrder,
               AGU.getObjectsFromJson[Step](map, "childStep", StepFormat),
-              stepExecFormat.read(reportJsVal)
+              AGU.getProperty[JsValue](map, fieldNames(10)).map(stepExecFormat.read)
             )
           }
           mayBeStep match {
@@ -1008,6 +1006,23 @@ object Main extends App {
         case Failure(exception) =>
           logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable to get workflow list")
+      }
+    } ~ put {
+      entity(as[Workflow]) { workflow =>
+        val createWorkflow = Future {
+          workflow.mode match {
+            case Some(AGENT_LESS) => addWorkflow(workflow)
+            case _ => workflow.toNeo4jGraph(workflow)
+          }
+          logger.info(s"Created workflow with id - ${workflow.id}")
+          "Successfully added workflow"
+        }
+        onComplete(createWorkflow) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to create workflow ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to create workflow")
+        }
       }
     } ~ post {
       entity(as[Workflow]) { workflow =>
@@ -1380,8 +1395,69 @@ object Main extends App {
       val newPlayBooks = existingPlaybooks.map { playBook =>
         AnsiblePlayBook(None, playBook.name, None, List.empty[AnsiblePlay], List.empty[Variable])
       }
-      Workflow(wfName, module, newPlayBooks)
-      //TODO addWorkflow
+      val newWorkflow = Workflow(wfName, module, newPlayBooks)
+      addWorkflow(newWorkflow)
+      newWorkflow
+    }
+  }
+
+  def addWorkflow(workflow: Workflow): Unit = {
+    val newWorkflow = workflow.copy(mode = Some(WorkflowMode.toWorkFlowMode("AGENT_LESS")))
+    val workflowNode = newWorkflow.toNeo4jGraph(newWorkflow)
+    val mayBeWorkflow = Workflow.fromNeo4jGraph(workflowNode.getId)
+    for {
+      ansibleWorkflow <- mayBeWorkflow
+      module <- ansibleWorkflow.module
+      moduleId <- module.id
+      newModule <- module.fromNeo4jGraph(moduleId)
+    } yield {
+      val modulePath = newModule.path
+      val playbooks = ansibleWorkflow.playBooks
+      playbooks.foreach { playbook =>
+        val playbookName = playbook.name
+        val newPlayBook = playbook.copy(path = Some(modulePath.concat(File.separator).concat(playbookName)))
+        logger.info(s"Parsing ansible playbook [$playbookName] at module path [$modulePath]")
+        //TODO parse  playbook
+        newPlayBook.toNeo4jGraph(newPlayBook)
+        val plays = newPlayBook.playList
+        plays.foreach { play =>
+          play.copy(language = ScriptType.Ansible)
+          val step = Step(play.name, play)
+          createStep(ansibleWorkflow, step)
+        }
+      }
+    }
+  }
+
+  def createStep(workflow: Workflow, step: Step): Unit = {
+    val id = if (step.stepId.isEmpty) {
+      Some(getRandomString)
+    } else {
+      step.stepId
+    }
+    val newStep: Step = step.copy(stepId = id)
+    val childNode = newStep.toNeo4jGraph(newStep)
+    val stepId = childNode.getId
+    workflow.id.foreach { workflowId =>
+      Neo4jRepository.createRelationship(stepId, workflowId, "steps")
+    }
+    val mayBeLastStep = findLastStep(workflow.steps)
+    for {
+      lastStep <- mayBeLastStep
+      lastStepId <- lastStep.id
+    } yield {
+      Neo4jRepository.createRelationship(stepId, lastStepId, "childSteps")
+    }
+  }
+
+  def getRandomString: String = {
+    val radix = 36
+    java.lang.Long.toString(Math.abs(UUID.randomUUID.getLeastSignificantBits()), radix)
+  }
+
+  def findLastStep(steps: List[Step]): Option[Step] = {
+    steps.headOption.flatMap { step =>
+      if (step.childStep.nonEmpty) findLastStep(step.childStep) else Some(step)
     }
   }
 
@@ -1908,6 +1984,16 @@ object Main extends App {
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
       esServiceRoutes ~ workflowRoutes
   }
+
+  val adaptiveRouter = system.actorOf(
+    ClusterRouterPool(AdaptiveLoadBalancingPool(
+      SystemLoadAverageMetricsSelector), ClusterRouterPoolSettings(
+      totalInstances = 3, maxInstancesPerNode = 5,
+      allowLocalRoutees = true, useRole = None)).props(Props[RequestHandler]),
+    name = "adaptiveRouter")
+
+  AGU.startUp(List("2551","2552","2553"))
+
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
@@ -2491,13 +2577,7 @@ object Main extends App {
   def catalogRoutes: Route = pathPrefix("catalog") {
     path("images" / "view") {
       get {
-        val images: Future[Page[ImageInfo]] = Future {
-          val imageLabel: String = "ImageInfo"
-          val nodesList = Neo4jRepository.getNodesByLabel(imageLabel)
-          val imageInfoList = nodesList.flatMap(node => ImageInfo.fromNeo4jGraph(node.getId))
-
-          Page[ImageInfo](imageInfoList)
-        }
+        val images = (adaptiveRouter ? RequestHandler.ListOfImages).mapTo[Page[ImageInfo]]
 
         onComplete(images) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
