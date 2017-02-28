@@ -16,7 +16,7 @@ import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
-import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
+import com.imaginea.activegrid.core.utils.{CloudUtils, Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
@@ -881,7 +881,7 @@ object Main extends App {
       }
     } ~ path(LongNumber / "inventory") { workflowId =>
       get {
-        val inventory = Future {
+        val  inventory = Future {
           logger.info(s"Retrieving inventory for workflow[ $workflowId ]")
           val mayBeWorkflow = getWorkflow(workflowId)
           mayBeWorkflow match {
@@ -1907,7 +1907,9 @@ object Main extends App {
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
       esServiceRoutes ~ workflowRoutes
   }
-  val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
+
+  CloudUtils.startAppCloud(route)
+
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
   // scalastyle:off cyclomatic.complexity

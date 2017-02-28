@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.models
 
-import java.io.File
+import java.io.{File, Serializable}
 
 import com.imaginea.activegrid.core.utils.FileUtils
 import com.typesafe.scalalogging.Logger
@@ -26,11 +26,16 @@ class AnsibleScriptEngine(val inventory: Inventory, val workflowContext: Workflo
     if (invFile.exists()) {
       invFile.setExecutable(true)
     }
-    val processArgs = List("/usr/bin/ansible-playbook", "-i", invFilePath, "-e", "workflowId=" + workflowId, playBook.path)
+    val processArgs = List[String]("/usr/bin/ansible-playbook", "-i", invFilePath.toString, "-e", "workflowId=" + workflowId, playBook.path.toString)
     logger.info("Triggering ansible run for playbook [" + playBook.name + "] " +
       "using inventory: " + json + " and extra variables :" + inventory.extraVariables.toString())
-    logger.info("Proces")
+    logger.info("Executing process arguments are... "+processArgs.toString())
+
+    val shellScriptContent = scriptify(json,processArgs)
 
   }
 
+  def scriptify(json: String, processArgs: List[String]) : String = {
+    ""
+  }
 }

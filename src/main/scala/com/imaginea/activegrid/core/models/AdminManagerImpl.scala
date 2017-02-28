@@ -1,6 +1,5 @@
 package com.imaginea.activegrid.core.models
 
-import java.util.Base64
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.unmarshalling.Unmarshal
@@ -109,7 +108,9 @@ object AdminManagerImpl {
     authStrategy match {
       case "anonymous" =>
         val apps = "apiuser:password"
-        val ciper: String = "Basic" + Base64.getEncoder.encode(apps.getBytes()).toString
+        //Time being remove, Please Please Uncomment and correct
+        //val ciper: String = "Basic" + Base64.getEncoder.encode(apps.getBytes()).toString
+        val ciper: String = "Basic";
         val headers = Map("Authorization" -> ciper)
         headers
       case "someotherstrategy" =>

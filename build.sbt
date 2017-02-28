@@ -9,7 +9,7 @@ resolvers ++= Seq("Typesafe Repository" at "http://repo.typesafe.com/typesafe/re
   "AWS3" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-s3")
 
 libraryDependencies ++= {
-  val AkkaVersion       = "2.4.10"
+  val AkkaVersion       = "2.4.11"
   val scalaLoggingVersion = "3.4.0"
   val neo4jScalaVersion = "0.3.3"
   Seq(
@@ -27,6 +27,15 @@ libraryDependencies ++= {
     "org.scalamock" %% "scalamock-scalatest-support" % "3.3.0" % "test",
     "org.elasticsearch" % "elasticsearch" % "0.19.0",
     "com.beust" % "jcommander" % "1.32",
-    "org.apache.commons" % "commons-io" % "1.3.2"
+    "org.apache.commons" % "commons-io" % "1.3.2",
+    "com.typesafe.akka" %% "akka-cluster" % "2.4.1",
+    "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-cluster-metrics" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-cluster-tools" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-multi-node-testkit" % AkkaVersion,
+    "org.scalatest" %% "scalatest" % "2.2.1" % "test",
+    "io.kamon" % "sigar-loader" % "1.6.6-rev002"
   )
 }

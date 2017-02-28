@@ -24,3 +24,4 @@ server.pid
 /dist/
 .cache
 graphdb/
+src/main/scala/example
