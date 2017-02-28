@@ -5,7 +5,10 @@ import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Props}
+import akka.pattern.ask
+import akka.cluster.Cluster
+
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
@@ -14,10 +17,12 @@ import akka.http.scaladsl.server.directives.ContentTypeResolver.Default
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
+import akka.util.Timeout
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
 import org.neo4j.graphdb.NotFoundException
@@ -1301,6 +1306,16 @@ object Main extends App {
     }
   }
 
+  val config = ConfigFactory.parseString(s"akka.remote.netty.tcp.port=2663").
+    withFallback(ConfigFactory.parseString("akka.cluster.roles = [router]")).
+    withFallback(ConfigFactory.load())
+  val actorSystem = ActorSystem("ActiveGridCluster", config)
+  val routingActor = actorSystem.actorOf(Props(classOf[RequestRouter]), name = "balancedActor")
+  val list  = List("2661","2662")
+  list.foreach(port => initiateClusterSystem(port))
+
+  implicit val timeout = Timeout(5 seconds)
+
   def exportWorkflow(modulePath: String, workflow: Workflow): String = {
     val workflowZipPath = Constants.TEMP_DIR_LOC + File.separator + System.currentTimeMillis() + ""
     val workflowName = workflow.name
@@ -1390,7 +1405,7 @@ object Main extends App {
       post {
         entity(as[ApplicationSettings]) { appSettings =>
           val maybeAdded = Future {
-            appSettings.toNeo4jGraph(appSettings)
+            routingActor ? appSettings
           }
           onComplete(maybeAdded) {
             case Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
@@ -4112,5 +4127,12 @@ object Main extends App {
     FileUtils.saveContentToFile(file.toString, sshKeyData)
     //TODO: change file permissions to 600
     keyFilePath
+  }
+  def initiateClusterSystem(port : String) : Unit = {
+    val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
+      withFallback(ConfigFactory.parseString("akka.cluster.roles = [handler]")).
+      withFallback(ConfigFactory.load())
+    val actorSystem = ActorSystem("ActiveGridCluster", config)
+    actorSystem.actorOf(Props[RequestHandler] , "requestHandler")
   }
 }

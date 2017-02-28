@@ -27,6 +27,11 @@ libraryDependencies ++= {
     "org.scalamock" %% "scalamock-scalatest-support" % "3.3.0" % "test",
     "org.elasticsearch" % "elasticsearch" % "0.19.0",
     "com.beust" % "jcommander" % "1.32",
-    "org.apache.commons" % "commons-io" % "1.3.2"
+    "org.apache.commons" % "commons-io" % "1.3.2",
+    "com.typesafe.akka" %% "akka-distributed-data-experimental" % "2.4.7",
+    "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-remote" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
+    "com.typesafe.akka" %% "akka-cluster-metrics" % AkkaVersion
   )
 }
