@@ -15,7 +15,7 @@ class ActivegridListener extends Actor{
 
 
   override def receive: Receive = {
-    case "Welcome" => logger.info("Message received....."+self.path)
+    case "Welcome" => logger.info("Message received....."+ self.path)
   }
 
 }

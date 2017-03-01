@@ -34,8 +34,8 @@ object CloudUtils {
         val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + acPort).
           withFallback(ConfigFactory.load("activegrid.conf"))
         // Create an Akka system
-        logger.info("Starting application on port "+ appPort)
-        implicit val system = ActorSystem("ActorSystem-"+ acPort,config)
+        logger.info("Starting application on port " + appPort)
+        implicit val system = ActorSystem("ActorSystem-" + acPort,config)
         implicit val materializer = ActorMaterializer()
         implicit val executionContext = system.dispatcher
         Http().bindAndHandle(route,"localhost",appPort)
