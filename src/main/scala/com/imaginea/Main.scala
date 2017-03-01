@@ -16,7 +16,7 @@ import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
-import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
+import com.imaginea.activegrid.core.utils.{CloudUtils, Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
@@ -37,7 +37,6 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   val cachedSite = mutable.Map.empty[Long, Site1]
   val sessionCache = mutable.Map.empty[Long, TerminalSession]
-  val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
   val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
@@ -882,7 +881,7 @@ object Main extends App {
       }
     } ~ path(LongNumber / "inventory") { workflowId =>
       get {
-        val inventory = Future {
+        val  inventory = Future {
           logger.info(s"Retrieving inventory for workflow[ $workflowId ]")
           val mayBeWorkflow = getWorkflow(workflowId)
           mayBeWorkflow match {
@@ -1213,7 +1212,7 @@ object Main extends App {
     } yield {
       val stoppedWorkflowExec = workflowExec.copy(status = Some(workFlowExecutionStatus))
       stoppedWorkflowExec.toNeo4jGraph(stoppedWorkflowExec)
-      ansibleWorkflowProcessor.stopWorkflow(workflow)
+      AnsibleWorkflowProcessor.stopWorkflow(workflow)
       workflow.id.map(id => currentWorkflows.remove(id))
     }
   }
@@ -1908,7 +1907,9 @@ object Main extends App {
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
       esServiceRoutes ~ workflowRoutes
   }
-  val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
+
+  CloudUtils.startAppCloud(route)
+
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
   // scalastyle:off cyclomatic.complexity
