@@ -29,7 +29,7 @@ class AnsibleScriptEngine(val inventory: Inventory, val workflowContext: Workflo
     val processArgs = List[String]("/usr/bin/ansible-playbook", "-i", invFilePath.toString, "-e", "workflowId=" + workflowId, playBook.path.toString)
     logger.info("Triggering ansible run for playbook [" + playBook.name + "] " +
       "using inventory: " + json + " and extra variables :" + inventory.extraVariables.toString())
-    logger.info("Executing process arguments are... "+processArgs.toString())
+    logger.info("Executing process arguments are... "+ processArgs.toString())
 
     val shellScriptContent = scriptify(json,processArgs)
 

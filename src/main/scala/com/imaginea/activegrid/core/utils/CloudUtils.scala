@@ -10,6 +10,7 @@ import akka.http.scaladsl.server.RouteResult.Complete
 import akka.parboiled2.RuleTrace.Fail
 import akka.stream.ActorMaterializer
 import com.imaginea.Main._
+import com.imaginea.activegrid.core.models.ActivegridListener
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -33,8 +34,8 @@ object CloudUtils {
         val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + acPort).
           withFallback(ConfigFactory.load("activegrid.conf"))
         // Create an Akka system
-        logger.info("Starting application on port "+appPort)
-        implicit val system = ActorSystem("ActorSystem-"+acPort,config)
+        logger.info("Starting application on port "+ appPort)
+        implicit val system = ActorSystem("ActorSystem-"+ acPort,config)
         implicit val materializer = ActorMaterializer()
         implicit val executionContext = system.dispatcher
         Http().bindAndHandle(route,"localhost",appPort)

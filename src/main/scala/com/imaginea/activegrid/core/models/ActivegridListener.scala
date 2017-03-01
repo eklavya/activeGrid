@@ -1,4 +1,4 @@
-package com.imaginea.activegrid.core.utils
+package com.imaginea.activegrid.core.models
 
 import akka.actor.Actor
 import com.typesafe.scalalogging.Logger
