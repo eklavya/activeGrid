@@ -1,14 +1,14 @@
 package com.imaginea.actors
 
+
+import scala.concurrent.duration._
+import akka.cluster.ddata.Replicator._
 import akka.actor.Actor
 import akka.cluster.Cluster
 import akka.cluster.ddata.{DistributedData, LWWMap, LWWMapKey}
 import akka.pattern.ask
 import akka.util.Timeout
 
-import scala.concurrent.duration._
-import scala.concurrent._
-import scala.concurrent.Await
 
 /**
   * Created by sivag on 3/3/17.
@@ -33,7 +33,7 @@ class WofklowActor extends Actor {
   val replicator = DistributedData(context.system).replicator
   implicit val node = Cluster(context.system)
 
-  import akka.cluster.ddata.Replicator._
+ _
 
   type T = WrkflwStatus
   val mapKey = LWWMapKey[T]("WorkflowUpdate")
