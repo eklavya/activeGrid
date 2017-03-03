@@ -1,6 +1,15 @@
 package com.imaginea.activegrid.core.models
 
+import akka.actor.Props
+import com.imaginea.Main
+import com.imaginea.actors.{WofklowActor, WrkFlow}
+
 import scala.collection.immutable.HashMap
+import akka.pattern.ask
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import akka.util.Timeout
 
 
 /**
@@ -16,9 +25,11 @@ class WorkFlowServiceManagerImpl {
       workFlowNode => Workflow.fromNeo4jGraph(workFlowNode.getId)
     }
   }
-
   def isWorkflowRunning(workflowId: Long): Boolean = {
-    currentWorkFlows.contains(workflowId.toInt)
+    WrkFlow(workflowId.toString,"GETSTATUS")
+    val actor = Main.system.actorOf(Props[WofklowActor])
+    implicit val timeout: Timeout = 5.seconds
+    Await.result(actor ? WrkFlow,5 seconds).asInstanceOf[Boolean]
   }
 
   def execute(workflow: Option[Workflow], async: Boolean): Unit = {
