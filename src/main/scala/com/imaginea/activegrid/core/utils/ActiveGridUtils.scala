@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.utils
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import com.amazonaws.regions.RegionUtils
 import com.imaginea.activegrid.core.models._ // scalastyle:ignore underscore.import
 import com.typesafe.config.ConfigFactory
@@ -34,8 +34,8 @@ object ActiveGridUtils {
       val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
         withFallback(ConfigFactory.load())
       val system = ActorSystem("ClusterSystem", config)
-      // Create an actor that handles cluster domain events
-      system.actorOf(Props[SharedSessionCache], name = "sharedSessionCache")
+      // Create an SharedSessionCache actor on each node
+      system.actorOf(SharedSessionCache.props, name = "sharedSessionCache")
     }
   }
 

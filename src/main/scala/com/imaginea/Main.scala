@@ -5,7 +5,7 @@ import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -40,7 +40,7 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   implicit val timeout = Timeout(15.seconds)
   val cachedSite = mutable.Map.empty[Long, Site1]
-  val sessionCacheRef = system.actorOf(SharedSessionCache.props)
+  val sessionCacheRef = system.actorOf(SharedSessionCache.props, name = "sharedSessionCache")
   val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
   val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
