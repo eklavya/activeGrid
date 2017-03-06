@@ -807,6 +807,7 @@ object Main extends App {
         workflowId =>  get {
         val started = Future {
           WorkFlowServiceManagerImpl.isWorkflowRunning(workflowId)
+          WorkFlowServiceManagerImpl.execute(WorkFlowServiceManagerImpl.getWorkFlow(workflowId),true)
         }
         onComplete(started){
           case Success(started) =>
