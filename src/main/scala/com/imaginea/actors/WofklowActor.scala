@@ -63,11 +63,13 @@ class WofklowActor extends Actor {
       val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
       val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
       val wrkFlwStatus = result.get(wrkflowId)
-      if (wrkFlwStatus.equals(RUNNING) || wrkFlwStatus.equals(INCOMPLETE)) {
+      val isInProgress: Boolean = wrkFlwStatus.equals(RUNNING) || wrkFlwStatus.equals(INCOMPLETE)
+      if (isInProgress) {
         sender() ! FAILED
       }
-      else
+      else {
         sender() ! Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.put(node, wrkflowId, RUNNING))
       }
+    }
   }
 
