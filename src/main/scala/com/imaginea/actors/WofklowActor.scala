@@ -33,7 +33,6 @@ class WofklowActor extends Actor {
   val replicator = DistributedData(context.system).replicator
   implicit val node = Cluster(context.system)
 
- _
 
   type T = WrkflwStatus
   val mapKey = LWWMapKey[T]("WorkflowUpdate")
