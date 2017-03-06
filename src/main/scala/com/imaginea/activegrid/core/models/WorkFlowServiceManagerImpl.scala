@@ -15,7 +15,8 @@ import akka.util.Timeout
 /**
   * Created by sivag on 10/1/17.
   */
-class WorkFlowServiceManagerImpl {
+class WorkFlowServiceManagerImpl
+object WorkFlowServiceManagerImpl {
 
   //Todo 1. WorkFlowContext bean and  2. settingCurrentworkflows.
   def currentWorkFlows = HashMap.empty[Int, WorkflowContext]

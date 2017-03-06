@@ -12,12 +12,14 @@ import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
 import akka.http.scaladsl.server.directives.ContentTypeResolver.Default
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.RouteResult.Complete
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
 import org.neo4j.graphdb.NotFoundException
@@ -32,7 +34,10 @@ import scala.util.{Failure, Random, Success}
 
 object Main extends App {
 
-  implicit val system = ActorSystem()
+  val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + 2551).
+    withFallback(ConfigFactory.load("cluster.conf"))
+  // Create an Akka system
+  implicit val system = ActorSystem("ClusterSystem", config)
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   val cachedSite = mutable.Map.empty[Long, Site1]
@@ -797,6 +802,22 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to get Step Types list")
         }
       }
+    } ~
+      path(LongNumber / "start") {
+        workflowId =>  get {
+        val started = Future {
+          WorkFlowServiceManagerImpl.isWorkflowRunning(workflowId)
+        }
+        onComplete(started){
+          case Success(started) =>
+            logger.info(workflowId+" has started successfully")
+            complete(StatusCodes.OK," workflow stated successfully!!!")
+          case Failure(started) =>
+            logger.info(workflowId+" has started successfully")
+            complete(StatusCodes.BadRequest,"Workflow start-up failed...")
+        }
+      }
+
     } ~ path("step" / "scriptTypes") {
       get {
         val scriptTypes = Future {
@@ -807,7 +828,7 @@ object Main extends App {
           case Success(response) => complete(StatusCodes.OK, response)
           case Failure(exception) =>
             logger.error(s"Unable to get the Script Types list ${exception.getMessage}", exception)
-            complete(StatusCodes.BadRequest, "Unable to get Script Types list")
+            complete(StatusCodes.BadRequest, "Unable to get ScrWpt Types list")
         }
       }
     } ~ path("scope" / "types") {
@@ -1061,7 +1082,8 @@ object Main extends App {
     }
   }
 
-  val stepServiceRoutes: Route = pathPrefix("workflow" / LongNumber) { workflowId =>
+  val stepServiceRoutes: Route = pathPrefix("workflow" / LongNumber)
+  { workflowId =>
     path("step" / LongNumber) { stepId =>
       get {
         val step = Future {
@@ -1098,7 +1120,8 @@ object Main extends App {
         }
       }
     }
-  } ~ pathPrefix("workflows") {
+  } ~ pathPrefix("workflows ") {
+    logger.info("Into activegrid worflows path....")
     path(LongNumber / "status") { workflowId =>
       parameter("start") { start =>
         val workflowExecution = Future {
@@ -1128,7 +1151,7 @@ object Main extends App {
             complete(StatusCodes.BadRequest, s"No Running Workflow is found with ID : $workflowId")
         }
       }
-    } ~ path(LongNumber / "publish") { workflowId =>
+    } ~ path( LongNumber / "publish") { workflowId =>
       put {
         entity(as[Inventory]) { inventory =>
           val publishedInventory = Future {

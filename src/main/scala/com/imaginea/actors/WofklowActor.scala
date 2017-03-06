@@ -27,6 +27,8 @@ case object FAILED extends WrkflwStatus
 
 case class WrkFlow(id: String, operation: String)
 
+import   com.imaginea.actors.{WrkFlow => T}
+
 
 class WofklowActor extends Actor {
 
@@ -35,7 +37,7 @@ class WofklowActor extends Actor {
 
 
   type T = WrkflwStatus
-  val mapKey = LWWMapKey[T]("WorkflowUpdate")
+  val mapKey = LWWMapKey[WrkflwStatus]("WorkflowUpdate")
   val readMajority = ReadMajority(5.seconds)
   val writeMajority = WriteMajority(5.seconds)
   implicit val timeout: Timeout = 5.seconds
@@ -45,36 +47,31 @@ class WofklowActor extends Actor {
 
     case WrkFlow(wrkflowId, "START") =>
       val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
-      val result = getStatus.asInstanceOf[LWWMap[T]]
+      val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
       if (result.contains(wrkflowId)) {
-        val up = Update(mapKey, LWWMap.empty[T], writeMajority)(_.remove(node, wrkflowId))
-        sender() ! up.asInstanceOf[UpdateSuccess[LWWMapKey[T]]]
+        sender() ! Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.remove(node, wrkflowId))
       }
       else {
         sender() ! FAILED
       }
     case WrkFlow(wrkflowId, "GETSTATUS") =>
       val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
-      val result = getStatus.asInstanceOf[LWWMap[T]]
+      val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
       val wrkFlwStatus = result.get(wrkflowId)
       sender() ! wrkFlwStatus.equals(RUNNING)
     case WrkFlow(wrkflowId, "RUNNING") =>
-      val getStatus = replicator ? Get(mapKey, readMajority, Some(wrkflowId))
-      val result = getStatus.asInstanceOf[LWWMap[T]]
+      val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
+      val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
       sender() ! result
     case WrkFlow(wrkflowId, "REMOVE") =>
-      val getStatus = replicator ? Get(mapKey, readMajority, Some(wrkflowId))
-      val result = getStatus.asInstanceOf[LWWMap[T]]
+      val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
+      val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
       val wrkFlwStatus = result.get(wrkflowId)
       if (wrkFlwStatus.equals(RUNNING) || wrkFlwStatus.equals(INCOMPLETE)) {
         sender() ! FAILED
       }
-      else {
-        val up = Update(mapKey, LWWMap.empty[T], writeMajority)(_.put(node, wrkflowId, RUNNING))
-        sender() ! up.asInstanceOf[UpdateSuccess[LWWMapKey[T]]]
+      else
+        sender() ! Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.put(node, wrkflowId, RUNNING))
       }
-
   }
-
-}
 
