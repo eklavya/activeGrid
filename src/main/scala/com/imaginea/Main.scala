@@ -811,7 +811,7 @@ object Main extends App {
         }
         onComplete(started){
           case Success(started) =>
-            logger.info(workflowId+" has started successfully")
+            logger.info(workflowId + " has started successfully")
             complete(StatusCodes.OK," workflow stated successfully!!!")
           case Failure(started) =>
             logger.info(workflowId+" has started successfully")

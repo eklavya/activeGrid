@@ -27,16 +27,12 @@ case object FAILED extends WrkflwStatus
 
 case class WrkFlow(id: String, operation: String)
 
-import   com.imaginea.actors.{WrkFlow => T}
-
-
 class WofklowActor extends Actor {
 
   val replicator = DistributedData(context.system).replicator
   implicit val node = Cluster(context.system)
 
 
-  type T = WrkflwStatus
   val mapKey = LWWMapKey[WrkflwStatus]("WorkflowUpdate")
   val readMajority = ReadMajority(5.seconds)
   val writeMajority = WriteMajority(5.seconds)
