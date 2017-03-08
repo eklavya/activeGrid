@@ -9,7 +9,7 @@ sealed trait JobType {
   override def toString: String = jobType
 }
 
-case object WorkFlow extends JobType {
+case object WorkFlowJob extends JobType {
   override def jobType: String = "WORKFLOW"
 }
 
@@ -20,7 +20,7 @@ case object ASPolicy extends JobType {
 case object JobType {
   def convert(jtype: String): JobType = {
     jtype match {
-      case "WORKFLOW" => WorkFlow
+      case "WORKFLOW" => WorkFlowJob
       case "POILCY" => ASPolicy
       case _ => ASPolicy
     }
