@@ -2,10 +2,13 @@ package com.imaginea.actors
 
 
 import akka.cluster.Cluster
-import akka.cluster.ddata.Replicator.{Update,ReadMajority,WriteMajority,Get}
+import akka.cluster.ddata.Replicator._
 import akka.cluster.ddata.{DistributedData, LWWMap, LWWMapKey}
 import akka.util.Timeout
 import com.imaginea.Main
+import com.imaginea.activegrid.core.models.AccountInfo._
+import org.slf4j.LoggerFactory
+
 import scala.concurrent.duration._
 
 
@@ -16,64 +19,78 @@ sealed trait WrkflwStatus
 
 case object IDLE extends WrkflwStatus
 
-case object RUNNING extends WrkflwStatus
+case object WORKFLOW_RUNNING extends WrkflwStatus
 
 case object INCOMPLETE extends WrkflwStatus
 
-case object REMOVED extends WrkflwStatus
+case object WORKFLOW_REMOVED extends WrkflwStatus
 
-case object START extends WrkflwStatus
+case object WORKFLOW_STARTED extends WrkflwStatus
 
-case object FAILED extends WrkflwStatus
+case object WORKFLOW_FAILED extends WrkflwStatus
+
+case object WORKFLOW_NOTFOUND extends WrkflwStatus
+
 
 case class WrkFlow(id: String, operation: String)
 
-class WorkflowDDHandler {
+object WorkflowDDHandler {
 
   val replicator = DistributedData(Main.system).replicator
   implicit val node = Cluster(Main.system)
-
+  val logger = LoggerFactory.getLogger(getClass)
 
   val mapKey = LWWMapKey[WrkflwStatus]("WorkflowUpdate")
   val readMajority = ReadMajority(5.seconds)
   val writeMajority = WriteMajority(5.seconds)
   implicit val timeout: Timeout = 5.seconds
 
-
-  def get(wrkFlow: WrkFlow) :WrkflwStatus =  {
+  def get(wrkFlow: WrkFlow) :Either[WrkflwStatus,LWWMap[WrkflwStatus]] =  {
     wrkFlow match {
-      case WrkFlow(wrkflowId, "START") =>
+        // Removes the purticular workflow from the list.
+      case WrkFlow(wrkflowId, "REMOVE") =>
+        logger.info("Starting workflow " + wrkflowId)
         val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
         val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
         if (result.contains(wrkflowId)) {
-         val update = Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.remove(node, wrkflowId))
-          START
+         Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.remove(node, wrkflowId))
+         val wf = WrkFlow(wrkflowId,"GETSTATUS")
+         WorkflowDDHandler.get(wf)
         }
         else {
-          FAILED
+          Left(WORKFLOW_NOTFOUND)
         }
+
+      // Getting status of the given workflow id.
       case WrkFlow(wrkflowId, "GETSTATUS") =>
+        logger.info("Checking status of  workflow " + wrkflowId)
         val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
         val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
         val wrkFlwStatus = result.get(wrkflowId)
-        wrkFlwStatus.getOrElse(FAILED)
-      case WrkFlow(wrkflowId, "RUNNING") =>
+        Left(wrkFlwStatus.getOrElse(WORKFLOW_NOTFOUND))
+
+      // Returns all running workflows.
+      case WrkFlow(wrkflowId, "RUNNING_WORKFLOWS") =>
+        logger.info("Fetching all running workflows " + wrkflowId)
         val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
         val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
-        result.get(wrkflowId).getOrElse(FAILED)
-      case WrkFlow(wrkflowId, "REMOVE") =>
-        val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
-        val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
-        val wrkFlwStatus = result.get(wrkflowId)
-        val isInProgress: Boolean = wrkFlwStatus.equals(RUNNING) || wrkFlwStatus.equals(INCOMPLETE)
-        if (isInProgress) {
-          FAILED
-        }
-        else {
-          Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.put(node, wrkflowId, RUNNING))
-          REMOVED
+        Right(result)
+
+      //Chagning status to running.
+      case WrkFlow(wrkflowId, "START") =>
+        logger.info("Removing workflow " + wrkflowId)
+        val wf = WrkFlow(wrkflowId,"GETSTATUS")
+        WorkflowDDHandler.get(wf) match {
+          case Left(x) =>
+            if(x.equals(WORKFLOW_NOTFOUND)) {
+              Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.put(node, wrkflowId, WORKFLOW_RUNNING))
+            }
+            WorkflowDDHandler.get(wf)
+          case _ =>  Left(WORKFLOW_RUNNING)
         }
     }
   }
+
 }
+
 

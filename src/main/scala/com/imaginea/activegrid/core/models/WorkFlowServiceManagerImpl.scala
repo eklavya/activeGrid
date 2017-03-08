@@ -1,6 +1,6 @@
 package com.imaginea.activegrid.core.models
 
-import com.imaginea.actors.{RUNNING, WorkflowDDHandler, WrkFlow}
+import com.imaginea.actors.{WORKFLOW_RUNNING, WorkflowDDHandler, WrkFlow}
 
 import scala.collection.immutable.HashMap
 
@@ -8,7 +8,6 @@ import scala.collection.immutable.HashMap
 /**
   * Created by sivag on 10/1/17.
   */
-class WorkFlowServiceManagerImpl
 
 object WorkFlowServiceManagerImpl {
 
@@ -22,8 +21,8 @@ object WorkFlowServiceManagerImpl {
 
   def isWorkflowRunning(workflowId: Long): Boolean = {
     val workflow = WrkFlow(workflowId.toString, "GETSTATUS")
-    val ddataHandler = new WorkflowDDHandler;
-    ddataHandler.get(workflow).equals(RUNNING)
+    val ddataHandler = WorkflowDDHandler;
+    ddataHandler.get(workflow).equals(WORKFLOW_RUNNING)
 
   }
 
