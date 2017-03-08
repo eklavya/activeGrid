@@ -17,7 +17,6 @@ import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import com.beust.jcommander.JCommander
-import com.imaginea.activegrid.core.models.SharedSessionCache.GetSession
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
@@ -40,7 +39,6 @@ object Main extends App {
   implicit val executionContext = system.dispatcher
   implicit val timeout = Timeout(15.seconds)
   val cachedSite = mutable.Map.empty[Long, Site1]
-  val sessionCacheRef = system.actorOf(SharedSessionCache.props, name = "sharedSessionCache")
   val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
   val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -3861,7 +3859,7 @@ object Main extends App {
               }
             }
             val session = TerminalSession(terminalId, None, List.empty[String], context, sshSessions, date, date)
-            SharedSessionCache.PutSession(session.id.toString, session)
+            SharedSessionCache.putSession(session.id.toString, session)
             s"Session created with session id: ${session.id}"
           }
           onComplete(session) {
@@ -3875,7 +3873,7 @@ object Main extends App {
     } ~ path(LongNumber / "execute") { terminalId =>
       put {
         entity(as[String]) { commandLine =>
-            val futureOfSession = (sessionCacheRef ? GetSession(terminalId.toString)).mapTo[Option[TerminalSession]]
+            val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
             val commandResult = futureOfSession.map { mayBeSession =>
               val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
               val result = mayBeSession match {
@@ -3907,7 +3905,7 @@ object Main extends App {
       }
     } ~ path(LongNumber / "stop") { terminalId =>
       put {
-          val futureOfSession = (sessionCacheRef ? GetSession(terminalId.toString)).mapTo[Option[TerminalSession]]
+          val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
           val stopSession = futureOfSession.map { mayBeSession =>
             mayBeSession match {
               case Some(terminalSession) =>

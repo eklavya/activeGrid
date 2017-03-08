@@ -34,8 +34,6 @@ object ActiveGridUtils {
       val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
         withFallback(ConfigFactory.load())
       val system = ActorSystem("ClusterSystem", config)
-      // Create an SharedSessionCache actor on each node
-      system.actorOf(SharedSessionCache.props, name = "sharedSessionCache")
     }
   }
 
