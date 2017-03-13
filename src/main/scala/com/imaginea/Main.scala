@@ -38,7 +38,6 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   implicit val timeout = Timeout(15.seconds)
-  val cachedSite = mutable.Map.empty[Long, Site1]
   val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
   val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -1516,7 +1515,7 @@ object Main extends App {
           entity(as[Site1]) { site =>
             val buildSite = Future {
               val savedSite = populateInstances(site)
-              savedSite.id.foreach(siteId => cachedSite.put(siteId, savedSite))
+              savedSite.id.foreach(siteId => SharedSiteCache.putSite(siteId.toString, savedSite))
               savedSite
             }
             onComplete(buildSite) {
@@ -1531,14 +1530,12 @@ object Main extends App {
     } ~ path("site" / "save" / LongNumber) { siteId =>
       withRequestTimeout(2.minutes) {
         put {
-          val siteResponse = Future {
-            val mayBeSite = cachedSite.get(siteId)
-            mayBeSite match {
+          val futureSite = SharedSiteCache.getSite(siteId.toString)
+          val siteResponse = futureSite.map {
               case Some(site) =>
                 site.toNeo4jGraph(site)
                 indexSite(site)
               case None => throw new NotFoundException(s"Site with id : $siteId is not found!")
-            }
           }
           onComplete(siteResponse) {
             case Success(response) => complete(StatusCodes.OK, "Site saved successfully!")
@@ -1551,9 +1548,7 @@ object Main extends App {
     } ~ path("site" / LongNumber) {
       siteId =>
         get {
-          val siteObj = Future {
-            cachedSite.get(siteId)
-          }
+          val siteObj = SharedSiteCache.getSite(siteId.toString)
           onComplete(siteObj) {
             case Success(response) => complete(StatusCodes.OK, response)
             case Failure(exception) =>
@@ -1644,15 +1639,13 @@ object Main extends App {
     } ~ get {
       path("tags" / LongNumber) {
         siteId =>
-          val tags = Future {
-            val mayBeSite = cachedSite.get(siteId)
-            mayBeSite match {
+          val futureSite = SharedSiteCache.getSite(siteId.toString)
+          val tags = futureSite.map {
               case Some(site) =>
                 site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
               case None =>
                 logger.warn(s"Site Entity with ID : $siteId is Not Found")
                 throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
-            }
           }
           onComplete(tags) {
             case Success(response) => complete(StatusCodes.OK, response)
@@ -1663,9 +1656,8 @@ object Main extends App {
       }
     } ~ path("keypairs" / LongNumber) { siteId =>
       get {
-        val listOfKeyPairs = Future {
-          val mayBeSite = cachedSite.get(siteId)
-          mayBeSite match {
+        val futureSite = SharedSiteCache.getSite(siteId.toString)
+        val listOfKeyPairs = futureSite.map {
             case Some(site) =>
               val keyPairs = site.instances.flatMap { instance =>
                 instance.sshAccessInfo.map(x => x.keyPair)
@@ -1674,7 +1666,6 @@ object Main extends App {
             case None =>
               logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
               Page[KeyPairInfo](List.empty[KeyPairInfo])
-          }
         }
         onComplete(listOfKeyPairs) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1717,10 +1708,8 @@ object Main extends App {
     } ~ path("site" / "filter" / LongNumber) { siteId =>
       put {
         entity(as[SiteFilter]) { siteFilter =>
-          val filteredSite = Future {
-            val filters = siteFilter.filters
-            populateFilteredInstances(siteId, filters)
-          }
+          val filters = siteFilter.filters
+          val filteredSite = populateFilteredInstances(siteId, filters)
           onComplete(filteredSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
             case Failure(ex) =>
@@ -2814,47 +2803,52 @@ object Main extends App {
       }
     } ~ path(LongNumber / "delta") { siteId =>
       get {
-        val siteDelta = Future {
           val mayBeSite = Site1.fromNeo4jGraph(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val instancesBeforeSync = site.instances
-              val synchedSite = populateInstances(site)
-              synchedSite.toNeo4jGraph(synchedSite)
-              val filteredSite = populateFilteredInstances(siteId, List.empty[Filter])
-              saveCachedSite(siteId)
-              filteredSite match {
-                case Some(siteInCache) =>
-                  val instancesAfterSync = siteInCache.instances
-                  val beforeSyncInstanceIds = instancesBeforeSync.flatMap(instance => instance.instanceId).toSet
-                  val afterSyncInstanceIds = instancesAfterSync.flatMap(instance => instance.instanceId).toSet
-                  val commonInstanceIds = beforeSyncInstanceIds.intersect(afterSyncInstanceIds)
-                  val deletedInstances = instancesBeforeSync.filterNot {
-                    instance =>
-                      instance.instanceId.exists { id =>
-                        commonInstanceIds.contains(id)
-                      }
-                  }
-                  val addedInstances = instancesAfterSync.filterNot {
-                    instance =>
-                      instance.instanceId.exists { id =>
-                        commonInstanceIds.contains(id)
-                      }
-                  }
-                  val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
-                    SiteDeltaStatus.toDeltaStatus("CHANGED")
-                  } else {
-                    SiteDeltaStatus.toDeltaStatus("UNCHANGED")
-                  }
-                  Some(SiteDelta(site.id, deltaStatus, addedInstances, deletedInstances))
-                case None =>
-                  logger.warn(s"could not get site from cache for siteId : $siteId")
-                  None
+          val siteDelta = mayBeSite match {
+          case Some(site) =>
+            val instancesBeforeSync = site.instances
+            val synchedSite = populateInstances(site)
+            synchedSite.toNeo4jGraph(synchedSite)
+            val futureSaveSite = saveCachedSite(siteId)
+            futureSaveSite.onComplete {
+              case Success(saved) => saved match {
+                case true => logger.info("saved site successfully from distributed cache")
+                case false => logger.warn("there is no site with given id in distributed cache to be saved")
               }
-            case None =>
-              logger.warn(s"could not get site with siteId : $siteId")
-              None
-          }
+              case Failure(ex) => logger.error(s"Unable to get Site from distributed cache. Failed with : ${ex.getMessage}", ex)
+            }
+            val filteredSite = populateFilteredInstances(siteId, List.empty[Filter])
+            filteredSite.map {
+              case Some(siteInCache) =>
+                val instancesAfterSync = siteInCache.instances
+                val beforeSyncInstanceIds = instancesBeforeSync.flatMap(instance => instance.instanceId).toSet
+                val afterSyncInstanceIds = instancesAfterSync.flatMap(instance => instance.instanceId).toSet
+                val commonInstanceIds = beforeSyncInstanceIds.intersect(afterSyncInstanceIds)
+                val deletedInstances = instancesBeforeSync.filterNot {
+                  instance =>
+                    instance.instanceId.exists { id =>
+                      commonInstanceIds.contains(id)
+                    }
+                }
+                val addedInstances = instancesAfterSync.filterNot {
+                  instance =>
+                    instance.instanceId.exists { id =>
+                      commonInstanceIds.contains(id)
+                    }
+                }
+                val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
+                  SiteDeltaStatus.toDeltaStatus("CHANGED")
+                } else {
+                  SiteDeltaStatus.toDeltaStatus("UNCHANGED")
+                }
+                Some(SiteDelta(site.id, deltaStatus, addedInstances, deletedInstances))
+              case None =>
+                logger.warn(s"could not get site from cache for siteId : $siteId")
+                None
+            }
+          case None =>
+            logger.warn(s"could not get site with siteId : $siteId")
+            Future.successful(None)
         }
         onComplete(siteDelta) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -3340,9 +3334,9 @@ object Main extends App {
     }
   }
 
-  def populateFilteredInstances(siteId: Long, filters: List[Filter]): Option[Site1] = {
-    val mayBeSite = cachedSite.get(siteId)
-    mayBeSite match {
+  def populateFilteredInstances(siteId: Long, filters: List[Filter]): Future[Option[Site1]] = {
+    val futureSite = SharedSiteCache.getSite(siteId.toString)
+    futureSite.map {
       case Some(site) =>
         val instances = site.instances
         val (siteFiltersToSave, filteredInstances) = if (filters.nonEmpty) {
@@ -3367,7 +3361,7 @@ object Main extends App {
         val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList,
           List.empty[Application], site.groupBy, site.scalingPolicies)
         siteToSave.toNeo4jGraph(siteToSave)
-        cachedSite.put(siteId, siteToSave)
+        SharedSiteCache.putSite(siteId.toString, siteToSave)
         Some(siteToSave)
       case None => logger.warn(s"could not get Site from cache for siteId : $siteId")
         None
@@ -3522,13 +3516,15 @@ object Main extends App {
     site1
   }
 
-  def saveCachedSite(siteId: Long): Boolean = {
-    val mayBeSite = cachedSite.get(siteId)
-    mayBeSite.foreach { site =>
-      site.toNeo4jGraph(site)
-      cachedSite.remove(siteId)
+  def saveCachedSite(siteId: Long): Future[Boolean] = {
+    val futureSite = SharedSiteCache.getSite(siteId.toString)
+    futureSite.map { mayBeSite =>
+      mayBeSite.foreach { site =>
+        site.toNeo4jGraph(site)
+        SharedSiteCache.removeSite(siteId.toString)
+      }
+      mayBeSite.isDefined
     }
-    mayBeSite.isDefined
   }
 
   def getInstance(siteId: Long, id: String): Option[Instance] = {
