@@ -6,12 +6,9 @@ import akka.cluster.ddata.Replicator._
 import akka.cluster.ddata.{DistributedData, LWWMap, LWWMapKey}
 import akka.util.Timeout
 import com.imaginea.Main
-import com.imaginea.activegrid.core.models.AccountInfo._
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
-
-
 /**
   * Created by sivag on 3/3/17.
   */
@@ -30,6 +27,7 @@ case object WORKFLOW_STARTED extends WrkflwStatus
 case object WORKFLOW_FAILED extends WrkflwStatus
 
 case object WORKFLOW_NOTFOUND extends WrkflwStatus
+import akka.pattern._
 
 
 case class WrkFlow(id: String, operation: String)
@@ -40,6 +38,7 @@ object WorkflowDDHandler {
   implicit val node = Cluster(Main.system)
   val logger = LoggerFactory.getLogger(getClass)
 
+  import Main.system.dispatcher
   val mapKey = LWWMapKey[WrkflwStatus]("WorkflowUpdate")
   val readMajority = ReadMajority(5.seconds)
   val writeMajority = WriteMajority(5.seconds)
@@ -60,14 +59,22 @@ object WorkflowDDHandler {
         else {
           Left(WORKFLOW_NOTFOUND)
         }
-
       // Getting status of the given workflow id.
-      case WrkFlow(wrkflowId, "GETSTATUS") =>
+      case WrkFlow(wrkflowId, "GETSTATUS") =>a
         logger.info("Checking status of  workflow " + wrkflowId)
-        val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
-        val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
-        val wrkFlwStatus = result.get(wrkflowId)
-        Left(wrkFlwStatus.getOrElse(WORKFLOW_NOTFOUND))
+        val data = replicator ? Get(mapKey, readMajority, Some(wrkflowId))
+        val d =  data.map {
+          case g @ GetSuccess(mapKey,req) =>
+                   println(g.dataValue)
+                   g.asInstanceOf[LWWMap[WrkflwStatus]].get(wrkflowId)
+          case g @ GetFailure(mapKey,req) =>
+                   println("Failed to load ddata with key"+mapKey)
+                   Left(WORKFLOW_FAILED)
+          case g @ NotFound(mapKey,req) =>
+                   println("No key" + mapKey + " in distributed data found")
+                   Left(WORKFLOW_NOTFOUND)
+        }
+        Left(WORKFLOW_FAILED)
 
       // Returns all running workflows.
       case WrkFlow(wrkflowId, "RUNNING_WORKFLOWS") =>
