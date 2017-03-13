@@ -4,8 +4,8 @@ version := "1.0"
 
 scalaVersion := "2.11.8"
 
-resolvers ++= Seq("Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/", Resolver.bintrayRepo("hseeberger", "maven"),
-  "AWS" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-ec2",
+resolvers ++= Seq("Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
+  Resolver.bintrayRepo("hseeberger", "maven"),"AWS" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-ec2",
   "AWS3" at "https://mvnrepository.com/artifact/org.jclouds.provider/aws-s3")
 
 libraryDependencies ++= {
@@ -28,7 +28,7 @@ libraryDependencies ++= {
     "org.elasticsearch" % "elasticsearch" % "0.19.0",
     "com.beust" % "jcommander" % "1.32",
     "org.apache.commons" % "commons-io" % "1.3.2",
-    "com.typesafe.akka" %% "akka-distributed-data-experimental" % "2.4.16"
-
+    "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-distributed-data-experimental" % "2.4.16"
   )
 }

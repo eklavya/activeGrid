@@ -9,6 +9,7 @@ import com.imaginea.Main
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
+import akka.pattern._
 /**
   * Created by sivag on 3/3/17.
   */
@@ -27,8 +28,6 @@ case object WORKFLOW_STARTED extends WrkflwStatus
 case object WORKFLOW_FAILED extends WrkflwStatus
 
 case object WORKFLOW_NOTFOUND extends WrkflwStatus
-import akka.pattern._
-
 
 case class WrkFlow(id: String, operation: String)
 
@@ -43,8 +42,9 @@ object WorkflowDDHandler {
   val readMajority = ReadMajority(5.seconds)
   val writeMajority = WriteMajority(5.seconds)
   implicit val timeout: Timeout = 5.seconds
-
-  def get(wrkFlow: WrkFlow) :Either[WrkflwStatus,LWWMap[WrkflwStatus]] =  {
+  //scalastyle:off
+  //method.length
+  def get(wrkFlow: WrkFlow):Either[WrkflwStatus,LWWMap[WrkflwStatus]] =  {
     wrkFlow match {
         // Removes the purticular workflow from the list.
       case WrkFlow(wrkflowId, "REMOVE") =>
@@ -60,18 +60,18 @@ object WorkflowDDHandler {
           Left(WORKFLOW_NOTFOUND)
         }
       // Getting status of the given workflow id.
-      case WrkFlow(wrkflowId, "GETSTATUS") =>a
+      case WrkFlow(wrkflowId, "GETSTATUS") =>
         logger.info("Checking status of  workflow " + wrkflowId)
         val data = replicator ? Get(mapKey, readMajority, Some(wrkflowId))
         val d =  data.map {
           case g @ GetSuccess(mapKey,req) =>
-                   println(g.dataValue)
+                   println("Values from ddmap " + g.dataValue)
                    g.asInstanceOf[LWWMap[WrkflwStatus]].get(wrkflowId)
           case g @ GetFailure(mapKey,req) =>
-                   println("Failed to load ddata with key"+mapKey)
+                   println("Failed to load ddata with key" + mapKey)
                    Left(WORKFLOW_FAILED)
           case g @ NotFound(mapKey,req) =>
-                   println("No key" + mapKey + " in distributed data found")
+                   println("Key not found ::" + mapKey)
                    Left(WORKFLOW_NOTFOUND)
         }
         Left(WORKFLOW_FAILED)
