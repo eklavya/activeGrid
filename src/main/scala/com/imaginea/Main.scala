@@ -36,7 +36,7 @@ import scala.util.{Failure, Random, Success}
 
 object Main extends App {
 
-  val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + 2551).
+  val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + 2553).
     withFallback(ConfigFactory.load("cluster.conf"))
   // Create an Akka system
   implicit val system = ActorSystem("ClusterSystem", config)
@@ -1929,7 +1929,7 @@ object Main extends App {
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
       esServiceRoutes ~ workflowRoutes
   }
-
+  // Starting cluster.
   AGU.startUp(List("2551","2552"))
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)

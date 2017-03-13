@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
 import akka.pattern._
+import Main.system.dispatcher
 /**
   * Created by sivag on 3/3/17.
   */
@@ -37,7 +38,7 @@ object WorkflowDDHandler {
   implicit val node = Cluster(Main.system)
   val logger = LoggerFactory.getLogger(getClass)
 
-  import Main.system.dispatcher
+
   val mapKey = LWWMapKey[WrkflwStatus]("WorkflowUpdate")
   val readMajority = ReadMajority(5.seconds)
   val writeMajority = WriteMajority(5.seconds)
