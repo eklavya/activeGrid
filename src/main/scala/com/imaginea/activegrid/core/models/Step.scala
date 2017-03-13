@@ -8,16 +8,16 @@ import org.slf4j.LoggerFactory
   * Created by shareefn on 19/12/16.
   */
 case class Step(override val id: Option[Long],
-                stepId: String,
+                stepId: Option[String],
                 name: String,
-                description: String,
-                stepType: StepType,
+                description: Option[String],
+                stepType: Option[StepType],
                 script: Script,
-                input: StepInput,
-                scope: InventoryExecutionScope,
+                input: Option[StepInput],
+                scope: Option[InventoryExecutionScope],
                 executionOrder: Int,
                 childStep: List[Step],
-                report: StepExecutionReport) extends BaseEntity
+                report: Option[StepExecutionReport]) extends BaseEntity
 
 object Step {
   val labelName = "Step"
@@ -29,12 +29,15 @@ object Step {
   val stepAndReport = "HAS_Report"
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
+  def apply(name: String, script: Script): Step =
+    Step(None, None, name, None, None, script, None, None, 0, List.empty[Step], None)
+
   implicit class StepImpl(step: Step) extends Neo4jRep[Step] {
     override def toNeo4jGraph(entity: Step): Node = {
       val map = Map("stepId" -> entity.stepId,
         "name" -> entity.name,
         "description" -> entity.description,
-        "stepType" -> entity.stepType.stepType,
+        "stepType" -> entity.stepType.map(_.stepType),
         "executionOrder" -> entity.executionOrder)
       val parentNode = Neo4jRepository.saveEntity(labelName, entity.id, map)
       entity.script match {
@@ -45,16 +48,28 @@ object Step {
           val ansiblePlayNode = ansiblePlay.toNeo4jGraph(ansiblePlay)
           Neo4jRepository.createRelation(stepAndAnsiblePlay, parentNode, ansiblePlayNode)
       }
-      val stepInputNode = entity.input.toNeo4jGraph(entity.input)
-      Neo4jRepository.createRelation(stepAndStepInput, parentNode, stepInputNode)
-      val invScopeNode = entity.scope.toNeo4jGraph(entity.scope)
-      Neo4jRepository.createRelation(stepAndInventoryExec, parentNode, invScopeNode)
+      entity.input match {
+        case Some(input) =>
+          val stepInputNode = input.toNeo4jGraph(input)
+          Neo4jRepository.createRelation(stepAndStepInput, parentNode, stepInputNode)
+        case None => logger.info("entity STep has no step input")
+      }
+      entity.scope match {
+        case Some(scope) =>
+          val invScopeNode = scope.toNeo4jGraph(scope)
+          Neo4jRepository.createRelation(stepAndInventoryExec, parentNode, invScopeNode)
+        case None => logger.info("entity Step has no scope")
+      }
       entity.childStep.foreach { step =>
         val stepNode = step.toNeo4jGraph(step)
         Neo4jRepository.createRelation(stepAndStep, parentNode, stepNode)
       }
-      val reportNode = entity.report.toNeo4jGraph(entity.report)
-      Neo4jRepository.createRelation(stepAndReport, parentNode, reportNode)
+      entity.report match {
+        case Some(report) =>
+          val reportNode = report.toNeo4jGraph(report)
+          Neo4jRepository.createRelation(stepAndReport, parentNode, reportNode)
+        case None => logger.info("entity Step has no report")
+      }
       parentNode
     }
 
@@ -75,20 +90,20 @@ object Step {
       node <- Neo4jRepository.findNodeById(id)
       script <- mayBeScript
       stepInputNodeId <- Neo4jRepository.getChildNodeId(id, stepAndStepInput)
-      stepInput <- StepInput.fromNeo4jGraph(stepInputNodeId)
       scopeNodeId <- Neo4jRepository.getChildNodeId(id, stepAndInventoryExec)
-      scope <- InventoryExecutionScope.fromNeo4jGraph(scopeNodeId)
       reportNodeId <- Neo4jRepository.getChildNodeId(id, stepAndReport)
-      report <- StepExecutionReport.fromNeo4jGraph(reportNodeId)
     } yield {
+      val stepInput = StepInput.fromNeo4jGraph(stepInputNodeId)
+      val scope = InventoryExecutionScope.fromNeo4jGraph(scopeNodeId)
+      val report = StepExecutionReport.fromNeo4jGraph(reportNodeId)
       val map = Neo4jRepository.getProperties(node, "stepId", "name", "description", "stepType", "executionOrder")
       val stepNodeIds = Neo4jRepository.getChildNodeIds(id, stepAndStep)
       val steps = stepNodeIds.flatMap(nodeId => Step.fromNeo4jGraph(nodeId))
       Step(Some(id),
-        map("stepId").asInstanceOf[String],
+        map.get("stepId").asInstanceOf[Option[String]],
         map("name").asInstanceOf[String],
-        map("description").asInstanceOf[String],
-        StepType.toStepType(map("stepType").asInstanceOf[String]),
+        map.get("description").asInstanceOf[Option[String]],
+        map.get("stepType").asInstanceOf[Option[String]].map(StepType.toStepType),
         script,
         stepInput,
         scope,
