@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
   */
 class AnsiblePlayBookRunner(workflowContext: WorkflowContext)  {
 
-  def executePlayBook() = ???
+  def executePlayBook() : Unit = ???
 
   def getWorkflowContext(): WorkflowContext = workflowContext
 
