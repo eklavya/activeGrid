@@ -5,10 +5,8 @@ import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.pattern.ask
-import akka.cluster.Cluster
-
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
@@ -22,7 +20,6 @@ import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
 import org.neo4j.graphdb.NotFoundException
@@ -37,11 +34,10 @@ import scala.util.{Failure, Random, Success}
 
 object Main extends App {
 
-  implicit val system = ActorSystem()
+  implicit val system = ActorSystem("ClusterSystem")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
-  val cachedSite = mutable.Map.empty[Long, Site1]
-  val sessionCache = mutable.Map.empty[Long, TerminalSession]
+  implicit val timeout = Timeout(15.seconds)
   val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
   val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
@@ -714,16 +710,16 @@ object Main extends App {
         case ansiblePlay: AnsiblePlay => AGU.objectToJsValue[AnsiblePlay](fieldNames(5), Some(ansiblePlay), ansiblePlayFormat)
       }
       val fields = AGU.longToJsField(fieldNames.head, obj.id) ++
-        AGU.stringToJsField(fieldNames(1), Some(obj.stepId)) ++
+        AGU.stringToJsField(fieldNames(1), obj.stepId) ++
         AGU.stringToJsField(fieldNames(2), Some(obj.name)) ++
-        AGU.stringToJsField(fieldNames(3), Some(obj.description)) ++
-        AGU.stringToJsField(fieldNames(4), Some(obj.stepType.stepType)) ++
+        AGU.stringToJsField(fieldNames(3), obj.description) ++
+        AGU.stringToJsField(fieldNames(4), obj.stepType.map(_.stepType)) ++
         scriptFormat ++
-        AGU.objectToJsValue[StepInput](fieldNames(6), Some(obj.input), stepInputFormat) ++
-        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), Some(obj.scope), inventoryExecFormat) ++
+        AGU.objectToJsValue[StepInput](fieldNames(6), obj.input, stepInputFormat) ++
+        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), obj.scope, inventoryExecFormat) ++
         AGU.stringToJsField(fieldNames(8), Some(obj.executionOrder.toString)) ++
         AGU.listToJsValue(fieldNames(9), obj.childStep, StepFormat) ++
-        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), Some(obj.report), stepExecFormat)
+        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), obj.report, stepExecFormat)
       JsObject(fields: _*)
     }
 
@@ -742,28 +738,22 @@ object Main extends App {
             throw DeserializationException("Unable to deserialize  Script,property 'taskList' not found")
           }
           val mayBeStep: Option[Step] = for {
-            stepId <- AGU.getProperty[String](map, fieldNames(1))
             name <- AGU.getProperty[String](map, fieldNames(2))
-            description <- AGU.getProperty[String](map, fieldNames(3))
-            stepType <- AGU.getProperty[String](map, fieldNames(4))
             scriptJsVal <- AGU.getProperty[JsValue](map, fieldNames(5))
-            inputJsVal <- AGU.getProperty[JsValue](map, fieldNames(6))
-            scopeJsVal <- AGU.getProperty[JsValue](map, fieldNames(7))
             executionOrder <- AGU.getProperty[Int](map, fieldNames(8))
-            reportJsVal <- AGU.getProperty[JsValue](map, fieldNames(10))
           } yield {
 
             Step(AGU.getProperty[Long](map, fieldNames(0)),
-              stepId,
+              AGU.getProperty[String](map, fieldNames(1)),
               name,
-              description,
-              StepType.toStepType(stepType),
+              AGU.getProperty[String](map, fieldNames(3)),
+              AGU.getProperty[String](map, fieldNames(4)).map(StepType.toStepType),
               scriptObj,
-              stepInputFormat.read(inputJsVal),
-              inventoryExecFormat.read(scopeJsVal),
+              AGU.getProperty[JsValue](map, fieldNames(6)).map(stepInputFormat.read),
+              AGU.getProperty[JsValue](map, fieldNames(7)).map(inventoryExecFormat.read),
               executionOrder,
               AGU.getObjectsFromJson[Step](map, "childStep", StepFormat),
-              stepExecFormat.read(reportJsVal)
+              AGU.getProperty[JsValue](map, fieldNames(10)).map(stepExecFormat.read)
             )
           }
           mayBeStep match {
@@ -1306,16 +1296,6 @@ object Main extends App {
     }
   }
 
-  val config = ConfigFactory.parseString(s"akka.remote.netty.tcp.port=2663").
-    withFallback(ConfigFactory.parseString("akka.cluster.roles = [router]")).
-    withFallback(ConfigFactory.load())
-  val actorSystem = ActorSystem("ActiveGridCluster", config)
-  val routingActor = actorSystem.actorOf(Props(classOf[RequestRouter]), name = "balancedActor")
-  val list  = List("2661","2662")
-  list.foreach(port => initiateClusterSystem(port))
-
-  implicit val timeout = Timeout(5 seconds)
-
   def exportWorkflow(modulePath: String, workflow: Workflow): String = {
     val workflowZipPath = Constants.TEMP_DIR_LOC + File.separator + System.currentTimeMillis() + ""
     val workflowName = workflow.name
@@ -1405,7 +1385,7 @@ object Main extends App {
       post {
         entity(as[ApplicationSettings]) { appSettings =>
           val maybeAdded = Future {
-            routingActor ? appSettings
+            appSettings.toNeo4jGraph(appSettings)
           }
           onComplete(maybeAdded) {
             case Success(save) => complete(StatusCodes.OK, "Settings saved successfully")
@@ -1535,7 +1515,7 @@ object Main extends App {
           entity(as[Site1]) { site =>
             val buildSite = Future {
               val savedSite = populateInstances(site)
-              savedSite.id.foreach(siteId => cachedSite.put(siteId, savedSite))
+              savedSite.id.foreach(siteId => SharedSiteCache.putSite(siteId.toString, savedSite))
               savedSite
             }
             onComplete(buildSite) {
@@ -1550,14 +1530,12 @@ object Main extends App {
     } ~ path("site" / "save" / LongNumber) { siteId =>
       withRequestTimeout(2.minutes) {
         put {
-          val siteResponse = Future {
-            val mayBeSite = cachedSite.get(siteId)
-            mayBeSite match {
+          val futureSite = SharedSiteCache.getSite(siteId.toString)
+          val siteResponse = futureSite.map {
               case Some(site) =>
                 site.toNeo4jGraph(site)
                 indexSite(site)
               case None => throw new NotFoundException(s"Site with id : $siteId is not found!")
-            }
           }
           onComplete(siteResponse) {
             case Success(response) => complete(StatusCodes.OK, "Site saved successfully!")
@@ -1570,9 +1548,7 @@ object Main extends App {
     } ~ path("site" / LongNumber) {
       siteId =>
         get {
-          val siteObj = Future {
-            cachedSite.get(siteId)
-          }
+          val siteObj = SharedSiteCache.getSite(siteId.toString)
           onComplete(siteObj) {
             case Success(response) => complete(StatusCodes.OK, response)
             case Failure(exception) =>
@@ -1663,15 +1639,13 @@ object Main extends App {
     } ~ get {
       path("tags" / LongNumber) {
         siteId =>
-          val tags = Future {
-            val mayBeSite = cachedSite.get(siteId)
-            mayBeSite match {
+          val futureSite = SharedSiteCache.getSite(siteId.toString)
+          val tags = futureSite.map {
               case Some(site) =>
                 site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
               case None =>
                 logger.warn(s"Site Entity with ID : $siteId is Not Found")
                 throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
-            }
           }
           onComplete(tags) {
             case Success(response) => complete(StatusCodes.OK, response)
@@ -1682,9 +1656,8 @@ object Main extends App {
       }
     } ~ path("keypairs" / LongNumber) { siteId =>
       get {
-        val listOfKeyPairs = Future {
-          val mayBeSite = cachedSite.get(siteId)
-          mayBeSite match {
+        val futureSite = SharedSiteCache.getSite(siteId.toString)
+        val listOfKeyPairs = futureSite.map {
             case Some(site) =>
               val keyPairs = site.instances.flatMap { instance =>
                 instance.sshAccessInfo.map(x => x.keyPair)
@@ -1693,7 +1666,6 @@ object Main extends App {
             case None =>
               logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
               Page[KeyPairInfo](List.empty[KeyPairInfo])
-          }
         }
         onComplete(listOfKeyPairs) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1736,10 +1708,8 @@ object Main extends App {
     } ~ path("site" / "filter" / LongNumber) { siteId =>
       put {
         entity(as[SiteFilter]) { siteFilter =>
-          val filteredSite = Future {
-            val filters = siteFilter.filters
-            populateFilteredInstances(siteId, filters)
-          }
+          val filters = siteFilter.filters
+          val filteredSite = populateFilteredInstances(siteId, filters)
           onComplete(filteredSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
             case Failure(ex) =>
@@ -1923,6 +1893,9 @@ object Main extends App {
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
       esServiceRoutes ~ workflowRoutes
   }
+
+  AGU.startUp(List("2551","2552"))
+
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
@@ -2830,47 +2803,52 @@ object Main extends App {
       }
     } ~ path(LongNumber / "delta") { siteId =>
       get {
-        val siteDelta = Future {
           val mayBeSite = Site1.fromNeo4jGraph(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val instancesBeforeSync = site.instances
-              val synchedSite = populateInstances(site)
-              synchedSite.toNeo4jGraph(synchedSite)
-              val filteredSite = populateFilteredInstances(siteId, List.empty[Filter])
-              saveCachedSite(siteId)
-              filteredSite match {
-                case Some(siteInCache) =>
-                  val instancesAfterSync = siteInCache.instances
-                  val beforeSyncInstanceIds = instancesBeforeSync.flatMap(instance => instance.instanceId).toSet
-                  val afterSyncInstanceIds = instancesAfterSync.flatMap(instance => instance.instanceId).toSet
-                  val commonInstanceIds = beforeSyncInstanceIds.intersect(afterSyncInstanceIds)
-                  val deletedInstances = instancesBeforeSync.filterNot {
-                    instance =>
-                      instance.instanceId.exists { id =>
-                        commonInstanceIds.contains(id)
-                      }
-                  }
-                  val addedInstances = instancesAfterSync.filterNot {
-                    instance =>
-                      instance.instanceId.exists { id =>
-                        commonInstanceIds.contains(id)
-                      }
-                  }
-                  val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
-                    SiteDeltaStatus.toDeltaStatus("CHANGED")
-                  } else {
-                    SiteDeltaStatus.toDeltaStatus("UNCHANGED")
-                  }
-                  Some(SiteDelta(site.id, deltaStatus, addedInstances, deletedInstances))
-                case None =>
-                  logger.warn(s"could not get site from cache for siteId : $siteId")
-                  None
+          val siteDelta = mayBeSite match {
+          case Some(site) =>
+            val instancesBeforeSync = site.instances
+            val synchedSite = populateInstances(site)
+            synchedSite.toNeo4jGraph(synchedSite)
+            val futureSaveSite = saveCachedSite(siteId)
+            futureSaveSite.onComplete {
+              case Success(saved) => saved match {
+                case true => logger.info("saved site successfully from distributed cache")
+                case false => logger.warn("there is no site with given id in distributed cache to be saved")
               }
-            case None =>
-              logger.warn(s"could not get site with siteId : $siteId")
-              None
-          }
+              case Failure(ex) => logger.error(s"Unable to get Site from distributed cache. Failed with : ${ex.getMessage}", ex)
+            }
+            val filteredSite = populateFilteredInstances(siteId, List.empty[Filter])
+            filteredSite.map {
+              case Some(siteInCache) =>
+                val instancesAfterSync = siteInCache.instances
+                val beforeSyncInstanceIds = instancesBeforeSync.flatMap(instance => instance.instanceId).toSet
+                val afterSyncInstanceIds = instancesAfterSync.flatMap(instance => instance.instanceId).toSet
+                val commonInstanceIds = beforeSyncInstanceIds.intersect(afterSyncInstanceIds)
+                val deletedInstances = instancesBeforeSync.filterNot {
+                  instance =>
+                    instance.instanceId.exists { id =>
+                      commonInstanceIds.contains(id)
+                    }
+                }
+                val addedInstances = instancesAfterSync.filterNot {
+                  instance =>
+                    instance.instanceId.exists { id =>
+                      commonInstanceIds.contains(id)
+                    }
+                }
+                val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
+                  SiteDeltaStatus.toDeltaStatus("CHANGED")
+                } else {
+                  SiteDeltaStatus.toDeltaStatus("UNCHANGED")
+                }
+                Some(SiteDelta(site.id, deltaStatus, addedInstances, deletedInstances))
+              case None =>
+                logger.warn(s"could not get site from cache for siteId : $siteId")
+                None
+            }
+          case None =>
+            logger.warn(s"could not get site with siteId : $siteId")
+            Future.successful(None)
         }
         onComplete(siteDelta) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -3356,9 +3334,9 @@ object Main extends App {
     }
   }
 
-  def populateFilteredInstances(siteId: Long, filters: List[Filter]): Option[Site1] = {
-    val mayBeSite = cachedSite.get(siteId)
-    mayBeSite match {
+  def populateFilteredInstances(siteId: Long, filters: List[Filter]): Future[Option[Site1]] = {
+    val futureSite = SharedSiteCache.getSite(siteId.toString)
+    futureSite.map {
       case Some(site) =>
         val instances = site.instances
         val (siteFiltersToSave, filteredInstances) = if (filters.nonEmpty) {
@@ -3383,7 +3361,7 @@ object Main extends App {
         val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList,
           List.empty[Application], site.groupBy, site.scalingPolicies)
         siteToSave.toNeo4jGraph(siteToSave)
-        cachedSite.put(siteId, siteToSave)
+        SharedSiteCache.putSite(siteId.toString, siteToSave)
         Some(siteToSave)
       case None => logger.warn(s"could not get Site from cache for siteId : $siteId")
         None
@@ -3538,13 +3516,15 @@ object Main extends App {
     site1
   }
 
-  def saveCachedSite(siteId: Long): Boolean = {
-    val mayBeSite = cachedSite.get(siteId)
-    mayBeSite.foreach { site =>
-      site.toNeo4jGraph(site)
-      cachedSite.remove(siteId)
+  def saveCachedSite(siteId: Long): Future[Boolean] = {
+    val futureSite = SharedSiteCache.getSite(siteId.toString)
+    futureSite.map { mayBeSite =>
+      mayBeSite.foreach { site =>
+        site.toNeo4jGraph(site)
+        SharedSiteCache.removeSite(siteId.toString)
+      }
+      mayBeSite.isDefined
     }
-    mayBeSite.isDefined
   }
 
   def getInstance(siteId: Long, id: String): Option[Instance] = {
@@ -3875,7 +3855,7 @@ object Main extends App {
               }
             }
             val session = TerminalSession(terminalId, None, List.empty[String], context, sshSessions, date, date)
-            sessionCache.put(session.id, session)
+            SharedSessionCache.putSession(session.id.toString, session)
             s"Session created with session id: ${session.id}"
           }
           onComplete(session) {
@@ -3889,28 +3869,28 @@ object Main extends App {
     } ~ path(LongNumber / "execute") { terminalId =>
       put {
         entity(as[String]) { commandLine =>
-          val commandResult = Future {
-            val mayBeSession = sessionCache.get(terminalId)
-            val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
-            val result = mayBeSession match {
-              case Some(session) =>
-                val newSession = session.copy(lastUsedAt = new Date)
-                if (commandLine.indexOf('|') != -1) {
-                  val executedCommandResult = executePipedCommand(newSession, commandLine)
-                  Some(executedCommandResult)
-                } else if (session.currentCmdExecContext.instances.length > 0) {
-                  val executedCommandResult = executeSSHCommand(newSession, commandLine)
-                  Some(executedCommandResult)
-                } else {
-                  logger.warn(s"Not a valid command; commandLine : $commandLine")
-                  None
-                }
-              case None =>
-                // first thing that will hit us when we start running on a cluster
-                throw new IllegalStateException("no session with the given terminal id")
+            val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
+            val commandResult = futureOfSession.map { mayBeSession =>
+              val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
+              val result = mayBeSession match {
+                case Some(terminalSession) =>
+                  val newSession = terminalSession.copy(lastUsedAt = new Date)
+                  if (commandLine.indexOf('|') != -1) {
+                    val executedCommandResult = executePipedCommand(newSession, commandLine)
+                    Some(executedCommandResult)
+                  } else if (terminalSession.currentCmdExecContext.instances.length > 0) {
+                    val executedCommandResult = executeSSHCommand(newSession, commandLine)
+                    Some(executedCommandResult)
+                  } else {
+                    logger.warn(s"Not a valid command; commandLine : $commandLine")
+                    None
+                  }
+                case None =>
+                  // first thing that will hit us when we start running on a cluster
+                  throw new IllegalStateException("no session with the given terminal id")
+              }
+              result.getOrElse(CommandResult(List.empty[Line], currentCmdExecContext))
             }
-            result.getOrElse(CommandResult(List.empty[Line], currentCmdExecContext))
-          }
           onComplete(commandResult) {
             case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
             case Failure(exception) =>
@@ -3921,29 +3901,29 @@ object Main extends App {
       }
     } ~ path(LongNumber / "stop") { terminalId =>
       put {
-        val stopSession = Future {
-          val mayBeSession = sessionCache.get(terminalId)
-          mayBeSession match {
-            case Some(terminalSession) =>
-              val sessions = terminalSession.sshSessions.flatMap(sshSession => sshSession.session)
-              val ioExceptions = sessions.foldLeft(List.empty[java.io.IOException]) {
-                (list, session) =>
-                  try {
-                    session.disconnect()
-                    list
-                  }
-                  catch {
-                    case e: java.io.IOException => e :: list
-                  }
-              }
-              if (ioExceptions.nonEmpty) {
-                logger.error(s"Failed due to multiple problems: ", ioExceptions)
-                throw new RuntimeException("Multiple problems", ioExceptions(0))
-              }
-            case None => logger.warn("There is no open session with id " + terminalId)
+          val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
+          val stopSession = futureOfSession.map { mayBeSession =>
+            mayBeSession match {
+              case Some(terminalSession) =>
+                val sessions = terminalSession.sshSessions.flatMap(sshSession => sshSession.session)
+                val ioExceptions = sessions.foldLeft(List.empty[java.io.IOException]) {
+                  (list, session) =>
+                    try {
+                      session.disconnect()
+                      list
+                    }
+                    catch {
+                      case e: java.io.IOException => e :: list
+                    }
+                }
+                if (ioExceptions.nonEmpty) {
+                  logger.error(s"Failed due to multiple problems: ", ioExceptions)
+                  throw new RuntimeException("Multiple problems", ioExceptions(0))
+                }
+              case None => logger.warn("There is no open session with id " + terminalId)
+            }
+            "Successfully stopped session"
           }
-          "Successfully stopped session"
-        }
         onComplete(stopSession) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
@@ -4127,12 +4107,5 @@ object Main extends App {
     FileUtils.saveContentToFile(file.toString, sshKeyData)
     //TODO: change file permissions to 600
     keyFilePath
-  }
-  def initiateClusterSystem(port : String) : Unit = {
-    val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
-      withFallback(ConfigFactory.parseString("akka.cluster.roles = [handler]")).
-      withFallback(ConfigFactory.load())
-    val actorSystem = ActorSystem("ActiveGridCluster", config)
-    actorSystem.actorOf(Props[RequestHandler] , "requestHandler")
   }
 }
