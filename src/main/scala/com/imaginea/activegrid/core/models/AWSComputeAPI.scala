@@ -151,10 +151,9 @@ object AWSComputeAPI {
 
   def getSecurityGroupInfo(totalSecurityGroups: Map[String, SecurityGroup], instanceGroupIdentifiers: List[GroupIdentifier]): List[SecurityGroupInfo] = {
     totalSecurityGroups.map {
-      securityGroup =>
-        if (totalSecurityGroups.contains(securityGroup._2.getGroupId)) {
-          val sg = securityGroup._2
-          val ipPermissions = sg.getIpPermissions.toList.map {
+      case (groupId , securityGroup) =>
+        if (totalSecurityGroups.contains(securityGroup.getGroupId)) {
+          val ipPermissions = securityGroup.getIpPermissions.toList.map {
             ipPermission =>
               val fromPort = Option(ipPermission.getFromPort) match {
                 case Some(port) => port.toInt
@@ -173,12 +172,12 @@ object AWSComputeAPI {
                 }.toSet, ipPermission.getIpRanges.toList)
           }
           SecurityGroupInfo(None,
-            Option(sg.getGroupName),
-            Option(securityGroup._1),
-            Option(sg.getOwnerId),
-            Option(sg.getDescription),
+            Option(securityGroup.getGroupName),
+            Option(groupId),
+            Option(securityGroup.getOwnerId),
+            Option(securityGroup.getDescription),
             ipPermissions,
-            sg.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList
+            securityGroup.getTags.map(tag => KeyValueInfo(None, tag.getKey, tag.getValue)).toList
           )
         } else {
           SecurityGroupInfo.appply(None)

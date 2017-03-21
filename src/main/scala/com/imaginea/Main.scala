@@ -1,41 +1,45 @@
 package com.imaginea
 
-import java.io.File
+import java.io.{File, FileInputStream, FileOutputStream, IOException}
+import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
+import akka.pattern.ask
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
+import akka.http.scaladsl.server.directives.ContentTypeResolver.Default
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatchers, Route}
-import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
+import akka.util.Timeout
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
+import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
 import org.neo4j.graphdb.NotFoundException
-import org.neo4j.kernel.impl.transaction.log.checkpoint.SimpleTriggerInfo
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, DurationLong}
-import scala.concurrent.{Await, Future, duration}
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Random, Success}
 
 object Main extends App {
 
-  implicit val system = ActorSystem()
+  implicit val system = ActorSystem("ClusterSystem")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
-  val cachedSite = mutable.Map.empty[Long, Site1]
-  val sessionCache = mutable.Map.empty[Long, TerminalSession]
+  implicit val timeout = Timeout(15.seconds)
+  val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
+  val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   implicit object KeyPairStatusFormat extends RootJsonFormat[KeyPairStatus] {
@@ -594,6 +598,7 @@ object Main extends App {
   implicit object ScriptArgumentFormat extends RootJsonFormat[ScriptArgument] {
     val fieldNames = List("id", "propName", "propValue", "argOrder", "nestedArg", "value")
 
+    // scalastyle:off magic.number
     override def read(json: JsValue): ScriptArgument = {
       json match {
         case JsObject(map) =>
@@ -629,6 +634,8 @@ object Main extends App {
         AGU.stringToJsField(fieldNames(5), Some(obj.value))
       JsObject(fields: _*)
     }
+
+    // scalastyle:on magic.number
   }
 
   implicit val puppetModuleDefFormat = jsonFormat5(PuppetModuleDefinition.apply)
@@ -696,22 +703,23 @@ object Main extends App {
     val fieldNames = List("id", "stepId", "name", "description", "stepType", "scriptDefinition", "input", "scope",
       "executionOrder", "childStep", "report")
 
+    // scalastyle:off magic.number
     override def write(obj: Step): JsValue = {
       val scriptFormat = obj.script match {
         case scriptDef: ScriptDefinition => AGU.objectToJsValue[ScriptDefinition](fieldNames(5), Some(scriptDef), scriptDefinitionFormat)
         case ansiblePlay: AnsiblePlay => AGU.objectToJsValue[AnsiblePlay](fieldNames(5), Some(ansiblePlay), ansiblePlayFormat)
       }
       val fields = AGU.longToJsField(fieldNames.head, obj.id) ++
-        AGU.stringToJsField(fieldNames(1), Some(obj.stepId)) ++
+        AGU.stringToJsField(fieldNames(1), obj.stepId) ++
         AGU.stringToJsField(fieldNames(2), Some(obj.name)) ++
-        AGU.stringToJsField(fieldNames(3), Some(obj.description)) ++
-        AGU.stringToJsField(fieldNames(4), Some(obj.stepType.stepType)) ++
+        AGU.stringToJsField(fieldNames(3), obj.description) ++
+        AGU.stringToJsField(fieldNames(4), obj.stepType.map(_.stepType)) ++
         scriptFormat ++
-        AGU.objectToJsValue[StepInput](fieldNames(6), Some(obj.input), stepInputFormat) ++
-        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), Some(obj.scope), inventoryExecFormat) ++
+        AGU.objectToJsValue[StepInput](fieldNames(6), obj.input, stepInputFormat) ++
+        AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), obj.scope, inventoryExecFormat) ++
         AGU.stringToJsField(fieldNames(8), Some(obj.executionOrder.toString)) ++
         AGU.listToJsValue(fieldNames(9), obj.childStep, StepFormat) ++
-        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), Some(obj.report), stepExecFormat)
+        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), obj.report, stepExecFormat)
       JsObject(fields: _*)
     }
 
@@ -730,28 +738,22 @@ object Main extends App {
             throw DeserializationException("Unable to deserialize  Script,property 'taskList' not found")
           }
           val mayBeStep: Option[Step] = for {
-            stepId <- AGU.getProperty[String](map, fieldNames(1))
             name <- AGU.getProperty[String](map, fieldNames(2))
-            description <- AGU.getProperty[String](map, fieldNames(3))
-            stepType <- AGU.getProperty[String](map, fieldNames(4))
             scriptJsVal <- AGU.getProperty[JsValue](map, fieldNames(5))
-            inputJsVal <- AGU.getProperty[JsValue](map, fieldNames(6))
-            scopeJsVal <- AGU.getProperty[JsValue](map, fieldNames(7))
             executionOrder <- AGU.getProperty[Int](map, fieldNames(8))
-            reportJsVal <- AGU.getProperty[JsValue](map, fieldNames(10))
           } yield {
 
             Step(AGU.getProperty[Long](map, fieldNames(0)),
-              stepId,
+              AGU.getProperty[String](map, fieldNames(1)),
               name,
-              description,
-              StepType.toStepType(stepType),
+              AGU.getProperty[String](map, fieldNames(3)),
+              AGU.getProperty[String](map, fieldNames(4)).map(StepType.toStepType),
               scriptObj,
-              stepInputFormat.read(inputJsVal),
-              inventoryExecFormat.read(scopeJsVal),
+              AGU.getProperty[JsValue](map, fieldNames(6)).map(stepInputFormat.read),
+              AGU.getProperty[JsValue](map, fieldNames(7)).map(inventoryExecFormat.read),
               executionOrder,
               AGU.getObjectsFromJson[Step](map, "childStep", StepFormat),
-              stepExecFormat.read(reportJsVal)
+              AGU.getProperty[JsValue](map, fieldNames(10)).map(stepExecFormat.read)
             )
           }
           mayBeStep match {
@@ -763,6 +765,8 @@ object Main extends App {
         case _ => throw DeserializationException("Unable to deserialize Step")
       }
     }
+
+    // scalastyle:on magic.number
   }
 
   implicit val stepExecFormat = jsonFormat4(StepExecutionReport.apply)
@@ -772,6 +776,8 @@ object Main extends App {
   implicit val pageStepTypeFormat = jsonFormat4(Page[StepType])
   implicit val pageScriptTypeFormat = jsonFormat4(Page[ScriptType])
   implicit val pageScopeTypeFormat = jsonFormat4(Page[ScopeType])
+  implicit val pageStringFormat = jsonFormat4(Page[String])
+  implicit val scriptContentFormat = jsonFormat4(ScriptContent.apply)
 
   val workflowRoutes: Route = pathPrefix("workflows") {
     path("step" / "types") {
@@ -818,7 +824,7 @@ object Main extends App {
         val workflow = Future {
           val mayBeWorkflow = getWorkflow(workflowId)
           mayBeWorkflow match {
-            case Some(workflow) => workflow
+            case Some(wkfl) => wkfl
             case None =>
               logger.warn(s"Node not found with ID: $workflowId")
               throw new Exception(s"Node not found with ID: $workflowId")
@@ -829,6 +835,161 @@ object Main extends App {
           case Failure(exception) =>
             logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to get workflow list")
+        }
+      }
+    } ~ path(LongNumber / "logs") { workflowId =>
+      get {
+        parameter("start".as[Int]) { filePointer =>
+          val logs = Future {
+            for {
+              workflow <- getWorkflow(workflowId)
+              execution <- workflow.execution
+            } yield {
+              val logs = execution.logs
+              val size = logs.size
+              val start = if (filePointer == 0) 1 else filePointer
+              val logTail = if (start < size) logs.slice(start - 1, size) else List.empty[String]
+              Page[String](logTail)
+            }
+          }
+          onComplete(logs) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to get the Logs ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get Logs")
+          }
+        }
+      }
+    } ~ path(LongNumber / "inventory") { workflowId =>
+      put {
+        entity(as[Inventory]) { inventory =>
+          val inv = Future {
+            addInventory(workflowId, inventory)
+            "Inventory added successfully"
+          }
+          onComplete(inv) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to add Inventory ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to add Inventory")
+          }
+        }
+      }
+    } ~ path(LongNumber / "inventory") { workflowId =>
+      get {
+        val inventory = Future {
+          logger.info(s"Retrieving inventory for workflow[ $workflowId ]")
+          val mayBeWorkflow = getWorkflow(workflowId)
+          mayBeWorkflow match {
+            case Some(workflow) =>
+              val mayBeExecution = workflow.execution
+              mayBeExecution match {
+                case Some(execution) => execution.inventory
+                case None => throw new RuntimeException(s"No inventory built for execution of workflow [ ${workflow.name} ]")
+              }
+            case None => throw new RuntimeException(s"No workflow with id [ $workflowId ] found")
+          }
+        }
+        onComplete(inventory) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to retrieve Inventory ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to retrieve Inventory")
+        }
+      }
+    } ~ path(LongNumber / "history") { workflowId =>
+      get {
+        val executionHistory = Future {
+          logger.info("Retrieving workflow execution history")
+          val mayBeWorkflow = getWorkflow(workflowId)
+          mayBeWorkflow.map(_.executionHistory)
+        }
+        onComplete(executionHistory) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to retrieve workflow execution history ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to retrieve workflow execution history")
+        }
+      }
+    } ~ path(LongNumber / "history" / LongNumber) { (workflowId, executionId) =>
+      get {
+        val execution = Future {
+          val mayBeExecution = WorkflowExecution.fromNeo4jGraph(executionId)
+          mayBeExecution match {
+            case Some(exc) => exc
+            case None =>
+              logger.warn(s"Workflow Execution with ID : $executionId is Not Found")
+              throw new NotFoundException(s"WorkFlow Execution with ID : $executionId is Not Found")
+          }
+        }
+        onComplete(execution) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to retrieve workflow execution ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to retrieve workflow execution ")
+        }
+      }
+    } ~ path(LongNumber / "content") { workflowId =>
+      post {
+        entity(as[ScriptContent]) { content =>
+          val moduleContent = Future {
+            logger.info("Reading workflow module content")
+            readContent(content)
+          }
+          onComplete(moduleContent) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to read workflow module content ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to read workflow module content ")
+          }
+        }
+      }
+    } ~ path(LongNumber / "export") { workflowId =>
+      val mayBeWorkflow = getWorkflow(workflowId)
+      val mayBeZipFile = for {
+        workflow <- mayBeWorkflow
+        module <- workflow.module
+      } yield {
+        val modulePath = module.path
+        val workflowZipPath = exportWorkflow(modulePath, workflow)
+        val workflowZip = new File(workflowZipPath)
+        workflowZip
+      }
+      mayBeZipFile match {
+        case Some(zipFile) => getFromFile(zipFile)
+        case None =>
+          logger.error(s"Workflow with id [ $workflowId ] or Module not found")
+          complete(StatusCodes.BadRequest, s"Workflow with id [ $workflowId ] or Module not found")
+      }
+    } ~ path(LongNumber / "clone") { workflowId =>
+      post {
+        entity(as[String]) { name =>
+          val workflow = Future {
+            logger.info(s"Received request for cloning workflow with id - $workflowId and name $name")
+            cloneWorkflow(workflowId, name)
+          }
+          onComplete(workflow) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to clone workflow ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to clone workflow")
+          }
+        }
+      }
+    } ~ path("published") {
+      get {
+        val publishedWorkflows = Future {
+          val wfLabel = Workflow.labelName
+          val nodesList = Neo4jRepository.getNodesByLabel(wfLabel)
+          val workflows = nodesList.flatMap(node => Workflow.fromNeo4jGraph(node.getId))
+          val workflowsList = workflows.filter(_.publishedInventory.nonEmpty)
+          Page[Workflow](workflowsList)
+        }
+        onComplete(publishedWorkflows) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to retrieve published workflows List. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to retrieve published workflows List.")
         }
       }
     } ~ get {
@@ -859,23 +1020,363 @@ object Main extends App {
             complete(StatusCodes.BadRequest, "Unable to update workflow")
         }
       }
+    } ~ path("published" / LongNumber) { workflowId =>
+      post {
+        entity(as[List[Variable]]) { variables =>
+          val updatedWorkflow = Future {
+            for {
+              workflow <- getWorkflow(workflowId)
+              inventory <- workflow.publishedInventory
+            } yield {
+              val updatedGroups = inventory.groups.map { group =>
+                val updatedVars = group.variables.flatMap { variable =>
+                  variables.map { variab =>
+                    if (variab.name.equals(variable.name)) {
+                      variab.copy(value = variable.value)
+                    } else {
+                      variable
+                    }
+                  }
+                }
+                group.copy(variables = updatedVars)
+              }
+              val updatedInventory = inventory.copy(groups = updatedGroups)
+              val marshalledInv = addJsonToInventory(updatedInventory)
+              addInventory(workflowId, marshalledInv)
+            }
+            getWorkflow(workflowId)
+          }
+          onComplete(updatedWorkflow) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to update inventory ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Unable to update the published inventory with ID $workflowId")
+          }
+        }
+      }
+    }
+  }
+
+  val stepServiceRoutes: Route = pathPrefix("workflow" / LongNumber) { workflowId =>
+    path("step" / LongNumber) { stepId =>
+      get {
+        val step = Future {
+          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName, "id", stepId)
+          mayBeNode.flatMap(node => Step.fromNeo4jGraph(node.getId))
+        }
+        onComplete(step) {
+          case Success(response) =>
+            if (response.nonEmpty)
+              complete(StatusCodes.OK, response)
+            else
+              complete(StatusCodes.NoContent, s"No Step found with workflow $workflowId and step $stepId")
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch step ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to fetch step entity with workflowId : $workflowId and stepId : $stepId ")
+        }
+      }
+    } ~ path("step" / LongNumber / "status") { stepId =>
+      get {
+        val report = Future {
+          val mayBeNode = Neo4jRepository.getSingleNodeByLabelAndProperty(Step.labelName, "id", stepId)
+          val mayBeStep = mayBeNode.flatMap(node => Step.fromNeo4jGraph(node.getId))
+          mayBeStep.map(step => step.report)
+        }
+        onComplete(report) {
+          case Success(response) =>
+            if (response.nonEmpty)
+              complete(StatusCodes.OK, response)
+            else
+              complete(StatusCodes.NoContent, s"No Step found with workflow $workflowId and step $stepId")
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch Execution report ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to get Report with workflow $workflowId and step $stepId")
+        }
+      }
+    }
+  } ~ pathPrefix("workflows") {
+    path(LongNumber / "status") { workflowId =>
+      parameter("start") { start =>
+        val workflowExecution = Future {
+          val workFlowExecution = getRunningWorkflowExecution(workflowId)
+          workFlowExecution match {
+            case Some(workflowExec) =>
+              for {
+                workflow <- Workflow.fromNeo4jGraph(workflowId)
+                execution <- workflow.execution
+              } yield {
+                val from = if (start.toInt == 0) 1 else start.toInt
+                if (from < execution.logs.size) {
+                  execution.copy(logs = execution.logs.slice(from, execution.logs.size))
+                } else {
+                  execution.copy(logs = List.empty[String])
+                }
+              }
+            case None =>
+              logger.warn(s"No workflow found with Id: $workflowId")
+              throw new Exception(s"No running workflow found with Id : $workflowId")
+          }
+        }
+        onComplete(workflowExecution) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch the WorkflowExecution with given WorkflowID : $workflowId", exception)
+            complete(StatusCodes.BadRequest, s"No Running Workflow is found with ID : $workflowId")
+        }
+      }
+    } ~ path(LongNumber / "publish") { workflowId =>
+      put {
+        entity(as[Inventory]) { inventory =>
+          val publishedInventory = Future {
+            for {
+              workflow <- getWorkflow(workflowId)
+            } yield {
+              val marshlledInventory = addJsonToInventory(inventory)
+              workflow.copy(publishedInventory = Some(marshlledInventory))
+              workflow.toNeo4jGraph(workflow)
+              addInventory(workflowId, inventory)
+              "Workflow is published"
+            }
+          }
+          onComplete(publishedInventory) {
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error(s"Unable to publish the inventory ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to publish the inventory")
+          }
+        }
+      } ~ get {
+        val publishedInventory = Future {
+          for {
+            workflow <- getWorkflow(workflowId)
+          } yield {
+            workflow.publishedInventory
+          }
+        }
+        onComplete(publishedInventory) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to fetch Published Inventory ${exception.getMessage()}", exception)
+            complete(StatusCodes.BadRequest, "Unable to fetch Published Inventory")
+        }
+      }
+    } ~ path(LongNumber) { workflowId =>
+      delete {
+        val isDeleted = Future {
+          for {
+            workflow <- getWorkflow(workflowId)
+          } yield {
+            workflowCompleted(workflow, WorkFlowExecutionStatus.INTERRUPTED)
+            val execHistory = workflow.executionHistory
+            execHistory.foreach(workflowExecution => workflowExecution.id.foreach(id => Neo4jRepository.deleteEntity(id)))
+            val steps = workflow.steps.foreach(step => step.id.foreach(id => Neo4jRepository.deleteEntity(id)))
+            workflow.module.map { module =>
+              val path = FilenameUtils.getFullPath(module.path)
+              val file = new File(path)
+              CommonFileUtils.deleteDirectory(file)
+              true
+            }
+          }
+        }
+        onComplete(isDeleted) {
+          case Success(response) =>
+            complete(StatusCodes.OK, "Workflow deleted succesfully")
+          case Failure(exception) =>
+            logger.error(s"Unable to delete workflow ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to delete workflow with id $workflowId")
+        }
+      }
+    }
+  }
+
+  def getRunningWorkflowExecution(workflowId: Long): Option[WorkflowExecution] = {
+    if (currentWorkflows.contains(workflowId)) {
+      currentWorkflows(workflowId).workflow.execution
+    } else {
+      None
+    }
+  }
+
+  def addJsonToInventory(inventory: Inventory): Inventory = {
+    val inventoryJsVal = inventoryFormat.write(inventory)
+    inventory.copy(json = inventoryJsVal.toString)
+  }
+
+  def workflowCompleted(workflow: Workflow, workFlowExecutionStatus: WorkFlowExecutionStatus): Unit = {
+    for {
+      workflowExec <- workflow.execution
+    } yield {
+      val stoppedWorkflowExec = workflowExec.copy(status = Some(workFlowExecutionStatus))
+      stoppedWorkflowExec.toNeo4jGraph(stoppedWorkflowExec)
+      ansibleWorkflowProcessor.stopWorkflow(workflow)
+      workflow.id.map(id => currentWorkflows.remove(id))
     }
   }
 
   def getWorkflow(workflowId: Long): Option[Workflow] = {
     val mayBeWorkflow = Workflow.fromNeo4jGraph(workflowId)
     mayBeWorkflow.map { w =>
-        val steps = w.steps
-        val sortedStepsByTaskId = steps.map { step =>
-          val ansiblePlay = step.script.asInstanceOf[AnsiblePlay]
-          val tasks = ansiblePlay.taskList
-          val sortedTasks = tasks.sortBy(_.id)
-          ansiblePlay.copy(taskList = sortedTasks)
-          step.copy(script = ansiblePlay)
+      val steps = w.steps
+      val sortedStepsByTaskId = steps.map { step =>
+        val ansiblePlay = step.script.asInstanceOf[AnsiblePlay]
+        val tasks = ansiblePlay.taskList
+        val sortedTasks = tasks.sortBy(_.id)
+        ansiblePlay.copy(taskList = sortedTasks)
+        step.copy(script = ansiblePlay)
+      }
+      val sortedStepsByExcOrder = sortedStepsByTaskId.sortBy(_.executionOrder)
+      val workflow = w.copy(steps = sortedStepsByExcOrder)
+      workflow
+    }
+  }
+
+  def addInventory(workflowId: Long, inventory: Inventory): Unit = {
+    val mayBeWorkflow = getWorkflow(workflowId)
+    mayBeWorkflow match {
+      case Some(wkfl) =>
+        val mayBeExecution = wkfl.execution
+        val (workflow, newExecution) = mayBeExecution match {
+          case Some(exc) =>
+            exc.status match {
+              case Some(WorkFlowExecutionStatus.STARTED) =>
+                throw new RuntimeException(s"Workflow with id [ $workflowId ] is currently running, cannot update inventory")
+              case Some(WorkFlowExecutionStatus.FAILED) | Some(WorkFlowExecutionStatus.SUCCESS) =>
+                (addWorkflowExecutionHistory(wkfl, exc), None)
+              case _ => (wkfl, Some(exc))
+            }
+          case None => (wkfl, None)
         }
-        val sortedStepsByExcOrder = sortedStepsByTaskId.sortBy(_.executionOrder)
-        val workflow = w.copy(steps = sortedStepsByExcOrder)
-        workflow
+        val mayBeId = newExecution.flatMap(_.id)
+        mayBeId match {
+          case Some(id) =>
+            inventory.toNeo4jGraph(inventory)
+            mayBeExecution.map { exc =>
+              exc.copy(inventory = Some(inventory))
+              exc.toNeo4jGraph(exc)
+            }
+          case None =>
+            val exc = WorkflowExecution(Some(inventory))
+            workflow.copy(execution = Some(exc))
+            workflow.toNeo4jGraph(workflow)
+        }
+      case None => throw new RuntimeException(s"No workflow with id [ $workflowId ] found")
+    }
+  }
+
+  def addWorkflowExecutionHistory(workflow: Workflow, execution: WorkflowExecution): Workflow = {
+    val wkfl = workflow.copy(executionHistory = execution :: workflow.executionHistory)
+    wkfl.toNeo4jGraph(wkfl)
+    wkfl
+  }
+
+  def readContent(content: ScriptContent): Option[ScriptContent] = {
+    val mayBePath = buildPath(content.path, content.scriptType)
+    mayBePath.map { path =>
+      val fileToRead = path.concat(File.separator).concat(content.name)
+      val f = new File(fileToRead)
+      if (!f.exists()) {
+        throw new RuntimeException(s"File $fileToRead not found")
+      }
+      try {
+        val fileContent = CommonFileUtils.readFileToString(f)
+        content.copy(content = fileContent)
+      } catch {
+        case e: IOException => throw new RuntimeException(s"Cannot read $fileToRead")
+      }
+    }
+  }
+
+  def buildPath(path: String, scriptType: ScriptType): Option[String] = {
+    scriptType match {
+      case ScriptType.Script =>
+        val targetFile = new StringBuilder
+        targetFile.append(FilenameUtils.getFullPathNoEndSeparator(path)).append(File.separator).append("files")
+        Some(targetFile.toString)
+      case _ => None
+    }
+  }
+
+  def exportWorkflow(modulePath: String, workflow: Workflow): String = {
+    val workflowZipPath = Constants.TEMP_DIR_LOC + File.separator + System.currentTimeMillis() + ""
+    val workflowName = workflow.name
+    logger.info(s"Exporting workflow [ $workflowName ] to $workflowZipPath")
+    val dir = new File(workflowZipPath)
+    dir.mkdirs
+    val inventoryFile = new File(modulePath.concat(File.separator).concat("inventory_cjo.json"))
+    for {
+      exc <- workflow.execution
+      inv <- exc.inventory
+    } yield {
+      try {
+        CommonFileUtils.writeStringToFile(inventoryFile, inv.json)
+      } catch {
+        case e: IOException =>
+          logger.error(s"Failed to export inventory for workflow [ $workflowName ]")
+      }
+    }
+    val workflowZipFile = new StringBuilder(workflowZipPath)
+      .append(File.separator).append(workflowName).append(".zip")
+    try {
+      zipWorkflow(
+        FilenameUtils.getFullPathNoEndSeparator(modulePath), workflowZipFile.toString
+      )
+    } catch {
+      case e: IOException => logger.error(e.getMessage, e)
+        throw new RuntimeException(s"Error while exporting workflow [ $workflowName ]")
+    }
+    inventoryFile.delete
+    workflowZipFile.toString
+  }
+
+  def zipWorkflow(source: String, dest: String): Unit = {
+    val sourceDir = new File(source)
+    val fos = new FileOutputStream(dest)
+    val zos = new ZipOutputStream(fos)
+    val fileList = getFileList(sourceDir)
+    fileList.foreach { filePath =>
+      val ze = new ZipEntry(filePath.substring(sourceDir.getAbsolutePath.length + 1, filePath.length))
+      zos.putNextEntry(ze)
+      val fis = new FileInputStream(filePath)
+      val size = 1024
+      val buffer = new Array[Byte](size)
+      var len = 0
+      while ( {
+        len = fis.read(buffer)
+        len > 0
+      }) {
+        zos.write(buffer, 0, len)
+      }
+      zos.closeEntry()
+      fis.close()
+    }
+    zos.close()
+    fos.close()
+  }
+
+  def getFileList(dir: File, fileList: List[String] = List.empty[String]): List[String] = {
+    val files = dir.listFiles()
+    files.foldLeft(fileList) { (list, file) =>
+      if (file.isFile) file.getAbsolutePath :: list else getFileList(file, list)
+    }
+  }
+
+  def cloneWorkflow(workflowId: Long, wfName: String): Option[Workflow] = {
+    val existingWorkflow = getWorkflow(workflowId)
+    for {
+      workflow <- existingWorkflow
+      module <- workflow.module
+    } yield {
+      val modulePath = module.path
+      val workflowZipPath = exportWorkflow(modulePath, workflow)
+      val workflowZip = new File(workflowZipPath)
+      //TODO add module
+      val newModule = module
+      val existingPlaybooks = workflow.playBooks
+      val newPlayBooks = existingPlaybooks.map { playBook =>
+        AnsiblePlayBook(None, playBook.name, None, List.empty[AnsiblePlay], List.empty[Variable])
+      }
+      Workflow(wfName, module, newPlayBooks)
+      //TODO addWorkflow
     }
   }
 
@@ -1014,7 +1515,7 @@ object Main extends App {
           entity(as[Site1]) { site =>
             val buildSite = Future {
               val savedSite = populateInstances(site)
-              savedSite.id.foreach(siteId => cachedSite.put(siteId, savedSite))
+              savedSite.id.foreach(siteId => SharedSiteCache.putSite(siteId.toString, savedSite))
               savedSite
             }
             onComplete(buildSite) {
@@ -1029,14 +1530,12 @@ object Main extends App {
     } ~ path("site" / "save" / LongNumber) { siteId =>
       withRequestTimeout(2.minutes) {
         put {
-          val siteResponse = Future {
-            val mayBeSite = cachedSite.get(siteId)
-            mayBeSite match {
+          val futureSite = SharedSiteCache.getSite(siteId.toString)
+          val siteResponse = futureSite.map {
               case Some(site) =>
                 site.toNeo4jGraph(site)
                 indexSite(site)
               case None => throw new NotFoundException(s"Site with id : $siteId is not found!")
-            }
           }
           onComplete(siteResponse) {
             case Success(response) => complete(StatusCodes.OK, "Site saved successfully!")
@@ -1049,9 +1548,7 @@ object Main extends App {
     } ~ path("site" / LongNumber) {
       siteId =>
         get {
-          val siteObj = Future {
-            cachedSite.get(siteId)
-          }
+          val siteObj = SharedSiteCache.getSite(siteId.toString)
           onComplete(siteObj) {
             case Success(response) => complete(StatusCodes.OK, response)
             case Failure(exception) =>
@@ -1142,15 +1639,13 @@ object Main extends App {
     } ~ get {
       path("tags" / LongNumber) {
         siteId =>
-          val tags = Future {
-            val mayBeSite = cachedSite.get(siteId)
-            mayBeSite match {
+          val futureSite = SharedSiteCache.getSite(siteId.toString)
+          val tags = futureSite.map {
               case Some(site) =>
                 site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
               case None =>
                 logger.warn(s"Site Entity with ID : $siteId is Not Found")
                 throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
-            }
           }
           onComplete(tags) {
             case Success(response) => complete(StatusCodes.OK, response)
@@ -1161,9 +1656,8 @@ object Main extends App {
       }
     } ~ path("keypairs" / LongNumber) { siteId =>
       get {
-        val listOfKeyPairs = Future {
-          val mayBeSite = cachedSite.get(siteId)
-          mayBeSite match {
+        val futureSite = SharedSiteCache.getSite(siteId.toString)
+        val listOfKeyPairs = futureSite.map {
             case Some(site) =>
               val keyPairs = site.instances.flatMap { instance =>
                 instance.sshAccessInfo.map(x => x.keyPair)
@@ -1172,7 +1666,6 @@ object Main extends App {
             case None =>
               logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
               Page[KeyPairInfo](List.empty[KeyPairInfo])
-          }
         }
         onComplete(listOfKeyPairs) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1215,10 +1708,8 @@ object Main extends App {
     } ~ path("site" / "filter" / LongNumber) { siteId =>
       put {
         entity(as[SiteFilter]) { siteFilter =>
-          val filteredSite = Future {
-            val filters = siteFilter.filters
-            populateFilteredInstances(siteId, filters)
-          }
+          val filters = siteFilter.filters
+          val filteredSite = populateFilteredInstances(siteId, filters)
           onComplete(filteredSite) {
             case Success(successResponse) => complete(StatusCodes.OK, successResponse)
             case Failure(ex) =>
@@ -1402,6 +1893,9 @@ object Main extends App {
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
       esServiceRoutes ~ workflowRoutes
   }
+
+  AGU.startUp(List("2551","2552"))
+
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
 
@@ -2142,12 +2636,12 @@ object Main extends App {
           }
           val instanceNode = Neo4jRepository.getNodeByProperty("Instance", "name", name)
           instanceNode match {
-            case Some(node) => Instance.fromNeo4jGraph(node.getId).get
+            case Some(node) => Instance.fromNeo4jGraph(node.getId)
             case None =>
               val name = "echo node"
               val tags: List[KeyValueInfo] = List(KeyValueInfo(None, "tag", "tag"))
               val processInfo = ProcessInfo(1, 1, "init")
-              Instance(name, tags, Set(processInfo))
+              Option(Instance(name, tags, Set(processInfo)))
           }
         }
         onComplete(nodeInstance) {
@@ -2309,47 +2803,52 @@ object Main extends App {
       }
     } ~ path(LongNumber / "delta") { siteId =>
       get {
-        val siteDelta = Future {
           val mayBeSite = Site1.fromNeo4jGraph(siteId)
-          mayBeSite match {
-            case Some(site) =>
-              val instancesBeforeSync = site.instances
-              val synchedSite = populateInstances(site)
-              synchedSite.toNeo4jGraph(synchedSite)
-              val filteredSite = populateFilteredInstances(siteId, List.empty[Filter])
-              saveCachedSite(siteId)
-              filteredSite match {
-                case Some(siteInCache) =>
-                  val instancesAfterSync = siteInCache.instances
-                  val beforeSyncInstanceIds = instancesBeforeSync.flatMap(instance => instance.instanceId).toSet
-                  val afterSyncInstanceIds = instancesAfterSync.flatMap(instance => instance.instanceId).toSet
-                  val commonInstanceIds = beforeSyncInstanceIds.intersect(afterSyncInstanceIds)
-                  val deletedInstances = instancesBeforeSync.filterNot {
-                    instance =>
-                      instance.instanceId.exists { id =>
-                        commonInstanceIds.contains(id)
-                      }
-                  }
-                  val addedInstances = instancesAfterSync.filterNot {
-                    instance =>
-                      instance.instanceId.exists { id =>
-                        commonInstanceIds.contains(id)
-                      }
-                  }
-                  val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
-                    SiteDeltaStatus.toDeltaStatus("CHANGED")
-                  } else {
-                    SiteDeltaStatus.toDeltaStatus("UNCHANGED")
-                  }
-                  Some(SiteDelta(site.id, deltaStatus, addedInstances, deletedInstances))
-                case None =>
-                  logger.warn(s"could not get site from cache for siteId : $siteId")
-                  None
+          val siteDelta = mayBeSite match {
+          case Some(site) =>
+            val instancesBeforeSync = site.instances
+            val synchedSite = populateInstances(site)
+            synchedSite.toNeo4jGraph(synchedSite)
+            val futureSaveSite = saveCachedSite(siteId)
+            futureSaveSite.onComplete {
+              case Success(saved) => saved match {
+                case true => logger.info("saved site successfully from distributed cache")
+                case false => logger.warn("there is no site with given id in distributed cache to be saved")
               }
-            case None =>
-              logger.warn(s"could not get site with siteId : $siteId")
-              None
-          }
+              case Failure(ex) => logger.error(s"Unable to get Site from distributed cache. Failed with : ${ex.getMessage}", ex)
+            }
+            val filteredSite = populateFilteredInstances(siteId, List.empty[Filter])
+            filteredSite.map {
+              case Some(siteInCache) =>
+                val instancesAfterSync = siteInCache.instances
+                val beforeSyncInstanceIds = instancesBeforeSync.flatMap(instance => instance.instanceId).toSet
+                val afterSyncInstanceIds = instancesAfterSync.flatMap(instance => instance.instanceId).toSet
+                val commonInstanceIds = beforeSyncInstanceIds.intersect(afterSyncInstanceIds)
+                val deletedInstances = instancesBeforeSync.filterNot {
+                  instance =>
+                    instance.instanceId.exists { id =>
+                      commonInstanceIds.contains(id)
+                    }
+                }
+                val addedInstances = instancesAfterSync.filterNot {
+                  instance =>
+                    instance.instanceId.exists { id =>
+                      commonInstanceIds.contains(id)
+                    }
+                }
+                val deltaStatus = if (deletedInstances.nonEmpty || addedInstances.nonEmpty) {
+                  SiteDeltaStatus.toDeltaStatus("CHANGED")
+                } else {
+                  SiteDeltaStatus.toDeltaStatus("UNCHANGED")
+                }
+                Some(SiteDelta(site.id, deltaStatus, addedInstances, deletedInstances))
+              case None =>
+                logger.warn(s"could not get site from cache for siteId : $siteId")
+                None
+            }
+          case None =>
+            logger.warn(s"could not get site with siteId : $siteId")
+            Future.successful(None)
         }
         onComplete(siteDelta) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -2756,13 +3255,13 @@ object Main extends App {
         }
 
       } ~
-      path("site" / LongNumber / "policies" / Segment ) {
-        (siteId,policyId) => {
+      path("site" / LongNumber / "policies" / Segment) {
+        (siteId, policyId) => {
           get {
-          val mayBePolicy =
-            Future {
-              SiteManagerImpl.getAutoScalingPolicy(siteId,policyId)
-            }
+            val mayBePolicy =
+              Future {
+                SiteManagerImpl.getAutoScalingPolicy(siteId, policyId)
+              }
             onComplete(mayBePolicy) {
               case Success(policyList) => complete(StatusCodes.OK, policyList)
               case Failure(ex) => logger.info(s"Error while retrieving policy $siteId and $policyId ", ex)
@@ -2835,9 +3334,9 @@ object Main extends App {
     }
   }
 
-  def populateFilteredInstances(siteId: Long, filters: List[Filter]): Option[Site1] = {
-    val mayBeSite = cachedSite.get(siteId)
-    mayBeSite match {
+  def populateFilteredInstances(siteId: Long, filters: List[Filter]): Future[Option[Site1]] = {
+    val futureSite = SharedSiteCache.getSite(siteId.toString)
+    futureSite.map {
       case Some(site) =>
         val instances = site.instances
         val (siteFiltersToSave, filteredInstances) = if (filters.nonEmpty) {
@@ -2862,7 +3361,7 @@ object Main extends App {
         val siteToSave = Site1(site.id, site.siteName, instancesToSave, rInstancesToSave, siteFiltersToSave, lbsToSave, sgsToSave, site.groupsList,
           List.empty[Application], site.groupBy, site.scalingPolicies)
         siteToSave.toNeo4jGraph(siteToSave)
-        cachedSite.put(siteId, siteToSave)
+        SharedSiteCache.putSite(siteId.toString, siteToSave)
         Some(siteToSave)
       case None => logger.warn(s"could not get Site from cache for siteId : $siteId")
         None
@@ -3017,13 +3516,15 @@ object Main extends App {
     site1
   }
 
-  def saveCachedSite(siteId: Long): Boolean = {
-    val mayBeSite = cachedSite.get(siteId)
-    mayBeSite.foreach { site =>
-      site.toNeo4jGraph(site)
-      cachedSite.remove(siteId)
+  def saveCachedSite(siteId: Long): Future[Boolean] = {
+    val futureSite = SharedSiteCache.getSite(siteId.toString)
+    futureSite.map { mayBeSite =>
+      mayBeSite.foreach { site =>
+        site.toNeo4jGraph(site)
+        SharedSiteCache.removeSite(siteId.toString)
+      }
+      mayBeSite.isDefined
     }
-    mayBeSite.isDefined
   }
 
   def getInstance(siteId: Long, id: String): Option[Instance] = {
@@ -3354,7 +3855,7 @@ object Main extends App {
               }
             }
             val session = TerminalSession(terminalId, None, List.empty[String], context, sshSessions, date, date)
-            sessionCache.put(session.id, session)
+            SharedSessionCache.putSession(session.id.toString, session)
             s"Session created with session id: ${session.id}"
           }
           onComplete(session) {
@@ -3368,28 +3869,28 @@ object Main extends App {
     } ~ path(LongNumber / "execute") { terminalId =>
       put {
         entity(as[String]) { commandLine =>
-          val commandResult = Future {
-            val mayBeSession = sessionCache.get(terminalId)
-            val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
-            val result = mayBeSession match {
-              case Some(session) =>
-                val newSession = session.copy(lastUsedAt = new Date)
-                if (commandLine.indexOf('|') != -1) {
-                  val executedCommandResult = executePipedCommand(newSession, commandLine)
-                  Some(executedCommandResult)
-                } else if (session.currentCmdExecContext.instances.length > 0) {
-                  val executedCommandResult = executeSSHCommand(newSession, commandLine)
-                  Some(executedCommandResult)
-                } else {
-                  logger.warn(s"Not a valid command; commandLine : $commandLine")
-                  None
-                }
-              case None =>
-                // first thing that will hit us when we start running on a cluster
-                throw new IllegalStateException("no session with the given terminal id")
+            val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
+            val commandResult = futureOfSession.map { mayBeSession =>
+              val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
+              val result = mayBeSession match {
+                case Some(terminalSession) =>
+                  val newSession = terminalSession.copy(lastUsedAt = new Date)
+                  if (commandLine.indexOf('|') != -1) {
+                    val executedCommandResult = executePipedCommand(newSession, commandLine)
+                    Some(executedCommandResult)
+                  } else if (terminalSession.currentCmdExecContext.instances.length > 0) {
+                    val executedCommandResult = executeSSHCommand(newSession, commandLine)
+                    Some(executedCommandResult)
+                  } else {
+                    logger.warn(s"Not a valid command; commandLine : $commandLine")
+                    None
+                  }
+                case None =>
+                  // first thing that will hit us when we start running on a cluster
+                  throw new IllegalStateException("no session with the given terminal id")
+              }
+              result.getOrElse(CommandResult(List.empty[Line], currentCmdExecContext))
             }
-            result.getOrElse(CommandResult(List.empty[Line], currentCmdExecContext))
-          }
           onComplete(commandResult) {
             case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
             case Failure(exception) =>
@@ -3400,29 +3901,29 @@ object Main extends App {
       }
     } ~ path(LongNumber / "stop") { terminalId =>
       put {
-        val stopSession = Future {
-          val mayBeSession = sessionCache.get(terminalId)
-          mayBeSession match {
-            case Some(terminalSession) =>
-              val sessions = terminalSession.sshSessions.flatMap(sshSession => sshSession.session)
-              val ioExceptions = sessions.foldLeft(List.empty[java.io.IOException]) {
-                (list, session) =>
-                  try {
-                    session.disconnect()
-                    list
-                  }
-                  catch {
-                    case e: java.io.IOException => e :: list
-                  }
-              }
-              if (ioExceptions.nonEmpty) {
-                logger.error(s"Failed due to multiple problems: ", ioExceptions)
-                throw new RuntimeException("Multiple problems", ioExceptions(0))
-              }
-            case None => logger.warn("There is no open session with id " + terminalId)
+          val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
+          val stopSession = futureOfSession.map { mayBeSession =>
+            mayBeSession match {
+              case Some(terminalSession) =>
+                val sessions = terminalSession.sshSessions.flatMap(sshSession => sshSession.session)
+                val ioExceptions = sessions.foldLeft(List.empty[java.io.IOException]) {
+                  (list, session) =>
+                    try {
+                      session.disconnect()
+                      list
+                    }
+                    catch {
+                      case e: java.io.IOException => e :: list
+                    }
+                }
+                if (ioExceptions.nonEmpty) {
+                  logger.error(s"Failed due to multiple problems: ", ioExceptions)
+                  throw new RuntimeException("Multiple problems", ioExceptions(0))
+                }
+              case None => logger.warn("There is no open session with id " + terminalId)
+            }
+            "Successfully stopped session"
           }
-          "Successfully stopped session"
-        }
         onComplete(stopSession) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
