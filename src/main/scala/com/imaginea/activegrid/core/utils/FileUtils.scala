@@ -20,7 +20,14 @@ object FileUtils {
       writer.close()
     }
   }
-
+  def saveContentToFile(file:File,content:String) : Unit = {
+    val writer = new PrintWriter(file, "UTF-8")
+    try {
+      writer.print(content)
+    } finally {
+      writer.close()
+    }
+  }
   def createDirectories(dirName: String): Unit = {
     logger.debug(s"Checking for dir -  $dirName")
     val file = new File(dirName)

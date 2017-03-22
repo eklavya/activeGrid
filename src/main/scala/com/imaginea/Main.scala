@@ -38,7 +38,7 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   implicit val timeout = Timeout(15.seconds)
-  val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
+  val ansibleWorkflowProcessor = AnsibleWorkflowProcessor
   val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
