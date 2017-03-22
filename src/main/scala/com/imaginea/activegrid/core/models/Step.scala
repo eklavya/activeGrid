@@ -17,7 +17,8 @@ case class Step(override val id: Option[Long],
                 scope: Option[InventoryExecutionScope],
                 executionOrder: Int,
                 childStep: List[Step],
-                report: Option[StepExecutionReport]) extends BaseEntity
+                report: Option[StepExecutionReport],
+                globalInput: Option[StepInput]) extends BaseEntity
 
 object Step {
   val labelName = "Step"
@@ -30,7 +31,10 @@ object Step {
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def apply(name: String, script: Script): Step =
-    Step(None, None, name, None, None, script, None, None, 0, List.empty[Step], None)
+    Step(None, None, name, None, None, script, None, None, 0, List.empty[Step], None, None)
+
+  def apply(name: String, stepId: String, description: String, script: Script, globalInput: StepInput): Step =
+    Step(None, Some(stepId), name, Some(description), None, script, None, None, 0, List.empty[Step], None, Some(globalInput))
 
   implicit class StepImpl(step: Step) extends Neo4jRep[Step] {
     override def toNeo4jGraph(entity: Step): Node = {
@@ -109,7 +113,8 @@ object Step {
         scope,
         map("executionOrder").asInstanceOf[Int],
         steps,
-        report
+        report,
+        None
       )
     }
   }

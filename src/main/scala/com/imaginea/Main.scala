@@ -1888,6 +1888,67 @@ object Main extends App {
       }
     }
   }
+
+  val inputStepServiceRoutes = pathPrefix("workflow"){
+    path(LongNumber / "step" / "input"){ workflowId =>
+      put{
+        entity(as[TransferableDataInputStep]){ dataInputStep =>
+          val step = Future {
+            val workflow = getWorkflow(workflowId)
+
+            val step = unmarshalDataInputStep(dataInputStep)
+            //TODO here we need call create step metho written by naveed
+          }
+          onComplete(step){
+            case Success(response) => complete(StatusCodes.OK , response)
+            case Failure(exception) =>
+              logger.error("Unable to create step in workflow",exception)
+              complete(StatusCodes.BadRequest,"Unable create input step for workflow")
+          }
+        }
+      }~post {
+        entity(as[TransferableDataInputStep]) { dataInputStep =>
+          val inputStep = Future{
+            val mayBeWorkflow = getWorkflow(workflowId)
+            mayBeWorkflow match {
+              case Some(workflow) =>
+                val step = unmarshalDataInputStep(dataInputStep)
+                if(step.stepId.isDefined && step.stepId.nonEmpty){
+                  step.toNeo4jGraph(step)
+                }
+              case None =>
+                throw new Exception(s"No workflow found with id $workflowId")
+            }
+          }
+          onComplete(inputStep){
+            case Success(response) => complete(StatusCodes.OK, response)
+            case Failure(exception) =>
+              logger.error("Unable to upadate the workflow step ${exception.message}",exception)
+              complete(StatusCodes.BadRequest, "Unable to update the Step entity")
+          }
+
+        }
+      }
+    }
+  }
+
+  def unmarshalDataInputStep(dataInputStep: TransferableDataInputStep): Step ={
+      val scriptDefinition = ScriptDefinition.apply(ScriptType.PuppetDSL)
+      val keys = dataInputStep.keys
+      val values = dataInputStep.values
+      val map = Map[String,String]()
+      if(keys.size == values.size){
+        (keys zip values).foldLeft(map){
+        (map , keyValues) =>
+          val (key1 , value1 ) = keyValues
+          map + ((key1 , value1))
+        }
+      }
+      val stepInput = StepInput(None , map)
+      //TODO need to add jsonvalues to map
+      Step(dataInputStep.name,dataInputStep.stepId,dataInputStep.description, scriptDefinition,stepInput)
+  }
+
   val route: Route = pathPrefix("api" / AGU.APIVERSION) {
     siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
