@@ -44,10 +44,10 @@ object ScriptDefinition {
         val argumentNode = argument.toNeo4jGraph(argument)
         Neo4jRepository.createRelation(scriptDefAndScriptArg, parentNode, argumentNode)
       }
-      val puppetNode = entity.dependencies.map {
+      entity.dependencies.map {
         dependenoces =>
           val childNode = dependenoces.toNeo4jGraph(dependenoces)
-          Neo4jRepository.createRelation(scriptDefAndPuppetDependency, parentNode, puppetNode)
+          Neo4jRepository.createRelation(scriptDefAndPuppetDependency, parentNode, childNode)
       }
 
       parentNode

@@ -701,7 +701,7 @@ object Main extends App {
 
   implicit object StepFormat extends RootJsonFormat[Step] {
     val fieldNames = List("id", "stepId", "name", "description", "stepType", "scriptDefinition", "input", "scope",
-      "executionOrder", "childStep", "report")
+      "executionOrder", "childStep", "report", "globalInput")
 
     // scalastyle:off magic.number
     override def write(obj: Step): JsValue = {
@@ -719,7 +719,8 @@ object Main extends App {
         AGU.objectToJsValue[InventoryExecutionScope](fieldNames(7), obj.scope, inventoryExecFormat) ++
         AGU.stringToJsField(fieldNames(8), Some(obj.executionOrder.toString)) ++
         AGU.listToJsValue(fieldNames(9), obj.childStep, StepFormat) ++
-        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), obj.report, stepExecFormat)
+        AGU.objectToJsValue[StepExecutionReport](fieldNames(10), obj.report, stepExecFormat) ++
+      AGU.objectToJsValue[StepInput](fieldNames(11),obj.globalInput , stepInputFormat)
       JsObject(fields: _*)
     }
 
@@ -737,6 +738,7 @@ object Main extends App {
             logger.warn("Unable to deserialize Script in Step,property 'taskList' not found")
             throw DeserializationException("Unable to deserialize  Script,property 'taskList' not found")
           }
+
           val mayBeStep: Option[Step] = for {
             name <- AGU.getProperty[String](map, fieldNames(2))
             scriptJsVal <- AGU.getProperty[JsValue](map, fieldNames(5))
@@ -753,7 +755,8 @@ object Main extends App {
               AGU.getProperty[JsValue](map, fieldNames(7)).map(inventoryExecFormat.read),
               executionOrder,
               AGU.getObjectsFromJson[Step](map, "childStep", StepFormat),
-              AGU.getProperty[JsValue](map, fieldNames(10)).map(stepExecFormat.read)
+              AGU.getProperty[JsValue](map, fieldNames(10)).map(stepExecFormat.read),
+              None
             )
           }
           mayBeStep match {
@@ -1889,41 +1892,66 @@ object Main extends App {
     }
   }
 
-  val inputStepServiceRoutes = pathPrefix("workflow"){
-    path(LongNumber / "step" / "input"){ workflowId =>
-      put{
-        entity(as[TransferableDataInputStep]){ dataInputStep =>
+  implicit object TransferableDataInputStepFormat extends RootJsonFormat[TransferableDataInputStep] {
+    override def write(obj: TransferableDataInputStep): JsValue = ???
+
+    override def read(json: JsValue): TransferableDataInputStep = {
+      val fieldNames = List("name", "description", "stepId", "keys", "values", "jsonValues")
+      json match {
+        case JsObject(map) =>
+          TransferableDataInputStep(
+            AGU.getProperty[String](map, fieldNames.head).get,
+            AGU.getProperty[String](map, fieldNames(1)).get,
+            AGU.getProperty[String](map, fieldNames(2)).get,
+            AGU.getObjectsFromJson[String](map, fieldNames(3), StringJsonFormat),
+            AGU.getObjectsFromJson[String](map, fieldNames(4), StringJsonFormat),
+            AGU.getObjectsFromJson[String](map, fieldNames(5), StringJsonFormat)
+          )
+        case _ => throw new DeserializationException("Unable to deserialize the Input step data")
+      }
+
+    }
+  }
+
+  val inputStepServiceRoutes = pathPrefix("workflow") {
+    path(LongNumber / "step" / "input") { workflowId =>
+      put {
+        entity(as[TransferableDataInputStep]) { dataInputStep =>
           val step = Future {
             val workflow = getWorkflow(workflowId)
 
             val step = unmarshalDataInputStep(dataInputStep)
             //TODO here we need call create step metho written by naveed
           }
-          onComplete(step){
-            case Success(response) => complete(StatusCodes.OK , response)
+          onComplete(step) {
+            case Success(response) => complete(StatusCodes.OK, response)
             case Failure(exception) =>
-              logger.error("Unable to create step in workflow",exception)
-              complete(StatusCodes.BadRequest,"Unable create input step for workflow")
+              logger.error("Unable to create step in workflow", exception)
+              complete(StatusCodes.BadRequest, "Unable create input step for workflow")
           }
         }
-      }~post {
+      } ~ post {
         entity(as[TransferableDataInputStep]) { dataInputStep =>
-          val inputStep = Future{
+          val inputStep = Future {
             val mayBeWorkflow = getWorkflow(workflowId)
             mayBeWorkflow match {
               case Some(workflow) =>
                 val step = unmarshalDataInputStep(dataInputStep)
-                if(step.stepId.isDefined && step.stepId.nonEmpty){
-                  step.toNeo4jGraph(step)
+                if (step.stepId.isDefined && step.stepId.nonEmpty) {
+                  val node = step.toNeo4jGraph(step)
+                  step.fromNeo4jGraph(node.getId)
+                } else {
+                  logger.warn("No step id found for step updation")
+                  throw new Exception(s" Step id shoud not be empty")
                 }
               case None =>
                 throw new Exception(s"No workflow found with id $workflowId")
             }
           }
-          onComplete(inputStep){
+          onComplete(inputStep) {
             case Success(response) => complete(StatusCodes.OK, response)
             case Failure(exception) =>
-              logger.error("Unable to upadate the workflow step ${exception.message}",exception)
+              logger.error("Unable to upadate the workflow step ${exception.message}", exception)
               complete(StatusCodes.BadRequest, "Unable to update the Step entity")
           }
 
@@ -1932,21 +1960,21 @@ object Main extends App {
     }
   }
 
-  def unmarshalDataInputStep(dataInputStep: TransferableDataInputStep): Step ={
-      val scriptDefinition = ScriptDefinition.apply(ScriptType.PuppetDSL)
-      val keys = dataInputStep.keys
-      val values = dataInputStep.values
-      val map = Map[String,String]()
-      if(keys.size == values.size){
-        (keys zip values).foldLeft(map){
-        (map , keyValues) =>
-          val (key1 , value1 ) = keyValues
-          map + ((key1 , value1))
-        }
+  def unmarshalDataInputStep(dataInputStep: TransferableDataInputStep): Step = {
+    val scriptDefinition = ScriptDefinition.apply(ScriptType.PuppetDSL)
+    val keys = dataInputStep.keys
+    val values = dataInputStep.values
+    val map = Map[String, String]()
+    if (keys.size == values.size) {
+      (keys zip values).foldLeft(map) {
+        (map, keyValues) =>
+          val (key1, value1) = keyValues
+          map + ((key1, value1))
       }
-      val stepInput = StepInput(None , map)
-      //TODO need to add jsonvalues to map
-      Step(dataInputStep.name,dataInputStep.stepId,dataInputStep.description, scriptDefinition,stepInput)
+    }
+    val stepInput = StepInput(None, map)
+    //TODO need to add jsonvalues to map
+    Step(dataInputStep.name, dataInputStep.stepId, dataInputStep.description, scriptDefinition, stepInput)
   }
 
   val route: Route = pathPrefix("api" / AGU.APIVERSION) {

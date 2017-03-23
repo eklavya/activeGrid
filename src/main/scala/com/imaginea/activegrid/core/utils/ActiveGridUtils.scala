@@ -6,7 +6,7 @@ import com.imaginea.activegrid.core.models._ // scalastyle:ignore underscore.imp
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-import spray.json._ // scalastyle:ignore underscore.import
+import spray.json._
 
 import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 
@@ -74,7 +74,7 @@ object ActiveGridUtils {
     }
   }
 
-  def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
+  def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: JsonFormat[T]): List[T] = {
     if (propertyMap.contains(property)) {
       val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
       listOfObjs.elements.toList.map(formateObject.read)
