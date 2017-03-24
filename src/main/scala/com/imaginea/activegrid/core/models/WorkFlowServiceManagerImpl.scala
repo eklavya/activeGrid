@@ -39,7 +39,7 @@ class WorkFlowServiceManagerImpl {
                 exec.id.getOrElse(0L), executionUpdate)
               val logListener = WorkflowExecLogListener.get()
               val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
-              val workflowListener: WorkflowListener = new WorkflowExecutionListener()
+              val workflowListener: WorkflowExecutionListener = new WorkflowExecutionListener()
               val workflowExecLogListener = WorkflowExecLogListener.get()
               val workflowContext: WorkflowContext = new WorkflowContext(wf, workflowListener, workflowExecLogListener,None,None,None)
               WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode.getOrElse(WorkflowMode.toWorkFlowMode("AGENT"))).map {

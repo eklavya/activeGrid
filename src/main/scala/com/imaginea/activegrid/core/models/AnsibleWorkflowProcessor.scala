@@ -16,20 +16,20 @@ import scala.concurrent.duration.Duration
 /**
   * Created by nagulmeeras on 13/01/17.
   */
-/*class AnsibleWorkflowProcessor {
+class AnsibleWorkflowProcessor {
   val workflowExecutors = mutable.HashMap.empty[Long, Future[Unit]]
 
   def stopWorkflow(workflow: Workflow): Boolean = {
     workflow.id.exists(id => workflowExecutors.remove(id).isDefined)
   }
-}*/
-object AnsibleWorkflowProcessor extends WorkflowProcessor{
+}
+object AnsibleWorkflowProcessor extends WorkflowProcessor {
 
 
   val workflowExecutors = Map.empty[Long, ScheduledExecutorService]
   val logger = Logger(LoggerFactory.getLogger(AnsibleWorkflowProcessor.getClass.getName))
 
-    def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Unit = {
+  override def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Unit = {
     //scalastyle:off magic.number
     implicit val system = Main.system
     implicit val materializer = Main.materializer

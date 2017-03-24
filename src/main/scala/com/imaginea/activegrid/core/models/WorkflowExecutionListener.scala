@@ -4,13 +4,17 @@ package com.imaginea.activegrid.core.models
   * Created by sivag on 18/1/17.
   */
 //implementation of all methods.
-class WorkflowExecutionListener extends WorkflowListener {
+class WorkflowEvent{
+  //Todo instance variables.
+}
 
-  override def workflowStarted(we: WorkflowEvent): Unit = ??? //todo
+class WorkflowExecutionListener {
 
-  override def workflowCompleted(we: WorkflowEvent): Unit = ??? //todo
+   def workflowStarted(we: WorkflowEvent): Unit = ??? //todo
 
-  override def workflowFailed(we: WorkflowEvent): Unit = ??? //todo
+   def workflowCompleted(we: WorkflowEvent): Unit = ??? //todo
 
-  override def workflowStepFailed(we: WorkflowEvent): Unit = ??? //todo
+   def workflowFailed(we: WorkflowEvent): Unit = ??? //todo
+
+   def workflowStepFailed(we: WorkflowEvent): Unit = ??? //todo
 }
