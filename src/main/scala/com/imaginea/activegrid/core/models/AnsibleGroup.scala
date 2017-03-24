@@ -6,7 +6,7 @@ import org.neo4j.graphdb.Node
   * Created by shareefn on 2/1/17.
   */
 case class AnsibleGroup(override val id: Option[Long],
-                        name: String,
+                        name: Option[String],
                         variables: List[Variable]) extends BaseEntity
 
 object AnsibleGroup {
@@ -37,7 +37,7 @@ object AnsibleGroup {
       val childNodeIds = Neo4jRepository.getChildNodeIds(id, ansibleGroupAndVariable)
       val variables = childNodeIds.flatMap(childId => Variable.fromNeo4jGraph(childId))
       AnsibleGroup(Some(id),
-        map("name").asInstanceOf[String],
+        map.get("name").asInstanceOf[Option[String]],
         variables
       )
     }
