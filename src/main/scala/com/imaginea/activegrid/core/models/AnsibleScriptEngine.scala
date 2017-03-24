@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory
 /**
   * Created by sivag on 23/3/17.
   */
-class AnsibleScriptEngine {
   class AnsibleScriptEngine(val inventory: Inventory, val workflowContext: WorkflowContext, val playBook: AnsiblePlayBook) {
 
     val workflowId: Long = workflowContext.workflow.id.getOrElse(0L)
@@ -33,6 +32,4 @@ class AnsibleScriptEngine {
       logger.info("Proces");
       //todo passing processArgs to execute.
     }
-
-  }
 }
