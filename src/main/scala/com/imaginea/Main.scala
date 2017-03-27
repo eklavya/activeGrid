@@ -2,7 +2,7 @@ package com.imaginea
 
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
-import java.util.{Date, UUID}
+import java.util.Date
 import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
@@ -1448,8 +1448,8 @@ object Main extends App {
   }
 
   def getRandomString: String = {
-    val radix = 36
-    java.lang.Long.toString(Math.abs(UUID.randomUUID.getLeastSignificantBits()), radix)
+    val size = 14
+    Random.alphanumeric.take(size).mkString
   }
 
   def findLastStep(steps: List[Step]): Option[Step] = {
