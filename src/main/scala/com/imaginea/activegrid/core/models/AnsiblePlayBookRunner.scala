@@ -9,10 +9,14 @@ import org.slf4j.LoggerFactory
   */
 class AnsiblePlayBookRunner(workflowContext: WorkflowContext)  {
 
-  def executePlayBook() : Unit = ???
+  val logger = Logger(LoggerFactory.getLogger(AnsiblePlayBookRunner.this.getClass.getName))
+
+  def executePlayBook() : Unit = {
+    //todo implementation.
+  }
 
   def getWorkflowContext(): WorkflowContext = workflowContext
 
-  val logger = Logger(LoggerFactory.getLogger(AnsiblePlayBookRunner.this.getClass.getName))
+
 
 }
