@@ -37,27 +37,18 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
     val workflow = workflowContext.workflow
     val playBookRunner = new AnsiblePlayBookRunner(workflowContext)
     if (CurrentRunningWorkflows.size > WorkflowConstants.maxParlellWorkflows) {
-      logger.error("Too many parlell workflows triggered, Maximum allowed parllel " +
-        "worksflows are " + WorkflowConstants.maxParlellWorkflows)
-      throw new Exception("Max-limit already reached!, Allowed limit: " +
-        WorkflowConstants.maxParlellWorkflows)
+      logger.error("Too many parlell workflows triggered, Maximum allowed parllel worksflows are " + WorkflowConstants.maxParlellWorkflows)
+      throw new Exception("Max-limit already reached!, Allowed limit: " + WorkflowConstants.maxParlellWorkflows)
     }
     val workflowId = workflow.id.getOrElse(0L)
     if(CurrentRunningWorkflows.get(workflowId).isEmpty) {
       if (async) {
-        system.scheduler.schedule(2.seconds, 2.seconds) {
-          playBookRunner.executePlayBook() recover {
-            case _ => //todo update distributed cache
-              logger.error("An unexpected error has occurred")
-          }
-        }
-        Try(true)
+        system.scheduler.schedule(2.seconds, 2.seconds) { playBookRunner.execute() }
+       } else {
+        playBookRunner.execute()
       }
-      else {
-        playBookRunner.executePlayBook()
-      }
-    }
-    else {
+      Try(true)
+    } else {
       logger.info("Workflow [" + workflow.name + "] is currently running, Please try after some time.")
       Try(false)
     }

@@ -17,6 +17,13 @@ class AnsiblePlayBookRunner(workflowContext: WorkflowContext) {
     //todo implementation.
     Try(false) //dummy response.
   }
+  def execute() : Try[Boolean] = {
+     executePlayBook() recover {
+       case _ => //todo update distributed cache
+       logger.error("An unexpected error has occurred")
+     }
+    Try(true);
+  }
 
   def getWorkflowContext(): WorkflowContext = workflowContext
 
