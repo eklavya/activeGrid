@@ -48,7 +48,7 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
         system.scheduler.schedule(2.seconds, 2.seconds) {
           playBookRunner.executePlayBook() recover {
             case _ => //todo update distributed cache
-              logger.error("An unexpected error has occurred", _)
+              logger.error("An unexpected error has occurred")
           }
         }
         Try(true)

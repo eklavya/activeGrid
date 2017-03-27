@@ -1,5 +1,7 @@
 package com.imaginea.activegrid.core.models
 
+import scala.util.Try
+
 /**
   * Created by sivag on 17/1/17.
   */
@@ -16,7 +18,7 @@ package com.imaginea.activegrid.core.models
     *
     * @param workflowContext
     */
-  def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Unit
+  def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Try[Boolean]
 
 
 
