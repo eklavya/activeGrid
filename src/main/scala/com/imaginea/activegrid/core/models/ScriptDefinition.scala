@@ -8,13 +8,13 @@ import org.slf4j.LoggerFactory
   * Created by shareefn on 20/12/16.
   */
 case class ScriptDefinition(override val id: Option[Long],
-                            name: Option[String],
-                            description: Option[String],
-                            language: ScriptType,
-                            version: Option[String],
-                            module: Option[Module],
-                            arguments: List[ScriptArgument],
-                            dependencies: Option[PuppetScriptDependencies]) extends Script
+                            override val name: Option[String],
+                            override val description: Option[String],
+                            override val language: ScriptType,
+                            override val version: Option[String],
+                            override val module: Option[Module],
+                            override val arguments: List[ScriptArgument],
+                            override val dependencies: Option[PuppetScriptDependencies]) extends Script
 
 object ScriptDefinition {
   val labelName = "ScriptDefinition"

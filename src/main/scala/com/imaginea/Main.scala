@@ -1422,8 +1422,12 @@ object Main extends App {
         val plays = newPlayBook.playList
         plays.foreach { play =>
           play.copy(language = ScriptType.Ansible)
-          val step = Step(play.name, play)
-          createStep(ansibleWorkflow, step)
+          for{
+            name <- play.name
+          }yield {
+            val step = Step(name, play)
+            createStep(ansibleWorkflow, step)
+          }
         }
       }
     }
@@ -1996,10 +2000,14 @@ object Main extends App {
       put {
         entity(as[TransferableDataInputStep]) { dataInputStep =>
           val step = Future {
-            val workflow = getWorkflow(workflowId)
+            for{
+              workflow <- getWorkflow(workflowId)
+            } yield {
+              val unmarshalledStep = unmarshalDataInputStep(dataInputStep)
+              createStep(workflow, unmarshalledStep)
+              unmarshalledStep
+            }
 
-            val step = unmarshalDataInputStep(dataInputStep)
-            //TODO here we need call create step metho written by naveed
           }
           onComplete(step) {
             case Success(response) => complete(StatusCodes.OK, response)
