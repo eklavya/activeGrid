@@ -1,18 +1,17 @@
 package com.imaginea
 
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
-import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.Date
 import java.util.concurrent.TimeUnit
+import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import akka.actor.ActorSystem
-import akka.pattern.ask
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.Multipart.FormData
 import akka.http.scaladsl.model.{Multipart, StatusCodes}
-import akka.http.scaladsl.server.directives.ContentTypeResolver.Default
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.directives.ContentTypeResolver.Default
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
@@ -720,7 +719,7 @@ object Main extends App {
         AGU.stringToJsField(fieldNames(8), Some(obj.executionOrder.toString)) ++
         AGU.listToJsValue(fieldNames(9), obj.childStep, StepFormat) ++
         AGU.objectToJsValue[StepExecutionReport](fieldNames(10), obj.report, stepExecFormat) ++
-      AGU.objectToJsValue[StepInput](fieldNames(11),obj.globalInput , stepInputFormat)
+        AGU.objectToJsValue[StepInput](fieldNames(11), obj.globalInput, stepInputFormat)
       JsObject(fields: _*)
     }
 
@@ -1422,9 +1421,9 @@ object Main extends App {
         val plays = newPlayBook.playList
         plays.foreach { play =>
           play.copy(language = ScriptType.Ansible)
-          for{
+          for {
             name <- play.name
-          }yield {
+          } yield {
             val step = Step(name, play)
             createStep(ansibleWorkflow, step)
           }
@@ -1617,10 +1616,10 @@ object Main extends App {
         put {
           val futureSite = SharedSiteCache.getSite(siteId.toString)
           val siteResponse = futureSite.map {
-              case Some(site) =>
-                site.toNeo4jGraph(site)
-                indexSite(site)
-              case None => throw new NotFoundException(s"Site with id : $siteId is not found!")
+            case Some(site) =>
+              site.toNeo4jGraph(site)
+              indexSite(site)
+            case None => throw new NotFoundException(s"Site with id : $siteId is not found!")
           }
           onComplete(siteResponse) {
             case Success(response) => complete(StatusCodes.OK, "Site saved successfully!")
@@ -1726,11 +1725,11 @@ object Main extends App {
         siteId =>
           val futureSite = SharedSiteCache.getSite(siteId.toString)
           val tags = futureSite.map {
-              case Some(site) =>
-                site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
-              case None =>
-                logger.warn(s"Site Entity with ID : $siteId is Not Found")
-                throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
+            case Some(site) =>
+              site.instances.flatMap(instance => instance.tags.filter(tag => tag.key.equalsIgnoreCase(Constants.NAME_TAG_KEY)))
+            case None =>
+              logger.warn(s"Site Entity with ID : $siteId is Not Found")
+              throw new NotFoundException(s"Site Entity with ID : $siteId is Not Found")
           }
           onComplete(tags) {
             case Success(response) => complete(StatusCodes.OK, response)
@@ -1743,14 +1742,14 @@ object Main extends App {
       get {
         val futureSite = SharedSiteCache.getSite(siteId.toString)
         val listOfKeyPairs = futureSite.map {
-            case Some(site) =>
-              val keyPairs = site.instances.flatMap { instance =>
-                instance.sshAccessInfo.map(x => x.keyPair)
-              }
-              Page[KeyPairInfo](keyPairs)
-            case None =>
-              logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
-              Page[KeyPairInfo](List.empty[KeyPairInfo])
+          case Some(site) =>
+            val keyPairs = site.instances.flatMap { instance =>
+              instance.sshAccessInfo.map(x => x.keyPair)
+            }
+            Page[KeyPairInfo](keyPairs)
+          case None =>
+            logger.warn(s"Failed while doing fromNeo4jGraph of Site for siteId : $siteId")
+            Page[KeyPairInfo](List.empty[KeyPairInfo])
         }
         onComplete(listOfKeyPairs) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
@@ -1976,6 +1975,7 @@ object Main extends App {
 
   implicit object TransferableDataInputStepFormat extends RootJsonFormat[TransferableDataInputStep] {
     override def write(obj: TransferableDataInputStep): JsValue = ???
+
     // scalastyle:off magic.number
     override def read(json: JsValue): TransferableDataInputStep = {
       val fieldNames = List("name", "description", "stepId", "keys", "values", "jsonValues")
@@ -1993,6 +1993,7 @@ object Main extends App {
       }
 
     }
+
     // scalastyle:on magic.number
   }
 
@@ -2001,7 +2002,7 @@ object Main extends App {
       put {
         entity(as[TransferableDataInputStep]) { dataInputStep =>
           val step = Future {
-            for{
+            for {
               workflow <- getWorkflow(workflowId)
             } yield {
               val unmarshalledStep = unmarshalDataInputStep(dataInputStep)
@@ -2067,10 +2068,10 @@ object Main extends App {
   val route: Route = pathPrefix("api" / AGU.APIVERSION) {
     siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
-      esServiceRoutes ~ workflowRoutes
+      esServiceRoutes ~ workflowRoutes ~ inputStepServiceRoutes
   }
 
-  AGU.startUp(List("2551","2552"))
+  AGU.startUp(List("2551", "2552"))
 
   val bindingFuture = Http().bindAndHandle(route, AGU.HOST, AGU.PORT)
   val keyFilesDir: String = s"${Constants.tempDirectoryLocation}${Constants.FILE_SEPARATOR}"
@@ -2979,8 +2980,8 @@ object Main extends App {
       }
     } ~ path(LongNumber / "delta") { siteId =>
       get {
-          val mayBeSite = Site1.fromNeo4jGraph(siteId)
-          val siteDelta = mayBeSite match {
+        val mayBeSite = Site1.fromNeo4jGraph(siteId)
+        val siteDelta = mayBeSite match {
           case Some(site) =>
             val instancesBeforeSync = site.instances
             val synchedSite = populateInstances(site)
@@ -4045,28 +4046,28 @@ object Main extends App {
     } ~ path(LongNumber / "execute") { terminalId =>
       put {
         entity(as[String]) { commandLine =>
-            val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
-            val commandResult = futureOfSession.map { mayBeSession =>
-              val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
-              val result = mayBeSession match {
-                case Some(terminalSession) =>
-                  val newSession = terminalSession.copy(lastUsedAt = new Date)
-                  if (commandLine.indexOf('|') != -1) {
-                    val executedCommandResult = executePipedCommand(newSession, commandLine)
-                    Some(executedCommandResult)
-                  } else if (terminalSession.currentCmdExecContext.instances.length > 0) {
-                    val executedCommandResult = executeSSHCommand(newSession, commandLine)
-                    Some(executedCommandResult)
-                  } else {
-                    logger.warn(s"Not a valid command; commandLine : $commandLine")
-                    None
-                  }
-                case None =>
-                  // first thing that will hit us when we start running on a cluster
-                  throw new IllegalStateException("no session with the given terminal id")
-              }
-              result.getOrElse(CommandResult(List.empty[Line], currentCmdExecContext))
+          val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
+          val commandResult = futureOfSession.map { mayBeSession =>
+            val currentCmdExecContext = mayBeSession.map(_.currentCmdExecContext)
+            val result = mayBeSession match {
+              case Some(terminalSession) =>
+                val newSession = terminalSession.copy(lastUsedAt = new Date)
+                if (commandLine.indexOf('|') != -1) {
+                  val executedCommandResult = executePipedCommand(newSession, commandLine)
+                  Some(executedCommandResult)
+                } else if (terminalSession.currentCmdExecContext.instances.length > 0) {
+                  val executedCommandResult = executeSSHCommand(newSession, commandLine)
+                  Some(executedCommandResult)
+                } else {
+                  logger.warn(s"Not a valid command; commandLine : $commandLine")
+                  None
+                }
+              case None =>
+                // first thing that will hit us when we start running on a cluster
+                throw new IllegalStateException("no session with the given terminal id")
             }
+            result.getOrElse(CommandResult(List.empty[Line], currentCmdExecContext))
+          }
           onComplete(commandResult) {
             case Success(responseMessage) => complete(StatusCodes.OK, responseMessage)
             case Failure(exception) =>
@@ -4077,29 +4078,29 @@ object Main extends App {
       }
     } ~ path(LongNumber / "stop") { terminalId =>
       put {
-          val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
-          val stopSession = futureOfSession.map { mayBeSession =>
-            mayBeSession match {
-              case Some(terminalSession) =>
-                val sessions = terminalSession.sshSessions.flatMap(sshSession => sshSession.session)
-                val ioExceptions = sessions.foldLeft(List.empty[java.io.IOException]) {
-                  (list, session) =>
-                    try {
-                      session.disconnect()
-                      list
-                    }
-                    catch {
-                      case e: java.io.IOException => e :: list
-                    }
-                }
-                if (ioExceptions.nonEmpty) {
-                  logger.error(s"Failed due to multiple problems: ", ioExceptions)
-                  throw new RuntimeException("Multiple problems", ioExceptions(0))
-                }
-              case None => logger.warn("There is no open session with id " + terminalId)
-            }
-            "Successfully stopped session"
+        val futureOfSession = SharedSessionCache.getSession(terminalId.toString)
+        val stopSession = futureOfSession.map { mayBeSession =>
+          mayBeSession match {
+            case Some(terminalSession) =>
+              val sessions = terminalSession.sshSessions.flatMap(sshSession => sshSession.session)
+              val ioExceptions = sessions.foldLeft(List.empty[java.io.IOException]) {
+                (list, session) =>
+                  try {
+                    session.disconnect()
+                    list
+                  }
+                  catch {
+                    case e: java.io.IOException => e :: list
+                  }
+              }
+              if (ioExceptions.nonEmpty) {
+                logger.error(s"Failed due to multiple problems: ", ioExceptions)
+                throw new RuntimeException("Multiple problems", ioExceptions(0))
+              }
+            case None => logger.warn("There is no open session with id " + terminalId)
           }
+          "Successfully stopped session"
+        }
         onComplete(stopSession) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>

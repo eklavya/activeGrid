@@ -6,7 +6,7 @@ import com.imaginea.activegrid.core.models._ // scalastyle:ignore underscore.imp
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-import spray.json._
+import spray.json._ // scalastyle:ignore underscore.import
 
 import scala.collection.JavaConversions._ // scalastyle:ignore underscore.import
 

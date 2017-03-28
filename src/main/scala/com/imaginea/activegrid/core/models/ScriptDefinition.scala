@@ -1,5 +1,6 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import com.typesafe.scalalogging.Logger
 import org.neo4j.graphdb.Node
 import org.slf4j.LoggerFactory
@@ -70,10 +71,10 @@ object ScriptDefinition {
       val argumentNodeIds = Neo4jRepository.getChildNodeIds(id, scriptDefAndScriptArg)
       val arguments = argumentNodeIds.flatMap(nodeId => ScriptArgument.fromNeo4jGraph(nodeId))
       ScriptDefinition(Some(id),
-        map.get("name").asInstanceOf[Option[String]],
-        map.get("description").asInstanceOf[Option[String]],
+        ActiveGridUtils.getValueFromMapAs(map, "name"),
+        ActiveGridUtils.getValueFromMapAs(map, "description"),
         ScriptType.toScriptType(map("language").asInstanceOf[String]),
-        map.get("version").asInstanceOf[Option[String]],
+        ActiveGridUtils.getValueFromMapAs(map, "version"),
         Option(module),
         arguments,
         Option(puppetDependecies))
