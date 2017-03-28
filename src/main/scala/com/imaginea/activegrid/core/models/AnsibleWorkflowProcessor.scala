@@ -24,11 +24,7 @@ class AnsibleWorkflowProcessor {
   }
 }
 object AnsibleWorkflowProcessor extends WorkflowProcessor {
-
-
-  val workflowExecutors = Map.empty[Long, ScheduledExecutorService]
   val logger = Logger(LoggerFactory.getLogger(AnsibleWorkflowProcessor.getClass.getName))
-
   override def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Try[Boolean] = {
     //scalastyle:off magic.number
     implicit val system = Main.system
