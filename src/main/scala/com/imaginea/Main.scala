@@ -1976,7 +1976,7 @@ object Main extends App {
 
   implicit object TransferableDataInputStepFormat extends RootJsonFormat[TransferableDataInputStep] {
     override def write(obj: TransferableDataInputStep): JsValue = ???
-
+    // scalastyle:off magic.number
     override def read(json: JsValue): TransferableDataInputStep = {
       val fieldNames = List("name", "description", "stepId", "keys", "values", "jsonValues")
       json match {
@@ -1993,6 +1993,7 @@ object Main extends App {
       }
 
     }
+    // scalastyle:on magic.number
   }
 
   val inputStepServiceRoutes = pathPrefix("workflow") {
