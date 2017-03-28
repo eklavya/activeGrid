@@ -74,7 +74,7 @@ object ActiveGridUtils {
     }
   }
 
-  def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: RootJsonFormat[T]): List[T] = {
+  def getObjectsFromJson[T: Manifest](propertyMap: Map[String, JsValue], property: String, formateObject: JsonFormat[T]): List[T] = {
     if (propertyMap.contains(property)) {
       val listOfObjs = propertyMap(property).asInstanceOf[JsArray]
       listOfObjs.elements.toList.map(formateObject.read)

@@ -1,18 +1,19 @@
 package com.imaginea.activegrid.core.models
 
+import com.imaginea.activegrid.core.utils.ActiveGridUtils
 import org.neo4j.graphdb.Node
 
 /**
   * Created by shareefn on 2/1/17.
   */
 case class AnsiblePlay(override val id: Option[Long],
-                       name: String,
-                       description: String,
-                       language: ScriptType,
-                       version: String,
-                       module: Module,
-                       arguments: List[ScriptArgument],
-                       dependencies: PuppetScriptDependencies,
+                       override val name: Option[String],
+                       override val description: Option[String],
+                       override val language: ScriptType,
+                       override val version: Option[String],
+                       override val module: Option[Module],
+                       override val arguments: List[ScriptArgument],
+                       override val dependencies: Option[PuppetScriptDependencies],
                        pattern: String,
                        taskList: List[Task],
                        content: String,
@@ -37,14 +38,21 @@ object AnsiblePlay {
         "content" -> entity.content,
         "path" -> entity.path)
       val parentNode = Neo4jRepository.saveEntity[AnsiblePlay](labelName, entity.id, map)
-      val moduleNode = entity.module.toNeo4jGraph(entity.module)
-      Neo4jRepository.createRelation(scriptDefAndModule, parentNode, moduleNode)
+      entity.module.foreach {
+        module =>
+          val moduleNode = module.toNeo4jGraph(module)
+          Neo4jRepository.createRelation(scriptDefAndModule, parentNode, moduleNode)
+      }
       entity.arguments.foreach { argument =>
         val argumentNode = argument.toNeo4jGraph(argument)
         Neo4jRepository.createRelation(scriptDefAndScriptArg, parentNode, argumentNode)
       }
-      val puppetNode = entity.dependencies.toNeo4jGraph(entity.dependencies)
-      Neo4jRepository.createRelation(scriptDefAndPuppetDependency, parentNode, puppetNode)
+      entity.dependencies.foreach {
+        dependency =>
+          val puppetNode = dependency.toNeo4jGraph(dependency)
+          Neo4jRepository.createRelation(scriptDefAndPuppetDependency, parentNode, puppetNode)
+      }
+
       entity.taskList.foreach {
         task =>
           val childNode = task.toNeo4jGraph(task)
@@ -76,13 +84,13 @@ object AnsiblePlay {
       val childNodeIds = Neo4jRepository.getChildNodeIds(id, ansiblePlayAndTask)
       val taskList = childNodeIds.flatMap(childId => Task.fromNeo4jGraph(childId))
       AnsiblePlay(Some(id),
-        map("name").asInstanceOf[String],
-        map("description").asInstanceOf[String],
+        ActiveGridUtils.getValueFromMapAs(map, "name"),
+        ActiveGridUtils.getValueFromMapAs(map, "description"),
         ScriptType.toScriptType(map("language").asInstanceOf[String]),
-        map("version").asInstanceOf[String],
-        module,
+        ActiveGridUtils.getValueFromMapAs(map, "version"),
+        Option(module),
         arguments,
-        puppetDependecies,
+        Option(puppetDependecies),
         map("pattern").asInstanceOf[String],
         taskList,
         map("content").asInstanceOf[String],
