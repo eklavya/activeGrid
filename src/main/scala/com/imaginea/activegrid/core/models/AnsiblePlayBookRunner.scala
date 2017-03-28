@@ -19,8 +19,10 @@ class AnsiblePlayBookRunner(workflowContext: WorkflowContext) {
   }
   def execute() : Try[Boolean] = {
      executePlayBook() recover {
-       case _ => //todo update distributed cache
-       logger.error("An unexpected error has occurred")
+       case e : Exception =>
+         val workflowId = WorkflowContext.get().workflow.id
+       logger.error("An unexpected error, Execution of workflow "+workflowId+" aborted., Removig workflow from running list",e)
+       CurrentRunningWorkflows.remove(workflowId.getOrElse(0L));
      }
     Try(true);
   }
