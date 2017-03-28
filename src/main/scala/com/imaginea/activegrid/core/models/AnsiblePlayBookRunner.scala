@@ -15,7 +15,7 @@ class AnsiblePlayBookRunner(workflowContext: WorkflowContext) {
      executePlayBook() recover {
        case e : Exception =>
          val workflowId = WorkflowContext.get().workflow.id
-       logger.error("An unexpected error, Execution of workflow "+workflowId+" aborted., Removig workflow from running list",e)
+       logger.error(s"An unexpected error, Execution of workflow ($workflowId) aborted., Removig workflow from running list",e)
        CurrentRunningWorkflows.remove(workflowId.getOrElse(0L));
      }
     Try(true);
