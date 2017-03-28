@@ -54,5 +54,4 @@ object AnsibleWorkflowProcessor extends WorkflowProcessor {
       id => CurrentRunningWorkflows.remove(id)
     }
   }
-
 }
