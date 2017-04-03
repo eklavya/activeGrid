@@ -6,7 +6,7 @@ import org.neo4j.graphdb.Node
   * Created by shareefn on 2/1/17.
   */
 case class AnsiblePlayBook(override val id: Option[Long],
-                           name: String,
+                           name: Option[String],
                            path: Option[String],
                            playList: List[AnsiblePlay],
                            variables: List[Variable]) extends BaseEntity
@@ -48,7 +48,7 @@ object AnsiblePlayBook {
       val childNodeIdsVariables = Neo4jRepository.getChildNodeIds(id, playBookAndVariable)
       val variables = childNodeIdsVariables.flatMap(childId => Variable.fromNeo4jGraph(childId))
       AnsiblePlayBook(Some(id),
-        map("name").asInstanceOf[String],
+        map.get("name").asInstanceOf[Option[String]],
         map.get("path").asInstanceOf[Option[String]],
         playList,
         variables)
