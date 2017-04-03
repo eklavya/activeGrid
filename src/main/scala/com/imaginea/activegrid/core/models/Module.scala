@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 case class Module(override val id: Option[Long],
                   name: String,
                   path: String,
-                  version: String,
+                  version: Option[String],
                   definition: ModuleDefinition) extends BaseEntity
 
 object Module {
@@ -62,7 +62,7 @@ object Module {
       Module(Some(id),
         map("name").asInstanceOf[String],
         map("path").asInstanceOf[String],
-        map("version").asInstanceOf[String],
+        map.get("version").asInstanceOf[Option[String]],
         moduleDefintionEntity)
     }
   }
