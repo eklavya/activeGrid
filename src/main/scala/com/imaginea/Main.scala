@@ -1411,15 +1411,22 @@ object Main extends App {
       val modulePath = newModule.path
       val playbooks = ansibleWorkflow.playBooks
       playbooks.foreach { playbook =>
-        val playbookName = playbook.name
+        val playbookName = playbook.name match {
+          case Some(name) => name
+          case None => throw new Exception("play book name cannot be empty")
+        }
         val newPlayBook = playbook.copy(path = Some(modulePath.concat(File.separator).concat(playbookName)))
         logger.info(s"Parsing ansible playbook [$playbookName] at module path [$modulePath]")
         //TODO parse  playbook
         newPlayBook.toNeo4jGraph(newPlayBook)
         val plays = newPlayBook.playList
         plays.foreach { play =>
-          play.copy(language = ScriptType.Ansible)
-          val step = Step(play.name, play)
+          play.copy(language = Some(ScriptType.Ansible))
+          val name = play.name match {
+            case Some(playName) => playName
+            case None => throw new Exception("play doesnt have a name")
+          }
+          val step = Step(name, play)
           createStep(ansibleWorkflow, step)
         }
       }
