@@ -5,6 +5,7 @@ package com.imaginea.activegrid.core.models
 object WorkflowConstants {
   val tmpDirLoc = ""
   val maxParlellWorkflows = 10
+  val logDirectory = "";
   val defaultPuppetEnv = "production"
   val siteAccessKeyName = "access_key"
   val secretKeyName = "secret_key"
