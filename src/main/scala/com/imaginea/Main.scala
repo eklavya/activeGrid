@@ -1004,6 +1004,23 @@ object Main extends App {
           logger.error(s"Unable to get the Workflow list ${exception.getMessage}", exception)
           complete(StatusCodes.BadRequest, "Unable to get workflow list")
       }
+    } ~ put {
+      entity(as[Workflow]) { workflow =>
+        val createWorkflow = Future {
+          workflow.mode match {
+            case Some(AGENT_LESS) => addWorkflow(workflow)
+            case _ => workflow.toNeo4jGraph(workflow)
+          }
+          logger.info(s"Created workflow with id - ${workflow.id}")
+          "Successfully added workflow"
+        }
+        onComplete(createWorkflow) {
+          case Success(response) => complete(StatusCodes.OK, response)
+          case Failure(exception) =>
+            logger.error(s"Unable to create workflow ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to create workflow")
+        }
+      }
     } ~ post {
       entity(as[Workflow]) { workflow =>
         val updateWorkflow = Future {
@@ -1375,8 +1392,76 @@ object Main extends App {
       val newPlayBooks = existingPlaybooks.map { playBook =>
         AnsiblePlayBook(None, playBook.name, None, List.empty[AnsiblePlay], List.empty[Variable])
       }
-      Workflow(wfName, module, newPlayBooks)
-      //TODO addWorkflow
+      val newWorkflow = Workflow(wfName, module, newPlayBooks)
+      addWorkflow(newWorkflow)
+      newWorkflow
+    }
+  }
+
+  def addWorkflow(workflow: Workflow): Unit = {
+    val newWorkflow = workflow.copy(mode = Some(WorkflowMode.toWorkFlowMode("AGENT_LESS")))
+    val workflowNode = newWorkflow.toNeo4jGraph(newWorkflow)
+    val mayBeWorkflow = Workflow.fromNeo4jGraph(workflowNode.getId)
+    for {
+      ansibleWorkflow <- mayBeWorkflow
+      module <- ansibleWorkflow.module
+      moduleId <- module.id
+      newModule <- module.fromNeo4jGraph(moduleId)
+    } yield {
+      val modulePath = newModule.path
+      val playbooks = ansibleWorkflow.playBooks
+      playbooks.foreach { playbook =>
+        val playbookName = playbook.name match {
+          case Some(name) => name
+          case None => throw new Exception("play book name cannot be empty")
+        }
+        val newPlayBook = playbook.copy(path = Some(modulePath.concat(File.separator).concat(playbookName)))
+        logger.info(s"Parsing ansible playbook [$playbookName] at module path [$modulePath]")
+        //TODO parse  playbook
+        newPlayBook.toNeo4jGraph(newPlayBook)
+        val plays = newPlayBook.playList
+        plays.foreach { play =>
+          play.copy(language = Some(ScriptType.Ansible))
+          val name = play.name match {
+            case Some(playName) => playName
+            case None => throw new Exception("play doesnt have a name")
+          }
+          val step = Step(name, play)
+          createStep(ansibleWorkflow, step)
+        }
+      }
+    }
+  }
+
+  def createStep(workflow: Workflow, step: Step): Unit = {
+    val id = if (step.stepId.isEmpty) {
+      Some(getRandomString)
+    } else {
+      step.stepId
+    }
+    val newStep: Step = step.copy(stepId = id)
+    val childNode = newStep.toNeo4jGraph(newStep)
+    val stepId = childNode.getId
+    workflow.id.foreach { workflowId =>
+      Neo4jRepository.createRelationship(stepId, workflowId, "steps")
+    }
+    val mayBeLastStep = findLastStep(workflow.steps)
+    for {
+      lastStep <- mayBeLastStep
+      lastStepId <- lastStep.id
+    } yield {
+      Neo4jRepository.createRelationship(stepId, lastStepId, "childSteps")
+    }
+  }
+
+  def getRandomString: String = {
+    val size = 14
+    Random.alphanumeric.take(size).mkString
+  }
+
+  def findLastStep(steps: List[Step]): Option[Step] = {
+    steps.headOption.flatMap { step =>
+      if (step.childStep.nonEmpty) findLastStep(step.childStep) else Some(step)
     }
   }
 

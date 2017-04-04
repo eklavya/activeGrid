@@ -116,10 +116,8 @@ object ActiveGridUtils {
     }
   }
   /**
-    *
     * @param serviceName
-    * @return
-    *         New or Existing ExecutionContext mapped to serviceName
+    * @return New or Existing ExecutionContext mapped to serviceName
     */
   def getExecutionContextByService(serviceName:String) : ExecutionContext = {
     serviceName match  {
