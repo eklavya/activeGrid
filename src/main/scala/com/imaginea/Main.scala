@@ -1974,7 +1974,7 @@ object Main extends App {
   }
 
   implicit val pageModuleFormat = jsonFormat4(Page[Module])
-
+  // scalastyle:off method.length
   def adminRoute: Route = pathPrefix("admin") {
     path("module" / "create") {
       put {
@@ -2038,6 +2038,7 @@ object Main extends App {
       }
     }
   }
+  // scalastyle:on method.length
 
   def setFile(value: String, fileName: String, tempPath: String): File = {
     val file = new File(tempPath.concat(File.separator).concat(fileName))
