@@ -1,21 +1,17 @@
 package com.imaginea.activegrid.core.models
-
 import java.io.File
-
-import com.imaginea.activegrid.core.utils.{ActiveGridUtils, FileUtils}
+import com.imaginea.activegrid.core.utils.{FileUtils}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-
 import scala.sys.process._
 import scala.util.Try
-
 /**
   * Created by sivag on 23/3/17.
   */
 class AnsibleScriptEngine(val inventory: Inventory, val workflowContext: WorkflowContext, val playBook: AnsiblePlayBook) {
   val logger: Logger = Logger(LoggerFactory.getLogger("AnsibleScriptEngine"))
   /**
-    * Creates process and starts it.
+    * Creates process to run playbook and starts the process.
     * Writes output to a logfile.
     * @return true if process started successfully.
     */
@@ -24,9 +20,9 @@ class AnsibleScriptEngine(val inventory: Inventory, val workflowContext: Workflo
       logger.error("Invalid workflow details provided")
       Try(false)
     } else {
-      //scala-style:off 
+      //scala-style:off
       val workflowId: Long = workflowContext.workflow.id.get
-      val logFile = WorkflowConstants.logDirectory.concat(File.separator).concat(s"${workflowId.toString}.log")
+      val logFile = WorkflowConstants.homeDir.concat(s"/logs/${File.separator}").concat(s"${workflowId.toString}.log")
       val variable = inventory.getExtraVariableByName("workflow-id").getOrElse(
         new Variable(None, "workflow-id", Some(workflowId.toString), VariableScope.toVariableScope("EXTRA"), true, true))
       val invFilePath = WorkflowConstants.tmpDirLoc.concat(File.separator).concat(workflowId.toString)
