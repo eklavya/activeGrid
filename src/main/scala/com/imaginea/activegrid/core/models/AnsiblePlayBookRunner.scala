@@ -8,8 +8,13 @@ import scala.util.Try
 class AnsiblePlayBookRunner(workflowContext: WorkflowContext) {
   val logger = Logger(LoggerFactory.getLogger(AnsiblePlayBookRunner.this.getClass.getName))
   def executePlayBook() : Try[Boolean] = {
-    //todo implementation.
-    Try(false) //dummy response.
+    //scalastyle:off
+    val workflow = workflowContext.workflow
+    val execution = workflow.execution.get
+    val inventory = execution.inventory.get
+    val playBook = workflow.playBooks.head
+    val engine = new AnsibleScriptEngine(inventory,workflowContext,playBook)
+    engine.executeScript()
   }
   def execute() : Try[Boolean] = {
      executePlayBook() recover {

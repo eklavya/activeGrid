@@ -1,10 +1,15 @@
 package com.imaginea.activegrid.core.models
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
+
 import scala.collection.immutable.HashMap
+import scala.util.{Failure, Success}
 /**
   * Created by sivag on 10/1/17.
   */
 class WorkFlowServiceManagerImpl {
   //Todo 1. WorkFlowContext bean and  2. settingCurrentworkflows.
+  val logger = Logger(LoggerFactory.getLogger(WorkFlowServiceManagerImpl.this.getClass.getName))
   def currentWorkFlows = HashMap.empty[Int, WorkflowContext]
   def getWorkFlow(id: Long): Option[Workflow] = {
     Neo4jRepository.findNodeByLabelAndId(Workflow.labelName, id).flatMap {
@@ -34,10 +39,18 @@ class WorkFlowServiceManagerImpl {
               val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
               val workflowContext: WorkflowContext = new WorkflowContext(wf,None,None,None)
               WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode.getOrElse(WorkflowMode.toWorkFlowMode("AGENT"))).map {
-                processor => processor.executeWorkflow(workflowContext, async)
+                processor =>
+                  processor.executeWorkflow(workflowContext, async) match {
+                    case Success(started) => if(started){
+                      Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, workflowId, workFlowUpdate)
+                      CurrentRunningWorkflows.add(workflowId)
+                    } else {
+                       logger.info(s"Workflow[$workflowId] has started successfully")
+                    }
+                    case Failure(ex) => logger.error(s"Unknow error occurred while starting workflow[$workflowId]",ex)
+                  }
               }
-              Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, workflowId, workFlowUpdate)
-              CurrentRunningWorkflows.add(workflowId)
+
             }
         }
     }

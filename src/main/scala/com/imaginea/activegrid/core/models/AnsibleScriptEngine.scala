@@ -22,7 +22,7 @@ class AnsibleScriptEngine(val inventory: Inventory, val workflowContext: Workflo
     } else {
       //scala-style:off
       val workflowId: Long = workflowContext.workflow.id.get
-      val logFile = WorkflowConstants.homeDir.concat(s"/logs/${File.separator}").concat(s"${workflowId.toString}.log")
+      val logFile = new File(WorkflowConstants.homeDir.concat(s"/logs/${File.separator}").concat(s"${workflowId.toString}.log"))
       val variable = inventory.getExtraVariableByName("workflow-id").getOrElse(
         new Variable(None, "workflow-id", Some(workflowId.toString), VariableScope.toVariableScope("EXTRA"), true, true))
       val invFilePath = WorkflowConstants.tmpDirLoc.concat(File.separator).concat(workflowId.toString)
@@ -32,7 +32,7 @@ class AnsibleScriptEngine(val inventory: Inventory, val workflowContext: Workflo
       if (invFile.exists()) { invFile.setExecutable(true) }
       val command = Seq("/usr/bin/ansible-playbook", "-i", invFilePath.toString, "-e", "workflowId=" + workflowId.toString, playBook.path.toString)
       logger.info(s"Starting playbook ${playBook.name} using inventory $json and extra variables : ${inventory.extraVariables.toString()}")
-      val lines = Process(command) lineStream_! ProcessLogger(new File(logFile))
+      val lines = Process(command) lineStream_!(ProcessLogger(logFile))
       lines.foreach(line => FileUtils.saveContentToFile(logFile, line))
       logger.info(s"Workflow ${workflowId.toString} has started, Please refer logfile ${logFile}")
       Try(true)
