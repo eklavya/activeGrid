@@ -13,5 +13,5 @@ import scala.util.Try
     * Workflow either be puppet or ansible service. It delegatge control to respective processor.
     * @param workflowContext
     */
-  def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Try[Boolean]
+  def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Unit
 }

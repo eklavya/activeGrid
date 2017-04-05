@@ -39,18 +39,8 @@ class WorkFlowServiceManagerImpl {
               val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
               val workflowContext: WorkflowContext = new WorkflowContext(wf,None,None,None)
               WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode.getOrElse(WorkflowMode.toWorkFlowMode("AGENT"))).map {
-                processor =>
-                  processor.executeWorkflow(workflowContext, async) match {
-                    case Success(started) => if(started){
-                      Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, workflowId, workFlowUpdate)
-                      CurrentRunningWorkflows.add(workflowId)
-                    } else {
-                       logger.info(s"Workflow[$workflowId] has started successfully")
-                    }
-                    case Failure(ex) => logger.error(s"Unknow error occurred while starting workflow[$workflowId]",ex)
-                  }
+                processor => processor.executeWorkflow(workflowContext, async)
               }
-
             }
         }
     }

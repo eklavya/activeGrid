@@ -13,8 +13,7 @@ object PuppetWorkflowProcessor extends WorkflowProcessor {
    * Workflow either be puppet or ansible service. It delegatge control to respective processor.
    * @param workflowContext
    */
-  override def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Try[Boolean] = {
-    //todo puppet execution impl.
-    Try(false) //dummy response.
+  override def executeWorkflow(workflowContext: WorkflowContext, async: Boolean): Unit = {
+    
   }
 }
