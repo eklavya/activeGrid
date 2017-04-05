@@ -16,6 +16,9 @@ case class ScriptFile(override val id: Option[Long],
 object ScriptFile {
   val labelName = "ScriptFile"
 
+  def apply(file: File): ScriptFile =
+    ScriptFile(None, Some(file.getName), Some(file.getPath), Some(file))
+
   implicit class ScriptFileImpl(scriptFile: ScriptFile) extends Neo4jRep[ScriptFile] {
     override def toNeo4jGraph(entity: ScriptFile): Node = {
       val map = Map("name" -> entity.name, "path" -> entity.path)
