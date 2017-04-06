@@ -9,12 +9,13 @@ import scala.util.{Failure, Success}
   * Created by sivag on 17/1/17.
   */
 class AnsiblePlayBookRunner(workflowContext: WorkflowContext) {
+
   val logger = Logger(LoggerFactory.getLogger(AnsiblePlayBookRunner.this.getClass.getName))
 
   def execute(): Unit = {
-    try {
-      val workflow = workflowContext.workflow
-      val execution = workflow.execution.get
+    val workflow = workflowContext.workflow
+    val execution = workflow.execution.get
+    if (execution.inventory.isDefined && !workflow.playBooks.isEmpty) {
       val inventory = execution.inventory.get
       val playBook = workflow.playBooks.head
       val engine = new AnsibleScriptEngine(inventory, workflowContext, playBook)
@@ -33,8 +34,8 @@ class AnsiblePlayBookRunner(workflowContext: WorkflowContext) {
             logger.error(s" Failed to start Workflow ($workflowId), Please try again")
           }
       }
-    } catch {
-      case ex: Exception => logger.error(s" Exception while starting Workflow, Please try again", ex)
+    } else {
+      logger.error(s"Failed to start workflow(${workflow.id.getOrElse(0L)})");
     }
   }
 
