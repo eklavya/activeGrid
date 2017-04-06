@@ -8,13 +8,13 @@ import org.slf4j.LoggerFactory
   * Created by shareefn on 20/12/16.
   */
 case class ScriptDefinition(override val id: Option[Long],
-                            name: String,
-                            description: String,
-                            language: ScriptType,
-                            version: String,
-                            module: Module,
+                            name: Option[String],
+                            description: Option[String],
+                            language: Option[ScriptType],
+                            version: Option[String],
+                            module: Option[Module],
                             arguments: List[ScriptArgument],
-                            dependencies: PuppetScriptDependencies) extends Script
+                            dependencies: Option[PuppetScriptDependencies]) extends Script
 
 object ScriptDefinition {
   val labelName = "ScriptDefinition"
@@ -27,17 +27,25 @@ object ScriptDefinition {
     override def toNeo4jGraph(entity: ScriptDefinition): Node = {
       val map = Map("name" -> entity.name,
         "description" -> entity.description,
-        "language" -> entity.language.scriptType,
+        "language" -> entity.language.map(_.scriptType),
         "version" -> entity.version)
-      val parentNode = Neo4jRepository.saveEntity(labelName, entity.id, map)
-      val childNode = entity.module.toNeo4jGraph(entity.module)
-      Neo4jRepository.createRelation(scriptDefAndModule, parentNode, childNode)
+      val parentNode = Neo4jRepository.saveEntity[ScriptDefinition](labelName, entity.id, map)
+      entity.module match {
+        case Some(m) =>
+          val moduleNode = m.toNeo4jGraph(m)
+          Neo4jRepository.createRelation(scriptDefAndModule, parentNode, moduleNode)
+        case None => logger.debug("entity ScriptDefinition has no module")
+      }
       entity.arguments.foreach { argument =>
         val argumentNode = argument.toNeo4jGraph(argument)
         Neo4jRepository.createRelation(scriptDefAndScriptArg, parentNode, argumentNode)
       }
-      val puppetNode = entity.dependencies.toNeo4jGraph(entity.dependencies)
-      Neo4jRepository.createRelation(scriptDefAndPuppetDependency, parentNode, puppetNode)
+      entity.dependencies match {
+        case Some(puppetDependencies) =>
+          val puppetNode = puppetDependencies.toNeo4jGraph(puppetDependencies)
+          Neo4jRepository.createRelation(scriptDefAndPuppetDependency, parentNode, puppetNode)
+        case None => logger.debug("entity ScriptDefiniton has no puppet script dependencies")
+      }
       parentNode
     }
 
@@ -50,18 +58,18 @@ object ScriptDefinition {
     for {
       node <- Neo4jRepository.findNodeById(id)
       moduleNodeId <- Neo4jRepository.getChildNodeId(id, scriptDefAndModule)
-      module <- Module.fromNeo4jGraph(moduleNodeId)
       puppetNodeId <- Neo4jRepository.getChildNodeId(id, scriptDefAndPuppetDependency)
-      puppetDependecies <- PuppetScriptDependencies.fromNeo4jGraph(puppetNodeId)
     } yield {
       val map = Neo4jRepository.getProperties(node, "name", "description", "language", "version")
       val argumentNodeIds = Neo4jRepository.getChildNodeIds(id, scriptDefAndScriptArg)
       val arguments = argumentNodeIds.flatMap(nodeId => ScriptArgument.fromNeo4jGraph(nodeId))
+      val module = Module.fromNeo4jGraph(moduleNodeId)
+      val puppetDependecies = PuppetScriptDependencies.fromNeo4jGraph(puppetNodeId)
       ScriptDefinition(Some(id),
-        map("name").asInstanceOf[String],
-        map("description").asInstanceOf[String],
-        ScriptType.toScriptType(map("language").asInstanceOf[String]),
-        map("version").asInstanceOf[String],
+        map.get("name").asInstanceOf[Option[String]],
+        map.get("description").asInstanceOf[Option[String]],
+        map.get("language").asInstanceOf[Option[String]].map(ScriptType.toScriptType),
+        map.get("version").asInstanceOf[Option[String]],
         module,
         arguments,
         puppetDependecies)

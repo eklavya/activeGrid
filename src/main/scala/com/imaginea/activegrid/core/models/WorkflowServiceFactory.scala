@@ -1,18 +1,12 @@
 package com.imaginea.activegrid.core.models
-
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-
 /**
   * Created by sivag on 17/1/17.
   */
 object WorkflowServiceFactory {
-
-
   val logger = Logger(LoggerFactory.getLogger(WorkflowServiceFactory.this.getClass.getName))
-
   /**
-    *
     * @param mode
     * @return WorkflowProcess base given mode.
     */
