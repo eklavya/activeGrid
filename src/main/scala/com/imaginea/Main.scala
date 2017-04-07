@@ -1,6 +1,6 @@
 package com.imaginea
 
-import java.io.{File, FileInputStream, FileOutputStream, IOException}
+import java.io.{File, FileInputStream, FileOutputStream, IOException, PrintWriter}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -38,7 +38,7 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
   implicit val timeout = Timeout(15.seconds)
-  val ansibleWorkflowProcessor = new AnsibleWorkflowProcessor
+  val ansibleWorkflowProcessor = AnsibleWorkflowProcessor
   val currentWorkflows = mutable.HashMap.empty[Long, WorkflowContext]
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
@@ -661,12 +661,11 @@ object Main extends App {
           val mayBeModule = for {
             name <- AGU.getProperty[String](map, "name")
             path <- AGU.getProperty[String](map, "path")
-            version <- AGU.getProperty[String](map, "version")
           } yield {
             Module(AGU.getProperty[Long](map, "id"),
               name,
               path,
-              version,
+              AGU.getProperty[String](map, "version"),
               definitionObj)
           }
           mayBeModule match {
@@ -687,7 +686,7 @@ object Main extends App {
       val fields = AGU.longToJsField(fieldNames(0), obj.id) ++
         AGU.stringToJsField(fieldNames(1), Some(obj.name)) ++
         AGU.stringToJsField(fieldNames(2), Some(obj.path)) ++
-        AGU.stringToJsField(fieldNames(3), Some(obj.version)) ++
+        AGU.stringToJsField(fieldNames(3), obj.version) ++
         definitionFormat
       JsObject(fields: _*)
     }
@@ -1973,10 +1972,174 @@ object Main extends App {
       }
     }
   }
+
+  implicit val pageModuleFormat = jsonFormat4(Page[Module])
+  // scalastyle:off method.length
+  def adminRoute: Route = pathPrefix("admin") {
+    path("module" / "create") {
+      put {
+        entity(as[Multipart.FormData]) { formData =>
+          val createModule = Future {
+            val tempPath = Constants.TEMP_DIR_LOC + File.separator + System.currentTimeMillis + ""
+            logger.info(s"Saving module zip to temp location - $tempPath")
+            val dir = new File(tempPath)
+            dir.mkdirs
+            val (mayBeModuleName, mayBeFile) = formData.asInstanceOf[FormData.Strict].strictParts
+              .foldLeft(None: Option[String], None: Option[File]) { (moduleNameAndFile, strict) =>
+                val (moduleName, file) = moduleNameAndFile
+                val name = strict.getName()
+                val value = strict.entity.getData().decodeString("UTF-8")
+                val mayBeFileName = strict.filename
+                val m = if (name.equals("userName")) Some(value) else moduleName
+                val f = if (name.equals("module")) mayBeFileName.map(f => setFile(value, f, tempPath)) else file
+                (m, f)
+              }
+
+            mayBeFile.map(file => buildModule(mayBeModuleName, file))
+          }
+          onComplete(createModule) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to create module. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Unable to create module")
+          }
+        }
+      }
+    } ~ path("module" / Segment) { moduleName =>
+      get {
+        val module = Future {
+          val nodesList = Neo4jRepository.getNodesByLabel(Module.labelName)
+          val listOfModules = nodesList.flatMap(node => Module.fromNeo4jGraph(node.getId))
+          listOfModules.find(module => module.name.equals(moduleName))
+        }
+        onComplete(module) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to get module with name $moduleName. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to get module with name $moduleName ")
+        }
+      }
+    } ~ path("module" / "list") {
+      get {
+        val moduleList = Future {
+          val nodesList = Neo4jRepository.getNodesByLabel(Module.labelName)
+          val listOfModules = nodesList.flatMap(node => Module.fromNeo4jGraph(node.getId))
+          val filteredModules = listOfModules.filter { module =>
+            module.definition.isInstanceOf[AnsibleModuleDefinition]
+          }
+          Page[Module](listOfModules)
+        }
+        onComplete(moduleList) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to Retrieve Module List. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to Module ImageInfo List.")
+        }
+      }
+    }
+  }
+  // scalastyle:on method.length
+
+  def setFile(value: String, fileName: String, tempPath: String): File = {
+    val file = new File(tempPath.concat(File.separator).concat(fileName))
+    CommonFileUtils.writeStringToFile(file, value)
+    file
+  }
+
+  def buildModule(mayBeModuleName: Option[String], moduleZip: File): Module = {
+    val playBooks = scala.collection.mutable.ListBuffer[ScriptFile]()
+    val moduleZipName = FilenameUtils.getBaseName(moduleZip.getName)
+    val moduleName = mayBeModuleName.getOrElse(moduleZipName)
+    logger.info(s"Building ansible project for $moduleName")
+    val modulePath = getModulePath(moduleName)
+    if (new File(modulePath).exists()) {
+      throw new RuntimeException(s"Module $moduleName already exists.")
+    }
+    val zin = new ZipInputStream(new FileInputStream(moduleZip))
+    val outDir = new File(modulePath)
+    var entry: Option[ZipEntry] = None
+    try {
+      while ({
+        entry = Option(zin.getNextEntry)
+        entry.isDefined
+      }) {
+        entry.foreach { zipEntry =>
+          val name = zipEntry.getName
+          if (zipEntry.isDirectory) {
+            mkdirs(outDir, name)
+          } else {
+            val mayBeDir = getDir(name)
+            mayBeDir.foreach(dir => mkdirs(outDir, dir))
+            val file = new File(outDir, name)
+            if (isFileAPlayBook(name)) {
+              playBooks += ScriptFile(file)
+            }
+            extractFile(zin, file)
+          }
+        }
+      }
+    } finally {
+      zin.close()
+    }
+    val path = modulePath.concat(File.separator).concat(moduleZipName)
+    val definition = AnsibleModuleDefinition(None, playBooks.toList, List.empty[ScriptFile])
+    Module(None, moduleName, path, None, definition)
+  }
+
+  def extractFile(in: ZipInputStream, file: File): Unit = {
+    val size = 4 * 1024
+    val buffer = new Array[Byte](size)
+    val fos = new FileOutputStream(file)
+    var count = -1
+    try {
+      while ({
+        count = in.read(buffer)
+        count != -1
+      }) {
+        fos.write(buffer, 0, count)
+      }
+    } finally {
+      fos.close()
+    }
+  }
+
+  def isFileAPlayBook(name: String): Boolean = {
+    val ext = FilenameUtils.getExtension(name)
+    ("yml".equals(ext) || "yaml".equals(ext)) && !name.contains(AnsibleConstants.AnsiblePlayRoles)
+  }
+
+  def getDir(name: String): Option[String] = {
+    val s = name.lastIndexOf(File.separatorChar)
+    if (s == -1) None else Some(name.substring(0, s))
+  }
+
+  def mkdirs(outDir: File, path: String): Unit = {
+    val d = new File(outDir, path)
+    if (!d.exists()) d.mkdirs
+  }
+
+  def getModulePath(moduleName: String): String = {
+    val ansibleProjHome = getSettingFor("ansible.projects.home")
+    val moduleDirPath = ansibleProjHome.concat(File.separator).concat(moduleName)
+    moduleDirPath
+  }
+
+  def getSettingFor(key: String): String = {
+    val nodesList = Neo4jRepository.getNodesByLabel(AppSettings.labelName)
+    val listOfAppSettings = nodesList.flatMap(node => AppSettings.fromNeo4jGraph(node.getId))
+    val appSettings = listOfAppSettings.headOption
+    val settings = appSettings.map(_.settings).getOrElse(Map.empty[String, String])
+    val value = settings.get(key)
+    value match {
+      case Some(setting) => setting
+      case None => throw new RuntimeException(s"No value set for property [$key]")
+    }
+  }
+
   val route: Route = pathPrefix("api" / AGU.APIVERSION) {
     siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
-      esServiceRoutes ~ workflowRoutes
+      esServiceRoutes ~ workflowRoutes ~ adminRoute
   }
 
   AGU.startUp(List("2551","2552"))
