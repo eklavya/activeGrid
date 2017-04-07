@@ -1,6 +1,7 @@
 package com.imaginea.activegrid.core.models
+
 /**
-  * Created by sivag on 7/4/17.
+  * Created by sivag on 29/11/16.
   */
 sealed trait JobType {
   def jobType: String

@@ -6,3 +6,4 @@ sealed trait WorkflowStatus
 case object WORKFLOW_IDLE extends WorkflowStatus
 case object WORKFLOW_RUNNING extends WorkflowStatus
 case object WORKFLOW_NOTFOUND extends WorkflowStatus
+
