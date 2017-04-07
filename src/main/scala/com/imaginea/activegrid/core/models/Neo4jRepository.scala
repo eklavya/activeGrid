@@ -260,4 +260,15 @@ object Neo4jRepository extends Neo4jWrapper with EmbeddedGraphDatabaseServicePro
       node.delete()
     }
   }
+
+  def createRelationship(childId: Long, parentId: Long, relation: String): Unit = {
+    val childNode = findNodeById(childId)
+    val parentNode = findNodeById(parentId)
+    for {
+      child <- childNode
+      parent <- parentNode
+    } yield {
+      createRelation(relation, parent, child)
+    }
+  }
 }

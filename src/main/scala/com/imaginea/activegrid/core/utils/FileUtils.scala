@@ -1,7 +1,6 @@
 package com.imaginea.activegrid.core.utils
 
 import java.io.{File, PrintWriter}
-import javax.swing.text.AbstractDocument.Content
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -29,7 +28,6 @@ object FileUtils {
       writer.close()
     }
   }
-
   def createDirectories(dirName: String): Unit = {
     logger.debug(s"Checking for dir -  $dirName")
     val file = new File(dirName)

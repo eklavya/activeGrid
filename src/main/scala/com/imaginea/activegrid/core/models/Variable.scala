@@ -8,7 +8,7 @@ import org.neo4j.graphdb.Node
   */
 case class Variable(override val id: Option[Long],
                     name: String,
-                    value: String,
+                    value: Option[String],
                     scope: VariableScope,
                     readOnly: Boolean,
                     hidden: Boolean) extends BaseEntity
@@ -38,7 +38,7 @@ object Variable {
       val map = Neo4jRepository.getProperties(node, "name", "value", "scope", "readOnly", "hidden")
       Variable(Some(id),
         map("name").asInstanceOf[String],
-        map("value").asInstanceOf[String],
+        map.get("value").asInstanceOf[Option[String]],
         VariableScope.toVariableScope(map("scope").asInstanceOf[String]),
         ActiveGridUtils.convertToBooleanValue(map("readOnly")),
         ActiveGridUtils.convertToBooleanValue(map("hidden"))

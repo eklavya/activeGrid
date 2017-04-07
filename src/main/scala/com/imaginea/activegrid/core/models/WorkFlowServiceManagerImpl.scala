@@ -1,38 +1,24 @@
 package com.imaginea.activegrid.core.models
-
-import akka.actor.Props
-import com.imaginea.Main
-import com.imaginea.actors.{WofklowActor, WrkFlow}
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.HashMap
-import akka.pattern.ask
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import akka.util.Timeout
-
-
+import scala.util.{Failure, Success}
 /**
   * Created by sivag on 10/1/17.
   */
-class WorkFlowServiceManagerImpl
-object WorkFlowServiceManagerImpl {
-
+class WorkFlowServiceManagerImpl {
   //Todo 1. WorkFlowContext bean and  2. settingCurrentworkflows.
+  val logger = Logger(LoggerFactory.getLogger(WorkFlowServiceManagerImpl.this.getClass.getName))
   def currentWorkFlows = HashMap.empty[Int, WorkflowContext]
-
   def getWorkFlow(id: Long): Option[Workflow] = {
     Neo4jRepository.findNodeByLabelAndId(Workflow.labelName, id).flatMap {
       workFlowNode => Workflow.fromNeo4jGraph(workFlowNode.getId)
     }
   }
   def isWorkflowRunning(workflowId: Long): Boolean = {
-    WrkFlow(workflowId.toString,"GETSTATUS")
-    val actor = Main.system.actorOf(Props[WofklowActor])
-    implicit val timeout: Timeout = 5.seconds
-    Await.result(actor ? WrkFlow,5 seconds).asInstanceOf[Boolean]
+    currentWorkFlows.contains(workflowId.toInt)
   }
-
   def execute(workflow: Option[Workflow], async: Boolean): Unit = {
     workflow.map {
       wf =>
@@ -51,19 +37,12 @@ object WorkFlowServiceManagerImpl {
                 exec.id.getOrElse(0L), executionUpdate)
               val logListener = WorkflowExecLogListener.get()
               val workFlowUpdate = Map("executionTime" -> currentTime, "executionBy" -> currentUser)
-              val workflowListener: WorkflowListener = new WorkflowExecutionListener()
-              val workflowExecLogListener = WorkflowExecLogListener.get()
-              val workflowContext: WorkflowContext = new WorkflowContext(wf, workflowListener, workflowExecLogListener,None,None,None)
+              val workflowContext: WorkflowContext = new WorkflowContext(wf,None,None,None)
               WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode.getOrElse(WorkflowMode.toWorkFlowMode("AGENT"))).map {
                 processor => processor.executeWorkflow(workflowContext, async)
               }
-              Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, workflowId, workFlowUpdate)
-              CurrentRunningWorkflows.add(workflowId)
             }
         }
-
-
     }
   }
-
 }

@@ -30,6 +30,15 @@ object ActiveGridUtils {
   val APIVERSION = config.getString("http.version")
   //scalastyle:on field.name
 
+  def startUp(ports: List[String]): Unit = {
+    logger.info("starting up seed nodes")
+    ports.foreach { port =>
+      val config = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
+        withFallback(ConfigFactory.load())
+      val system = ActorSystem("ClusterSystem", config)
+    }
+  }
+
   def getValueFromMapAs[T](map: Map[String, Any], key: String): Option[T] = {
     map.get(key).map(_.asInstanceOf[T])
   }
@@ -106,12 +115,9 @@ object ActiveGridUtils {
       case None => rest
     }
   }
-
   /**
-    *
     * @param serviceName
-    * @return
-    *         New or Existing ExecutionContext mapped to serviceName
+    * @return New or Existing ExecutionContext mapped to serviceName
     */
   def getExecutionContextByService(serviceName:String) : ExecutionContext = {
     serviceName match  {
