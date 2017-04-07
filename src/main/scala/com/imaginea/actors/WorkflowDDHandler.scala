@@ -1,13 +1,10 @@
 package com.imaginea.actors
-
-
 import akka.cluster.Cluster
 import akka.cluster.ddata.Replicator._
 import akka.cluster.ddata.{DistributedData, LWWMap, LWWMapKey}
 import akka.util.Timeout
 import com.imaginea.Main
 import org.slf4j.LoggerFactory
-
 import scala.concurrent.duration._
 import akka.pattern._
 import Main.system.dispatcher
@@ -15,36 +12,24 @@ import Main.system.dispatcher
   * Created by sivag on 3/3/17.
   */
 sealed trait WrkflwStatus
-
 case object IDLE extends WrkflwStatus
-
 case object WORKFLOW_RUNNING extends WrkflwStatus
-
 case object INCOMPLETE extends WrkflwStatus
-
 case object WORKFLOW_REMOVED extends WrkflwStatus
-
 case object WORKFLOW_STARTED extends WrkflwStatus
-
 case object WORKFLOW_FAILED extends WrkflwStatus
-
 case object WORKFLOW_NOTFOUND extends WrkflwStatus
-
 case class WrkFlow(id: String, operation: String)
 
 object WorkflowDDHandler {
-
   val replicator = DistributedData(Main.system).replicator
   implicit val node = Cluster(Main.system)
   val logger = LoggerFactory.getLogger(getClass)
-
-
   val mapKey = LWWMapKey[WrkflwStatus]("WorkflowUpdate")
   val readMajority = ReadMajority(5.seconds)
   val writeMajority = WriteMajority(5.seconds)
   implicit val timeout: Timeout = 5.seconds
-  //scalastyle:off
-  //method.length
+  //scalastyle:off method.length
   def get(wrkFlow: WrkFlow):Either[WrkflwStatus,LWWMap[WrkflwStatus]] =  {
     wrkFlow match {
         // Removes the purticular workflow from the list.
@@ -76,14 +61,12 @@ object WorkflowDDHandler {
                    Left(WORKFLOW_NOTFOUND)
         }
         Left(WORKFLOW_FAILED)
-
       // Returns all running workflows.
       case WrkFlow(wrkflowId, "RUNNING_WORKFLOWS") =>
         logger.info("Fetching all running workflows " + wrkflowId)
         val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
         val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
         Right(result)
-
       //Chagning status to running.
       case WrkFlow(wrkflowId, "START") =>
         logger.info("Removing workflow " + wrkflowId)
@@ -98,7 +81,6 @@ object WorkflowDDHandler {
         }
     }
   }
-
 }
 
 
