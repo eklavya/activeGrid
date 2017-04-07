@@ -1,84 +1,74 @@
 package com.imaginea.actors
+
 import akka.cluster.Cluster
 import akka.cluster.ddata.Replicator._
 import akka.cluster.ddata.{DistributedData, LWWMap, LWWMapKey}
+import akka.pattern._
 import akka.util.Timeout
 import com.imaginea.Main
+import com.imaginea.Main.system.dispatcher
+import com.imaginea.activegrid.core.models.{WORKFLOW_IDLE, WORKFLOW_NOTFOUND, WORKFLOW_RUNNING, WorkflowStatus}
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import akka.pattern._
-import Main.system.dispatcher
+import scala.util.Try
+
 /**
   * Created by sivag on 3/3/17.
   */
-sealed trait WrkflwStatus
-case object IDLE extends WrkflwStatus
-case object WORKFLOW_RUNNING extends WrkflwStatus
-case object INCOMPLETE extends WrkflwStatus
-case object WORKFLOW_REMOVED extends WrkflwStatus
-case object WORKFLOW_STARTED extends WrkflwStatus
-case object WORKFLOW_FAILED extends WrkflwStatus
-case object WORKFLOW_NOTFOUND extends WrkflwStatus
-case class WrkFlow(id: String, operation: String)
-
 object WorkflowDDHandler {
+
   val replicator = DistributedData(Main.system).replicator
   implicit val node = Cluster(Main.system)
   val logger = LoggerFactory.getLogger(getClass)
-  val mapKey = LWWMapKey[WrkflwStatus]("WorkflowUpdate")
+  val mapKey = LWWMapKey[WorkflowStatus]("WorkflowUpdate")
   val readMajority = ReadMajority(5.seconds)
   val writeMajority = WriteMajority(5.seconds)
   implicit val timeout: Timeout = 5.seconds
+
   //scalastyle:off method.length
-  def get(wrkFlow: WrkFlow):Either[WrkflwStatus,LWWMap[WrkflwStatus]] =  {
-    wrkFlow match {
-        // Removes the purticular workflow from the list.
-      case WrkFlow(wrkflowId, "REMOVE") =>
-        logger.info("Starting workflow " + wrkflowId)
-        val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
-        val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
-        if (result.contains(wrkflowId)) {
-         Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.remove(node, wrkflowId))
-         val wf = WrkFlow(wrkflowId,"GETSTATUS")
-         WorkflowDDHandler.get(wf)
-        }
-        else {
-          Left(WORKFLOW_NOTFOUND)
-        }
-      // Getting status of the given workflow id.
-      case WrkFlow(wrkflowId, "GETSTATUS") =>
-        logger.info("Checking status of  workflow " + wrkflowId)
-        val data = replicator ? Get(mapKey, readMajority, Some(wrkflowId))
-        val d =  data.map {
-          case g @ GetSuccess(mapKey,req) =>
-                   println("Values from ddmap " + g.dataValue)
-                   g.asInstanceOf[LWWMap[WrkflwStatus]].get(wrkflowId)
-          case g @ GetFailure(mapKey,req) =>
-                   println("Failed to load ddata with key" + mapKey)
-                   Left(WORKFLOW_FAILED)
-          case g @ NotFound(mapKey,req) =>
-                   println("Key not found ::" + mapKey)
-                   Left(WORKFLOW_NOTFOUND)
-        }
-        Left(WORKFLOW_FAILED)
-      // Returns all running workflows.
-      case WrkFlow(wrkflowId, "RUNNING_WORKFLOWS") =>
-        logger.info("Fetching all running workflows " + wrkflowId)
-        val getStatus = Get(mapKey, readMajority, Some(wrkflowId))
-        val result = getStatus.asInstanceOf[LWWMap[WrkflwStatus]]
-        Right(result)
-      //Chagning status to running.
-      case WrkFlow(wrkflowId, "START") =>
-        logger.info("Removing workflow " + wrkflowId)
-        val wf = WrkFlow(wrkflowId,"GETSTATUS")
-        WorkflowDDHandler.get(wf) match {
-          case Left(x) =>
-            if(x.equals(WORKFLOW_NOTFOUND)) {
-              Update(mapKey, LWWMap.empty[WrkflwStatus], writeMajority)(_.put(node, wrkflowId, WORKFLOW_RUNNING))
-            }
-            WorkflowDDHandler.get(wf)
-          case _ =>  Left(WORKFLOW_RUNNING)
-        }
+  def getWorkflowStatus(workflowId: String): Option[WorkflowStatus] = {
+    logger.info(s"Checking status of $workflowId")
+    val readMajority = ReadMajority(5.seconds)
+    val maybeStatus = replicator ? Get(mapKey, readMajority)
+    val status = maybeStatus map {
+      case g@GetSuccess(mapKey, req) =>
+        val runningWorkflows = g.get(mapKey).asInstanceOf[LWWMap[WorkflowStatus]]
+        runningWorkflows.get(workflowId).getOrElse(WORKFLOW_NOTFOUND)
+      case g@GetFailure(mapKey, req) =>
+        logger.info(s"Error while fetching current running workflow, Workflow($workflowId)")
+        WORKFLOW_NOTFOUND
+    }
+    val result = Try {
+      Await.result(status, 1.seconds)
+    }
+    result.toOption
+  }
+
+  def removeWorkflow(workflowId: String): Unit = {
+    getWorkflowStatus(workflowId).map { status =>
+      Update(mapKey, LWWMap.empty[WorkflowStatus], writeMajority)(_.remove(node, workflowId))
+    }
+  }
+
+  def getRunningWorkflows(): LWWMap[WorkflowStatus] = {
+    logger.info("Fetching all running workflows")
+    val maybeList = Try {
+      val result = replicator ? Get(mapKey, readMajority) map {
+        case list@GetSuccess(mapKey, req) => list.get(mapKey).asInstanceOf[LWWMap[WorkflowStatus]]
+      }
+      Await.result(result, 2.seconds)
+    }
+    maybeList.toOption.getOrElse(LWWMap.empty[WorkflowStatus])
+  }
+
+  def startWorkflows(workflowId: String): Unit = {
+    getWorkflowStatus(workflowId).map {
+      case WORKFLOW_NOTFOUND | WORKFLOW_IDLE =>
+        Update(mapKey, LWWMap.empty[WorkflowStatus], writeMajority)(_.put(node, workflowId, WORKFLOW_RUNNING))
+      case WORKFLOW_RUNNING => logger.info(s"$workflowId is already running")
+      case _ => logger.error("Unknow worklfow status")
     }
   }
 }
