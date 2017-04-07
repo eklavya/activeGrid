@@ -1416,9 +1416,9 @@ object Main extends App {
         }
         val newPlayBook = playbook.copy(path = Some(modulePath.concat(File.separator).concat(playbookName)))
         logger.info(s"Parsing ansible playbook [$playbookName] at module path [$modulePath]")
-        //TODO parse  playbook
-        newPlayBook.toNeo4jGraph(newPlayBook)
-        val plays = newPlayBook.playList
+        val parsedPlayBook = new AnsiblePlayBookParser().buildPlayBook(newPlayBook, modulePath)
+        parsedPlayBook.toNeo4jGraph(parsedPlayBook)
+        val plays = parsedPlayBook.playList
         plays.foreach { play =>
           play.copy(language = Some(ScriptType.Ansible))
           val name = play.name match {
