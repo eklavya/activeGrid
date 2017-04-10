@@ -48,23 +48,25 @@ class AnsiblePlayBookParser {
 
   def getPlay(playMap: Map[String, Any], baseDir: String): AnsiblePlay = {
     val playName = playMap.keySet.foldLeft(None: Option[String]) { (name, key) =>
-      if(AnsibleConstants.AnsiblePlayHosts.equals(key)) {
-        val nodes = playMap.get(key).asInstanceOf[Option[String]]
-        if(name.isEmpty) nodes else name
-      } else if(AnsibleConstants.AnsibleName.equals(key)) {
-        playMap.get(key).asInstanceOf[Option[String]]
-      } else if(AnsibleConstants.AnsiblePlayRoles.equals(key)) {
-        val roleBaseDir = baseDir + File.separator + key
-        parseRoles(playMap(key).asInstanceOf[List[Any]], roleBaseDir)
-        name
-      } else if(AnsibleConstants.AnsiblePlayTasks.equals(key) || AnsibleConstants.AnsiblePlayHandlers.equals(key)) {
-        parseTasks(playMap.getOrElse(key, List.empty[Map[String, Any]]).asInstanceOf[List[Map[String, Any]]], baseDir, key)
-        name
-      } else if(AnsibleConstants.AnsibleVars.equals(key)) {
-        val inlineVars = playMap(key).asInstanceOf[Map[String, Any]]
-        definedVariables ++ inlineVars
-        name
-      } else { name }
+      key match {
+        case AnsibleConstants.AnsiblePlayHosts =>
+          val nodes = playMap.get(key).asInstanceOf[Option[String]]
+          if(name.isEmpty) nodes else name
+        case AnsibleConstants.AnsibleName =>
+          playMap.get(key).asInstanceOf[Option[String]]
+        case AnsibleConstants.AnsiblePlayRoles =>
+          val roleBaseDir = baseDir + File.separator + key
+          parseRoles(playMap(key).asInstanceOf[List[Any]], roleBaseDir)
+          name
+        case AnsibleConstants.AnsiblePlayTasks | AnsibleConstants.AnsiblePlayHandlers =>
+          parseTasks(playMap.getOrElse(key, List.empty[Map[String, Any]]).asInstanceOf[List[Map[String, Any]]], baseDir, key)
+          name
+        case AnsibleConstants.AnsibleVars =>
+          val inlineVars = playMap(key).asInstanceOf[Map[String, Any]]
+          definedVariables ++ inlineVars
+          name
+        case _ => name
+      }
     }
     val groupVarYaml = baseDir + File.separator + AnsibleConstants.AnsibleGroupVarsDir + File.separator
     val groupVariables = parseVariables(groupVarYaml)
@@ -96,25 +98,26 @@ class AnsiblePlayBookParser {
       // process each task entry for variables
       task.keySet.foreach { e =>
         undefinedVariableNames ++ getVarsFromString(task(e))
-        if (AnsibleConstants.AnsiblePlayInclude.equals(e)) {
-          // handle if any vars are passed to include yaml
-          val tokens = task(e).asInstanceOf[String].split("\\s+")
-          val taskYaml = taskBaseDir + File.separator + tokens(0)
-          val includedTasks = getYamlDataAsList(taskYaml)
-          parseTasks(includedTasks, FilenameUtils.getFullPath(taskYaml), taskType)
-        } else if (AnsibleConstants.AnsiblePlayLoop.equals(e)) {
-          val value = task(e)
-          if (value.isInstanceOf[String]) {
-            val valueStr = value.asInstanceOf[String]
-            if (valueStr.contains("{{")) {
-              undefinedVariableNames ++ getVarsFromString(valueStr)
-            } else {
-              val mayBeVariable = getVar(valueStr)
-              mayBeVariable.map(undefinedVariableNames.add)
+        e match {
+          case AnsibleConstants.AnsiblePlayInclude =>
+            // handle if any vars are passed to include yaml
+            val tokens = task(e).asInstanceOf[String].split("\\s+")
+            val taskYaml = taskBaseDir + File.separator + tokens(0)
+            val includedTasks = getYamlDataAsList(taskYaml)
+            parseTasks(includedTasks, FilenameUtils.getFullPath(taskYaml), taskType)
+          case AnsibleConstants.AnsiblePlayLoop =>
+            val value = task(e)
+            if (value.isInstanceOf[String]) {
+              val valueStr = value.asInstanceOf[String]
+              if (valueStr.contains("{{")) {
+                undefinedVariableNames ++ getVarsFromString(valueStr)
+              } else {
+                val mayBeVariable = getVar(valueStr)
+                mayBeVariable.map(undefinedVariableNames.add)
+              }
             }
-          } else if (AnsibleConstants.AnsibleRegisterVariable.equals(e)) {
+          case AnsibleConstants.AnsibleRegisterVariable =>
             definedVariables.put(task(e).asInstanceOf[String], AnsibleConstants.AnsibleRegisterVariable)
-          }
         }
       }
     }
@@ -134,33 +137,33 @@ class AnsiblePlayBookParser {
         fl.foreach { fc =>
           if(fc.isDirectory) {
             // process dependent roles
-            if (AnsibleConstants.AnsiblePlayRoleMeta.equals(fc.getName)) {
-              val metaYaml = getRolePath(roleDir,AnsibleConstants.AnsiblePlayRoleMeta)
-              val dependencies = getYamlDataAsMap(metaYaml)
-              if (dependencies.nonEmpty && dependencies.isDefinedAt(AnsibleConstants.AnsiblePlayRoleDependencies)) {
-                parseRoles(dependencies(AnsibleConstants.AnsiblePlayRoleDependencies).asInstanceOf[List[Any]],roleBaseDir)
-              }
+            fc.getName match {
+              case AnsibleConstants.AnsiblePlayRoleMeta =>
+                val metaYaml = getRolePath(roleDir,AnsibleConstants.AnsiblePlayRoleMeta)
+                val dependencies = getYamlDataAsMap(metaYaml)
+                if (dependencies.nonEmpty && dependencies.isDefinedAt(AnsibleConstants.AnsiblePlayRoleDependencies)) {
+                  parseRoles(dependencies(AnsibleConstants.AnsiblePlayRoleDependencies).asInstanceOf[List[Any]],roleBaseDir)
+                }
               // process role tasks
-            } else if (AnsibleConstants.AnsiblePlayTasks.equals(fc.getName)
-              || AnsibleConstants.AnsiblePlayHandlers.equals(fc.getName)) {
-              val taskYaml = getRolePath(roleDir,fc.getName)
-              val tasks = getYamlDataAsList(taskYaml)
-              parseTasks(tasks,FilenameUtils.getFullPath(taskYaml), fc.getName)
+              case AnsibleConstants.AnsiblePlayTasks | AnsibleConstants.AnsiblePlayHandlers =>
+                val taskYaml = getRolePath(roleDir,fc.getName)
+                val tasks = getYamlDataAsList(taskYaml)
+                parseTasks(tasks,FilenameUtils.getFullPath(taskYaml), fc.getName)
               // process role variables
-            } else if (AnsibleConstants.AnsibleVars.equals(fc.getName)) {
-              val varYaml = getRolePath(roleDir,AnsibleConstants.AnsibleVars)
-              definedVariables ++ parseVariables(varYaml)
+              case AnsibleConstants.AnsibleVars =>
+                val varYaml = getRolePath(roleDir,AnsibleConstants.AnsibleVars)
+                definedVariables ++ parseVariables(varYaml)
               // process role default vars
-            } else if (AnsibleConstants.AnsibleRoleDefaultVars.equals(fc.getName)) {
-              val varYaml = getRolePath(roleDir, AnsibleConstants.AnsibleRoleDefaultVars)
-              definedVariables ++ parseVariables(varYaml)
+              case AnsibleConstants.AnsibleRoleDefaultVars =>
+                val varYaml = getRolePath(roleDir, AnsibleConstants.AnsibleRoleDefaultVars)
+                definedVariables ++ parseVariables(varYaml)
               // process role templates
-            } else if (AnsibleConstants.AnsibleTaskTemplates.equals(fc.getName)) {
-              val filters = Array( "j2" )
-              val templateFiles = FileUtils.listFiles(fc, filters, true).asInstanceOf[List[File]]
-              templateFiles.foreach { tf =>
-                undefinedVariableNames ++ getVarsFromTemplate(tf)
-              }
+              case AnsibleConstants.AnsibleTaskTemplates =>
+                val filters = Array( "j2" )
+                val templateFiles = FileUtils.listFiles(fc, filters, true).asInstanceOf[List[File]]
+                templateFiles.foreach { tf =>
+                  undefinedVariableNames ++ getVarsFromTemplate(tf)
+                }
             }
           }
         }
