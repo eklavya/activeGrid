@@ -784,8 +784,7 @@ object Main extends App {
       post {
         logger.info("Received request to execute workflow, with id - " + workflowId)
             val result = Future {
-              val serviceMgr = new WorkFlowServiceManagerImpl
-              val workflow = serviceMgr.getWorkFlow(workflowId)
+              val workflow = WorkFlowServiceManagerImpl.getWorkFlow(workflowId)
               if(!workflow.isDefined){
                 throw  new Exception(s"Workflow details with id : $workflowId are not available")
               }
@@ -793,7 +792,7 @@ object Main extends App {
               status match {
                 case WORKFLOW_RUNNING =>
                   throw new Exception("Workflow is already running")
-                case _ => serviceMgr.execute(workflow,true)
+                case _ => WorkFlowServiceManagerImpl.execute(workflow,true)
               }
             }
             onComplete(result) {
@@ -809,8 +808,7 @@ object Main extends App {
         get {
           logger.info("Checking workflow status, with id - " + workflowId)
           val result = Future {
-            val serviceMgr = new WorkFlowServiceManagerImpl
-            val workflow = serviceMgr.getWorkFlow(workflowId)
+            val workflow = WorkFlowServiceManagerImpl.getWorkFlow(workflowId)
             if(!workflow.isDefined){
               throw  new Exception(s"Workflow details with id : $workflowId are not available")
             }
