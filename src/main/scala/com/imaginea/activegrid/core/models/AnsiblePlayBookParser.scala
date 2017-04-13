@@ -32,11 +32,11 @@ class AnsiblePlayBookParser {
     val playList = getYamlDataAsList(baseDir + java.io.File.separator + playBookName)
     if(playList.isEmpty) throw new Exception("no plays found in the playbook")
     playList.foldLeft(plays) { (list,playMap) =>
-      if(playMap.size == 1 && playMap.isDefinedAt(AnsibleConstants.AnsiblePlayInclude)) {
+      if(playMap.contains(AnsibleConstants.AnsiblePlayInclude)) {
         val tokens = playMap.get(AnsibleConstants.AnsiblePlayInclude).asInstanceOf[String].split("\\s+")
         val includedYaml = tokens(0)
         parseYaml(includedYaml, baseDir, list)
-      } else if(playMap.isDefinedAt(AnsibleConstants.AnsiblePlayHosts)) {
+      } else if(playMap.contains(AnsibleConstants.AnsiblePlayHosts)) {
         val play = getPlay(playMap, baseDir)
         play.copy(path = Some(baseDir.concat(File.separator).concat(playBookName)))
         play :: list
@@ -82,7 +82,7 @@ class AnsiblePlayBookParser {
     tasks.foreach { task =>
       val content = yaml.dump(task)
       val path = FilenameUtils.getFullPathNoEndSeparator(taskBaseDir)
-      val taskName = if (task.isDefinedAt(AnsibleConstants.AnsibleName)) {
+      val taskName = if (task.contains(AnsibleConstants.AnsibleName)) {
         task(AnsibleConstants.AnsibleName).asInstanceOf[String]
       } else {
         val (key, value) = task.head
@@ -141,7 +141,7 @@ class AnsiblePlayBookParser {
               case AnsibleConstants.AnsiblePlayRoleMeta =>
                 val metaYaml = getRolePath(roleDir,AnsibleConstants.AnsiblePlayRoleMeta)
                 val dependencies = getYamlDataAsMap(metaYaml)
-                if (dependencies.nonEmpty && dependencies.isDefinedAt(AnsibleConstants.AnsiblePlayRoleDependencies)) {
+                if (dependencies.contains(AnsibleConstants.AnsiblePlayRoleDependencies)) {
                   parseRoles(dependencies(AnsibleConstants.AnsiblePlayRoleDependencies).asInstanceOf[List[Any]],roleBaseDir)
                 }
               // process role tasks
