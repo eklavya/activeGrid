@@ -19,6 +19,7 @@ import akka.util.Timeout
 import com.beust.jcommander.JCommander
 import com.imaginea.activegrid.core.models.{InstanceGroup, KeyPairInfo, _}
 import com.imaginea.activegrid.core.utils.{Constants, FileUtils, ActiveGridUtils => AGU}
+import com.imaginea.actors.WorkflowDDHandler
 import com.jcraft.jsch.{ChannelExec, JSch, JSchException}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.{FilenameUtils, FileUtils => CommonFileUtils}
@@ -779,6 +780,48 @@ object Main extends App {
   implicit val scriptContentFormat = jsonFormat4(ScriptContent.apply)
 
   val workflowRoutes: Route = pathPrefix("workflows") {
+    path(LongNumber / "run") { workflowId =>
+      post {
+        logger.info("Received request to execute workflow, with id - " + workflowId)
+            val result = Future {
+              val workflow = WorkFlowServiceManagerImpl.getWorkFlow(workflowId)
+              if(!workflow.isDefined){
+                throw  new Exception(s"Workflow details with id : $workflowId are not available")
+              }
+              val status = WorkflowDDHandler.getWorkflowStatus(workflowId.toString).getOrElse(WORKFLOW_NOTFOUND)
+              status match {
+                case WORKFLOW_RUNNING =>
+                  throw new Exception("Workflow is already running")
+                case _ => WorkFlowServiceManagerImpl.execute(workflow,true)
+              }
+            }
+            onComplete(result) {
+              case Success(response) => complete(StatusCodes.OK, s"Request to executed the workflow, with $workflowId initiated..")
+              case Failure(exception) =>
+                logger.error(s"Error while starting the $workflowId, Reason : ${exception.getMessage}", exception)
+                complete(StatusCodes.BadRequest, "Unable execute workflow, Refer logs to se")
+            }
+        }
+      } ~
+      path(LongNumber / "status") {
+        workflowId =>
+        get {
+          logger.info("Checking workflow status, with id - " + workflowId)
+          val result = Future {
+            val workflow = WorkFlowServiceManagerImpl.getWorkFlow(workflowId)
+            if(!workflow.isDefined){
+              throw  new Exception(s"Workflow details with id : $workflowId are not available")
+            }
+            WorkflowDDHandler.getWorkflowStatus(workflowId.toString).getOrElse(WORKFLOW_NOTFOUND)
+          }
+          onComplete(result) {
+            case Success(response) => complete(StatusCodes.OK, s"Status of workflow is : $response")
+            case Failure(exception) =>
+              logger.error(s"Error in retrieving status of the workflow-id $workflowId, Reason : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, s"Failed to get workflow status of workflow $workflowId")
+          }
+        }
+      } ~
     path("step" / "types") {
       get {
         val stepTypes = Future {
@@ -1416,9 +1459,9 @@ object Main extends App {
         }
         val newPlayBook = playbook.copy(path = Some(modulePath.concat(File.separator).concat(playbookName)))
         logger.info(s"Parsing ansible playbook [$playbookName] at module path [$modulePath]")
-        //TODO parse  playbook
-        newPlayBook.toNeo4jGraph(newPlayBook)
-        val plays = newPlayBook.playList
+        val parsedPlayBook = new AnsiblePlayBookParser().buildPlayBook(newPlayBook, modulePath)
+        parsedPlayBook.toNeo4jGraph(parsedPlayBook)
+        val plays = parsedPlayBook.playList
         plays.foreach { play =>
           play.copy(language = Some(ScriptType.Ansible))
           val name = play.name match {

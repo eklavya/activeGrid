@@ -1,10 +1,15 @@
 package com.imaginea.activegrid.core.models
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
+
 import scala.collection.immutable.HashMap
+import scala.util.{Failure, Success}
 /**
   * Created by sivag on 10/1/17.
   */
-class WorkFlowServiceManagerImpl {
+object WorkFlowServiceManagerImpl {
   //Todo 1. WorkFlowContext bean and  2. settingCurrentworkflows.
+  val logger = Logger(LoggerFactory.getLogger(WorkFlowServiceManagerImpl.this.getClass.getName))
   def currentWorkFlows = HashMap.empty[Int, WorkflowContext]
   def getWorkFlow(id: Long): Option[Workflow] = {
     Neo4jRepository.findNodeByLabelAndId(Workflow.labelName, id).flatMap {
@@ -36,8 +41,6 @@ class WorkFlowServiceManagerImpl {
               WorkflowServiceFactory.getWorkflowModeProcessor(wf.mode.getOrElse(WorkflowMode.toWorkFlowMode("AGENT"))).map {
                 processor => processor.executeWorkflow(workflowContext, async)
               }
-              Neo4jRepository.updateNodeByLabelAndId[Workflow](Workflow.labelName, workflowId, workFlowUpdate)
-              CurrentRunningWorkflows.add(workflowId)
             }
         }
     }

@@ -120,7 +120,7 @@ object HttpClient {
     entity.map {
       entity =>
         val inputStream = entity.getContent
-        val content = io.Source.fromInputStream(inputStream).getLines.mkString
+        val content = scala.io.Source.fromInputStream(inputStream).getLines.mkString
         inputStream.close
         content
     }
