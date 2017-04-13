@@ -7,7 +7,7 @@ import scala.util.{Failure, Success}
 /**
   * Created by sivag on 10/1/17.
   */
-class WorkFlowServiceManagerImpl {
+object WorkFlowServiceManagerImpl {
   //Todo 1. WorkFlowContext bean and  2. settingCurrentworkflows.
   val logger = Logger(LoggerFactory.getLogger(WorkFlowServiceManagerImpl.this.getClass.getName))
   def currentWorkFlows = HashMap.empty[Int, WorkflowContext]
