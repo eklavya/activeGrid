@@ -784,8 +784,7 @@ object Main extends App {
       post {
         logger.info("Received request to execute workflow, with id - " + workflowId)
             val result = Future {
-              val serviceMgr = new WorkFlowServiceManagerImpl
-              val workflow = serviceMgr.getWorkFlow(workflowId)
+              val workflow = WorkFlowServiceManagerImpl.getWorkFlow(workflowId)
               if(!workflow.isDefined){
                 throw  new Exception(s"Workflow details with id : $workflowId are not available")
               }
@@ -793,7 +792,7 @@ object Main extends App {
               status match {
                 case WORKFLOW_RUNNING =>
                   throw new Exception("Workflow is already running")
-                case _ => serviceMgr.execute(workflow,true)
+                case _ => WorkFlowServiceManagerImpl.execute(workflow,true)
               }
             }
             onComplete(result) {
@@ -809,8 +808,7 @@ object Main extends App {
         get {
           logger.info("Checking workflow status, with id - " + workflowId)
           val result = Future {
-            val serviceMgr = new WorkFlowServiceManagerImpl
-            val workflow = serviceMgr.getWorkFlow(workflowId)
+            val workflow = WorkFlowServiceManagerImpl.getWorkFlow(workflowId)
             if(!workflow.isDefined){
               throw  new Exception(s"Workflow details with id : $workflowId are not available")
             }
@@ -1156,7 +1154,6 @@ object Main extends App {
       }
     }
   } ~ pathPrefix("workflows") {
-    logger.info("debug")
     path(LongNumber / "status") { workflowId =>
       parameter("start") { start =>
         val workflowExecution = Future {
@@ -1462,9 +1459,9 @@ object Main extends App {
         }
         val newPlayBook = playbook.copy(path = Some(modulePath.concat(File.separator).concat(playbookName)))
         logger.info(s"Parsing ansible playbook [$playbookName] at module path [$modulePath]")
-        //TODO parse  playbook
-        newPlayBook.toNeo4jGraph(newPlayBook)
-        val plays = newPlayBook.playList
+        val parsedPlayBook = new AnsiblePlayBookParser().buildPlayBook(newPlayBook, modulePath)
+        parsedPlayBook.toNeo4jGraph(parsedPlayBook)
+        val plays = parsedPlayBook.playList
         plays.foreach { play =>
           play.copy(language = Some(ScriptType.Ansible))
           val name = play.name match {

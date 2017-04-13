@@ -29,6 +29,7 @@ libraryDependencies ++= {
     "com.beust" % "jcommander" % "1.32",
     "org.apache.commons" % "commons-io" % "1.3.2",
     "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
-    "com.typesafe.akka" %% "akka-distributed-data-experimental" % AkkaVersion
+    "com.typesafe.akka" %% "akka-distributed-data-experimental" % AkkaVersion,
+    "org.yaml" % "snakeyaml" % "1.8"
   )
 }
