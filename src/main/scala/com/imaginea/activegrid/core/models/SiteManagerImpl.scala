@@ -134,7 +134,7 @@ object SiteManagerImpl {
     val uriInfo = Some(AGU.getUriInfo())
     // refer https://github.com/eklavya/activeGrid/issues/64
     val name = policy.name
-    val job = Job(Some(0L), name, jobType, Some(""), startDelay, reptCount, reptIntrvl, Some(true))
+    val job = Job(Some(0L), name, jobType, Some(""), startDelay, reptCount, reptIntrvl, Some(true), None, None)
     val pjob = PolicyJob(Some(policyNode.getId), siteId, uriInfo, Some(job), Some(policy))
     JM.scheduleJob(pjob)
     policy
