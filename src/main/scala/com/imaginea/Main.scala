@@ -1,6 +1,6 @@
 package com.imaginea
 
-import java.io.{File, FileInputStream, FileOutputStream, IOException, PrintWriter}
+import java.io.{File, FileInputStream, FileOutputStream, IOException, PrintWriter, RandomAccessFile}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -2017,6 +2017,21 @@ object Main extends App {
   }
 
   implicit val pageModuleFormat = jsonFormat4(Page[Module])
+  implicit object JobTypeFormat extends RootJsonFormat[JobType] {
+    override def write(obj: JobType): JsValue = {
+      JsString(obj.jobType.toString)
+    }
+
+    override def read(json: JsValue): JobType = {
+      json match {
+        case JsString(str) => JobType.convert(str)
+        case _ => throw DeserializationException("Unable to deserialize Job Type")
+      }
+    }
+  }
+  implicit val jobFormat = jsonFormat10(Job.apply)
+  implicit val pageJobFormat = jsonFormat4(Page[Job])
+  implicit val logTailFormat = jsonFormat2(LogTail.apply)
   // scalastyle:off method.length
   def adminRoute: Route = pathPrefix("admin") {
     path("module" / "create") {
@@ -2070,13 +2085,114 @@ object Main extends App {
           val filteredModules = listOfModules.filter { module =>
             module.definition.isInstanceOf[AnsibleModuleDefinition]
           }
-          Page[Module](listOfModules)
+          Page[Module](filteredModules)
         }
         onComplete(moduleList) {
           case Success(successResponse) => complete(StatusCodes.OK, successResponse)
           case Failure(exception) =>
             logger.error(s"Unable to Retrieve Module List. Failed with : ${exception.getMessage}", exception)
             complete(StatusCodes.BadRequest, "Unable to Module ImageInfo List.")
+        }
+      }
+    } ~ path("logs") {
+      get {
+        parameter("filepointer".as[Long]) { currentFilePointer =>
+          val logs = Future {
+            val logFile = new File(Constants.LOG_FILE_DIR.concat(File.separator).concat("activegrid.log"))
+            val logLines = scala.collection.mutable.ListBuffer[String]()
+            val file = new RandomAccessFile(logFile, "r")
+            try {
+              val fileLength = file.length
+              val newFilePointer = if (currentFilePointer == 0L) {
+                if (fileLength > 1000L) fileLength - 1000L else 0L
+              } else {
+                currentFilePointer + 1
+              }
+              file.seek(newFilePointer)
+              var line = Option(file.readLine())
+              var i = 0
+              while (line.isDefined && i < 100) {
+                i += 1
+                line = Option(file.readLine())
+                line.foreach(l => logLines += l)
+              }
+            } finally {
+              file.close()
+            }
+            LogTail(logLines.toList, file.getFilePointer)
+          }
+          onComplete(logs) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to get logs. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to get logs.")
+          }
+        }
+      }
+    } ~ path("logs" / "download") {
+      val logFile = new File(Constants.LOG_FILE_DIR.concat(File.separator).concat("activegrid.log"))
+      getFromFile(logFile)
+    } ~ path("jobs") {
+      put {
+        entity(as[Job]) { job =>
+          val saveJob = Future {
+            val mayBeWorkflowId = job.workflow.flatMap(_.id)
+            val mayBeWorkflow = mayBeWorkflowId.flatMap(getWorkflow)
+            val newJob = job.copy(workflow = mayBeWorkflow)
+            newJob.toNeo4jGraph(newJob)
+            "Successfully saved Job"
+          }
+          onComplete(saveJob) {
+            case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+            case Failure(exception) =>
+              logger.error(s"Unable to save job. Failed with : ${exception.getMessage}", exception)
+              complete(StatusCodes.BadRequest, "Unable to save job.")
+          }
+        }
+      }
+    } ~ path("jobs") {
+      get {
+        val jobs = Future {
+          val nodesList = Neo4jRepository.getNodesByLabel(Job.lable)
+          val listOfJobs = nodesList.flatMap(node => Job.fromNeo4jGraph(node.getId))
+          Page[Job](listOfJobs)
+        }
+        onComplete(jobs) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to get jobs. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to get jobs.")
+        }
+      }
+    } ~ path("jobs" / LongNumber) { jobId =>
+      get {
+        val getJob = Future {
+          val mayBeJob = Job.fromNeo4jGraph(jobId)
+          mayBeJob match {
+            case Some(job) => job
+            case None =>
+              logger.warn(s"Node not found with ID: $jobId")
+              throw new Exception(s"Node not found with ID: $jobId")
+          }
+        }
+        onComplete(getJob) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to get job with job id: $jobId. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to get job with job id: $jobId.")
+        }
+      }
+    } ~ path("jobs" / LongNumber) { jobId =>
+      delete {
+        val deleteJob = Future {
+          Neo4jRepository.deleteEntity(jobId)
+          "Deleted Successfully"
+        }
+        onComplete(deleteJob) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to Delete Job. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, "Unable to Delete Job.")
         }
       }
     }

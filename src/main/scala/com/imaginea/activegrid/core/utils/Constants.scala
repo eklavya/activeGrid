@@ -12,6 +12,7 @@ object Constants {
 
   //scalastyle:off field.name
   val TEMP_DIR_LOC: String = config.getString("tmp.dir")
+  val LOG_FILE_DIR: String = config.getString("log.dir")
   val USER_KEYS: String = "userkeys"
   val FILE_SEPARATOR = File.separator
   val NAME_TAG_KEY = "Name"
