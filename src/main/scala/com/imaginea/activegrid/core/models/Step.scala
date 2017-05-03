@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
   */
 case class Step(override val id: Option[Long],
                 stepId: Option[String],
-                name: String,
+                name: Option[String],
                 description: Option[String],
                 stepType: Option[StepType],
                 script: Script,
@@ -29,7 +29,7 @@ object Step {
   val stepAndReport = "HAS_Report"
   val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def apply(name: String, script: Script): Step =
+  def apply(name: Option[String], script: Script): Step =
     Step(None, None, name, None, None, script, None, None, 0, List.empty[Step], None)
 
   implicit class StepImpl(step: Step) extends Neo4jRep[Step] {
@@ -101,7 +101,7 @@ object Step {
       val steps = stepNodeIds.flatMap(nodeId => Step.fromNeo4jGraph(nodeId))
       Step(Some(id),
         map.get("stepId").asInstanceOf[Option[String]],
-        map("name").asInstanceOf[String],
+        map.get("name").asInstanceOf[Option[String]],
         map.get("description").asInstanceOf[Option[String]],
         map.get("stepType").asInstanceOf[Option[String]].map(StepType.toStepType),
         script,

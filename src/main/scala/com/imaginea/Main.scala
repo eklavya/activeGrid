@@ -604,15 +604,12 @@ object Main extends App {
       json match {
         case JsObject(map) =>
           val mayBeScriptArg = for {
-            propName <- AGU.getProperty[String](map, fieldNames(1))
-            propValue <- AGU.getProperty[String](map, fieldNames(2))
-            argOrder <- AGU.getProperty[Int](map, fieldNames(3))
             value <- AGU.getProperty[String](map, fieldNames(5))
           } yield {
             ScriptArgument(AGU.getProperty[Long](map, fieldNames(0)),
-              propName,
-              propValue,
-              argOrder,
+              AGU.getProperty[String](map, fieldNames(1)),
+              AGU.getProperty[String](map, fieldNames(2)),
+              AGU.getProperty[Int](map, fieldNames(3)),
               AGU.getProperty[JsValue](map, fieldNames(4)).map(jsVal => ScriptArgumentFormat.read(jsVal)),
               value)
           }
@@ -628,9 +625,9 @@ object Main extends App {
 
     override def write(obj: ScriptArgument): JsValue = {
       val fields = AGU.longToJsField(fieldNames(0), obj.id) ++
-        AGU.stringToJsField(fieldNames(1), Some(obj.propName)) ++
-        AGU.stringToJsField(fieldNames(2), Some(obj.propValue)) ++
-        AGU.stringToJsField(fieldNames(3), Some(obj.argOrder.toString)) ++
+        AGU.stringToJsField(fieldNames(1), obj.propName) ++
+        AGU.stringToJsField(fieldNames(2), obj.propValue) ++
+        AGU.intToJsField(fieldNames(3), obj.argOrder) ++
         AGU.objectToJsValue[ScriptArgument](fieldNames(4), obj.nestedArg, ScriptArgumentFormat) ++
         AGU.stringToJsField(fieldNames(5), Some(obj.value))
       JsObject(fields: _*)
@@ -711,7 +708,7 @@ object Main extends App {
       }
       val fields = AGU.longToJsField(fieldNames.head, obj.id) ++
         AGU.stringToJsField(fieldNames(1), obj.stepId) ++
-        AGU.stringToJsField(fieldNames(2), Some(obj.name)) ++
+        AGU.stringToJsField(fieldNames(2), obj.name) ++
         AGU.stringToJsField(fieldNames(3), obj.description) ++
         AGU.stringToJsField(fieldNames(4), obj.stepType.map(_.stepType)) ++
         scriptFormat ++
@@ -738,14 +735,13 @@ object Main extends App {
             throw DeserializationException("Unable to deserialize  Script,property 'taskList' not found")
           }
           val mayBeStep: Option[Step] = for {
-            name <- AGU.getProperty[String](map, fieldNames(2))
             scriptJsVal <- AGU.getProperty[JsValue](map, fieldNames(5))
             executionOrder <- AGU.getProperty[Int](map, fieldNames(8))
           } yield {
 
             Step(AGU.getProperty[Long](map, fieldNames(0)),
               AGU.getProperty[String](map, fieldNames(1)),
-              name,
+              AGU.getProperty[String](map, fieldNames(2)),
               AGU.getProperty[String](map, fieldNames(3)),
               AGU.getProperty[String](map, fieldNames(4)).map(StepType.toStepType),
               scriptObj,
@@ -1468,14 +1464,14 @@ object Main extends App {
             case Some(playName) => playName
             case None => throw new Exception("play doesnt have a name")
           }
-          val step = Step(name, play)
+          val step = Step(Some(name), play)
           createStep(ansibleWorkflow, step)
         }
       }
     }
   }
 
-  def createStep(workflow: Workflow, step: Step): Unit = {
+  def createStep(workflow: Workflow, step: Step): Step = {
     val id = if (step.stepId.isEmpty) {
       Some(getRandomString)
     } else {
@@ -1494,6 +1490,7 @@ object Main extends App {
     } yield {
       Neo4jRepository.createRelationship(stepId, lastStepId, "childSteps")
     }
+    newStep
   }
 
   def getRandomString: String = {
@@ -2295,10 +2292,79 @@ object Main extends App {
     }
   }
 
+  def executionStepRoute: Route = pathPrefix("workflow" / LongNumber / "step" / "execution") { workflowId =>
+    put {
+      entity(as[Multipart.FormData]) { formData =>
+        val step = Future {
+          val stepType = StepType.EXECUTION
+          val scriptDefiniton = PuppetDSLScriptDefinition(None, None, None, None, Some(ScriptType.PuppetDSL), None, None, List.empty[ScriptArgument], None)
+          val s = Step(None, scriptDefiniton)
+          saveFormData(s, workflowId, formData)
+        }
+        onComplete(step) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to create Step. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to create Step")
+        }
+      }
+    }
+  }
+
+  def saveFormData(s: Step, workflowId: Long, formData: FormData): Option[Step] = {
+    val tempPath = Constants.TEMP_DIR_LOC + File.separator + System.currentTimeMillis + ""
+    val dir = new File(tempPath)
+    dir.mkdirs
+    val scriptDefinition = s.script.asInstanceOf[PuppetDSLScriptDefinition]
+    val (puppetDSLScriptDef, stepName) = formData.asInstanceOf[FormData.Strict].strictParts
+      .foldLeft(scriptDefinition, None: Option[String]) { (scriptDefAndstepName, strict) =>
+        val (sd, sn) = scriptDefAndstepName
+        val name = strict.getName()
+        val value = strict.entity.getData().decodeString("UTF-8")
+        val newSD = name match {
+          case "className" => sd.copy(className = Some(value))
+          case "moduleName" =>
+            val mayBeModule = getProductModule(value)
+            //TODO create new Module if None
+            sd.copy(module = mayBeModule)
+          case "argValue" if !value.isEmpty && !"null".equals(value) =>
+            val arg = ScriptArgument(value)
+            sd.copy(arguments = arg :: sd.arguments)
+          case _ => sd
+        }
+        val mayBeFileName = strict.filename
+        val dependencies = PuppetScriptDependencies(None, List.empty[ScriptFile], List.empty[ScriptFile], List.empty[ScriptFile])
+        val newScriptDefinition = mayBeFileName.map {
+          case fileName if fileName.length != 0 =>
+            val f = new File(tempPath.concat(File.separator).concat(fileName))
+            CommonFileUtils.writeStringToFile(f, value)
+            val newDependecies = name match {
+              case "file" => dependencies.copy(files = ScriptFile(f) :: dependencies.files)
+              case "template" => dependencies.copy(templates = ScriptFile(f) :: dependencies.templates)
+              case "facterFiles" => dependencies.copy(facterFiles = ScriptFile(f) :: dependencies.facterFiles)
+            }
+            newSD.copy(dependencies = Some(newDependecies))
+          case _ => newSD
+        }
+        val stepName = if (name.equals("name")) Some(value) else sn
+        (newScriptDefinition.getOrElse(newSD), stepName)
+      }
+    val newStep = s.copy(script = puppetDSLScriptDef, name = stepName)
+    val mayBeWorkflow = getWorkflow(workflowId)
+    val step = mayBeWorkflow.map(w => if (newStep.id.isEmpty) createStep(w, newStep) else newStep)
+    step
+  }
+
+  def getProductModule(name: String): Option[Module] = {
+    val nodesList = Neo4jRepository.getNodesByLabel(Module.labelName)
+    val listOfModules = nodesList.flatMap(node => Module.fromNeo4jGraph(node.getId))
+    listOfModules.find(module => module.name.equals(name))
+  }
+
   val route: Route = pathPrefix("api" / AGU.APIVERSION) {
     siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
-      esServiceRoutes ~ workflowRoutes ~ adminRoute
+      esServiceRoutes ~ workflowRoutes ~ adminRoute ~ executionStepRoute
   }
 
   AGU.startUp(List("2551","2552"))
