@@ -2327,7 +2327,7 @@ object Main extends App {
             val mayBeModule = getProductModule(value)
             //TODO create new Module if None
             sd.copy(module = mayBeModule)
-          case "argValue" if !value.isEmpty && !"null".equals(value) =>
+          case "argValue" if value.length !=0 && !value.equals("null") =>
             val arg = ScriptArgument(value)
             sd.copy(arguments = arg :: sd.arguments)
           case _ => sd
