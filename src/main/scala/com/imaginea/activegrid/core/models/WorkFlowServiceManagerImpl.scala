@@ -11,6 +11,7 @@ object WorkFlowServiceManagerImpl {
   //Todo 1. WorkFlowContext bean and  2. settingCurrentworkflows.
   val logger = Logger(LoggerFactory.getLogger(WorkFlowServiceManagerImpl.this.getClass.getName))
   def currentWorkFlows = HashMap.empty[Int, WorkflowContext]
+
   def getWorkFlow(id: Long): Option[Workflow] = {
     Neo4jRepository.findNodeByLabelAndId(Workflow.labelName, id).flatMap {
       workFlowNode => Workflow.fromNeo4jGraph(workFlowNode.getId)
@@ -43,6 +44,11 @@ object WorkFlowServiceManagerImpl {
               }
             }
         }
+    }
+  }
+  def getWorkflows() : List[Workflow] = {
+    Neo4jRepository.getNodesByLabel("Workflow").flatMap {
+      node => Workflow.fromNeo4jGraph(node.getId)
     }
   }
 }
