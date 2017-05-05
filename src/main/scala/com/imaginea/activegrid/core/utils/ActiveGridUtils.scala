@@ -109,6 +109,13 @@ object ActiveGridUtils {
     }
   }
 
+  def intToJsField(fieldName: String, fieldValue: Option[Int], rest: List[JsField] = Nil): List[(String, JsValue)] = {
+    fieldValue match {
+      case Some(x) => (fieldName, JsNumber(x)) :: rest
+      case None => rest
+    }
+  }
+
   def stringToJsField(fieldName: String, fieldValue: Option[String], rest: List[JsField] = Nil): List[(String, JsValue)] = {
     fieldValue match {
       case Some(x) => (fieldName, JsString(x)) :: rest

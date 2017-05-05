@@ -6,15 +6,18 @@ import org.neo4j.graphdb.Node
   * Created by shareefn on 20/12/16.
   */
 case class ScriptArgument(override val id: Option[Long],
-                          propName: String,
-                          propValue: String,
-                          argOrder: Int,
+                          propName: Option[String],
+                          propValue: Option[String],
+                          argOrder: Option[Int],
                           nestedArg: Option[ScriptArgument],
                           value: String) extends BaseEntity
 
 object ScriptArgument {
   val labelName = "ScriptArgument"
   val nestedRelation = "HAS_ScriptArgument"
+
+  def apply(value: String): ScriptArgument =
+    ScriptArgument(None, None, None, None, None, value)
 
   implicit class ScriptArgumentImpl(scriptArgument: ScriptArgument) extends Neo4jRep[ScriptArgument] {
     override def toNeo4jGraph(entity: ScriptArgument): Node = {
@@ -42,9 +45,9 @@ object ScriptArgument {
       val scriptArgId = Neo4jRepository.getChildNodeId(id, nestedRelation)
       val scriptArg = scriptArgId.flatMap(nodeId => ScriptArgument.fromNeo4jGraph(nodeId))
       ScriptArgument(Some(id),
-        map("propName").asInstanceOf[String],
-        map("propValue").asInstanceOf[String],
-        map("argOrder").asInstanceOf[Int],
+        map.get("propName").asInstanceOf[Option[String]],
+        map.get("propValue").asInstanceOf[Option[String]],
+        map.get("argOrder").asInstanceOf[Option[Int]],
         scriptArg,
         map("value").asInstanceOf[String])
     }
