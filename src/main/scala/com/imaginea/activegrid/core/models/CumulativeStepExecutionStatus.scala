@@ -30,8 +30,8 @@ object CumulativeStepExecutionStatus {
   def toCumulativeStepExecutionStatus(cumulativeStepExecutionStatus: String): CumulativeStepExecutionStatus = {
     cumulativeStepExecutionStatus match {
       case "Not Started" => NOT_STARTED
-      case "success" => SUCCESS
-      case "failure" => FAILURE
+      case "changed" | "unchanged" | "success" => SUCCESS
+      case "failed" | "failure" => FAILURE
       case "In Progress" => IN_PROGRESS
     }
   }

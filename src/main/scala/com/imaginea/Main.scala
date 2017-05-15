@@ -2308,6 +2308,24 @@ object Main extends App {
             complete(StatusCodes.BadRequest, s"Unable to create Step")
         }
       }
+    } ~ post {
+      entity(as[Multipart.FormData]) { formData =>
+        val updatedStep = Future {
+          val mayBeStrict = formData.asInstanceOf[FormData.Strict].strictParts.find(strict => strict.getName().equals("stepId"))
+          val stepId = mayBeStrict match {
+            case Some(strict) => strict.entity.getData().decodeString("UTF-8")
+            case None => throw new RuntimeException("Missing stepId")
+          }
+          val step = getStepByStepId(stepId)
+          step.flatMap(s => saveFormData(s, workflowId, formData))
+        }
+        onComplete(updatedStep) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to update Execution Step. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to update Execution Step")
+        }
+      }
     }
   }
 
@@ -2361,10 +2379,90 @@ object Main extends App {
     listOfModules.find(module => module.name.equals(name))
   }
 
+  def getStepByStepId(stepId: String): Option[Step] = {
+    val nodesList = Neo4jRepository.getNodesByLabel(Step.labelName)
+    val listOfSteps = nodesList.flatMap(node => Step.fromNeo4jGraph(node.getId))
+    listOfSteps.find(step => step.name.contains(stepId))
+  }
+
+  def reportServiceRoute: Route = path("upload") {
+    post {
+      entity(as[String]) { report =>
+        val processNodeReport = Future {
+          logger.info(s"Received puppet run report - $report")
+          val json = report.parseJson.asJsObject
+          val jsonFields = json.fields
+          if(jsonFields.contains("hostname")) {
+            val mayBeNodeName = jsonFields.get("hostname").map(_.convertTo[String])
+            val mayBeStepId = jsonFields.get("step_id").map(_.convertTo[String])
+            val mayBeStatus = jsonFields.get("status").map(_.convertTo[String])
+            for {
+              nodeName <- mayBeNodeName
+              status <- mayBeStatus
+              stepId <- mayBeStepId
+              step <- getStepByStepId(stepId)
+            } yield {
+              val mayBeNode = getNodeByName(nodeName)
+              val node = mayBeNode.getOrElse {
+                val instance = Instance(nodeName).copy(instanceId = Some(getRandomString))
+                instance.toNeo4jGraph(instance)
+                instance
+              }
+              addNodeReport(step, node, report, status)
+            }
+            "Received report successfully"
+          } else { "No node name found in the report" }
+        }
+        onComplete(processNodeReport) {
+          case Success(successResponse) => complete(StatusCodes.OK, successResponse)
+          case Failure(exception) =>
+            logger.error(s"Unable to process node report. Failed with : ${exception.getMessage}", exception)
+            complete(StatusCodes.BadRequest, s"Unable to process node report")
+        }
+      }
+    }
+  }
+
+  def getNodeByName(nodeName: String): Option[Instance] = {
+    val instanceNode = Neo4jRepository.getNodeByProperty("Instance", "name", nodeName)
+    val mayBeInstance = instanceNode.flatMap(node => Instance.fromNeo4jGraph(node.getId))
+    if(mayBeInstance.isEmpty && nodeName == "localhost") {
+      val instance = Instance(nodeName)
+      val node = instance.toNeo4jGraph(instance)
+      Instance.fromNeo4jGraph(node.getId)
+    } else { mayBeInstance }
+  }
+
+  def addNodeReport(step: Step, node: Instance, message: String,status: String): Unit = {
+    val executionStatus = step.script.language match {
+      case Some(ScriptType.PuppetDSL) =>
+        status.toLowerCase match {
+          case PuppetRunStatus.CHANGED.puppetRunStatus => StepExecutionStatus.CHANGED
+          case PuppetRunStatus.UNCHANGED.puppetRunStatus => StepExecutionStatus.UNCHANGED
+          case PuppetRunStatus.FAILED.puppetRunStatus => StepExecutionStatus.FAILED
+          case _ => StepExecutionStatus.UNKNOWN
+        }
+      case Some(ScriptType.Ansible) => StepExecutionStatus.UNKNOWN
+      case None => throw new RuntimeException(s"Missing script definition for step: ${step.name}")
+      case _ => throw new RuntimeException("Not defined for this script type")
+    }
+    val report = NodeReport(None, node, message, List.empty[TaskReport], executionStatus)
+    addReport(step, report)
+  }
+
+  def addReport(step: Step, nodeReport: NodeReport): Unit = {
+    val status = nodeReport.status.stepExecutionStatus
+    val cumulativeStatus = CumulativeStepExecutionStatus.toCumulativeStepExecutionStatus(status)
+    val report = step.report.getOrElse(StepExecutionReport(None, None, List.empty[NodeReport]))
+    val newReport = report.copy(nodeReports = nodeReport :: report.nodeReports, status = cumulativeStatus)
+    val updatedStep = step.copy(report = Some(newReport))
+    updatedStep.toNeo4jGraph(updatedStep)
+  }
+
   val route: Route = pathPrefix("api" / AGU.APIVERSION) {
     siteServices ~ userRoute ~ keyPairRoute ~ catalogRoutes ~ appSettingServiceRoutes ~
       apmServiceRoutes ~ nodeRoutes ~ appsettingRoutes ~ discoveryRoutes ~ siteServiceRoutes ~ commandRoutes ~
-      esServiceRoutes ~ workflowRoutes ~ adminRoute ~ executionStepRoute
+      esServiceRoutes ~ workflowRoutes ~ adminRoute ~ executionStepRoute ~ reportServiceRoute
   }
 
   AGU.startUp(List("2551","2552"))

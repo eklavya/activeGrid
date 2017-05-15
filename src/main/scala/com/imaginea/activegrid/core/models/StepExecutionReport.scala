@@ -8,7 +8,7 @@ import org.neo4j.graphdb.Node
 case class StepExecutionReport(override val id: Option[Long],
                                step: Option[Step],
                                nodeReports: List[NodeReport],
-                               status: CumulativeStepExecutionStatus) extends BaseEntity
+                               status: CumulativeStepExecutionStatus = CumulativeStepExecutionStatus.NOT_STARTED) extends BaseEntity
 
 object StepExecutionReport {
   val labelName = "StepExecutionReport"
