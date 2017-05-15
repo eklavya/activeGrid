@@ -45,4 +45,12 @@ object WorkFlowServiceManagerImpl {
         }
     }
   }
+
+  def getRunningWorkflowContext(workflowId: Long): WorkflowContext = {
+    val mayBeWorkflowContext = currentWorkFlows.get(workflowId.toInt)
+    mayBeWorkflowContext match {
+      case Some(context) => context
+      case None => throw new RuntimeException(s"No workflow with id[ $workflowId ] found to be running")
+    }
+  }
 }
